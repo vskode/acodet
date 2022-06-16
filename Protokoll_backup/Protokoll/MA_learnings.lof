@@ -1,0 +1,18 @@
+\contentsline {figure}{\numberline {1}{\ignorespaces Sound production in Mysticetes.}}{13}{figure.caption.4}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Sound production in Odontocetes}}{14}{figure.caption.5}%
+\contentsline {figure}{\numberline {3}{\ignorespaces ANOVA example: dog weights}}{23}{figure.caption.6}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Example of z-transformation}}{24}{figure.caption.7}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Cauchy vs Gaussian Distribution}}{31}{figure.caption.8}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Confusion matrix showing performance measures for ROC and PR}}{33}{figure.caption.9}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Perceptron structure}}{37}{figure.caption.10}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Convolutional Layer}}{41}{figure.caption.11}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Filter applied between convolutional layers}}{41}{figure.caption.12}%
+\contentsline {figure}{\numberline {10}{\ignorespaces CNN learning hand written images with pooling along depth-dimension}}{44}{figure.caption.13}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Inception Module}}{49}{figure.caption.16}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Architecture of GoogLeNet}}{49}{figure.caption.17}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Residual learning}}{51}{figure.caption.18}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Regular deep neural network vs. deep residual network}}{51}{figure.caption.19}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Architecture of ResNet}}{51}{figure.caption.20}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Depthwise Seperable Convolution}}{52}{figure.caption.21}%
+\contentsline {figure}{\numberline {17}{\ignorespaces SE-Block in inception modules and residual units}}{53}{figure.caption.22}%
+\contentsline {figure}{\numberline {18}{\ignorespaces Recalibration by SE Block}}{53}{figure.caption.23}%

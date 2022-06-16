@@ -1,0 +1,59 @@
+\begin{thebibliography}{1}
+
+\bibitem{allen_convolutional_2021}
+A.~N. Allen, M.~Harvey, L.~Harrell, A.~Jansen, K.~P. Merkens, C.~C. Wall,
+  J.~Cattiau, and E.~M. Oleson.
+\newblock A {Convolutional} {Neural} {Network} for {Automated} {Detection} of
+  {Humpback} {Whale} {Song} in a {Diverse}, {Long}-{Term} {Passive} {Acoustic}
+  {Dataset}.
+\newblock {\em Frontiers in Marine Science}, 8, 2021.
+
+\bibitem{bermant_deep_2019}
+P.~C. Bermant, M.~M. Bronstein, R.~J. Wood, S.~Gero, and D.~F. Gruber.
+\newblock Deep machine learning techniques for the detection and classification
+  of sperm whale bioacoustics.
+\newblock {\em Scientific reports}, 9(1):1--10, 2019.
+\newblock Publisher: Nature Publishing Group.
+
+\bibitem{cholewiak_humpback_2013}
+D.~M. Cholewiak, R.~S. Sousa-Lima, and S.~Cerchio.
+\newblock Humpback whale song hierarchical structure: {Historical} context and
+  discussion of current classification issues.
+\newblock {\em Marine Mammal Science}, 29(3):E312--E332, 2013.
+\newblock Publisher: Wiley Online Library.
+
+\bibitem{garland_cultural_2020}
+E.~C. Garland and P.~K. McGregor.
+\newblock Cultural transmission, evolution, and revolution in vocal displays:
+  insights from bird and whale song.
+\newblock {\em Frontiers in psychology}, page 2387, 2020.
+\newblock Publisher: Frontiers.
+
+\bibitem{garland_devil_2017}
+E.~C. Garland, L.~Rendell, M.~S. Lilley, M.~M. Poole, J.~Allen, and M.~J. Noad.
+\newblock The devil is in the detail: {Quantifying} vocal variation in a
+  complex, multi-levelled, and rapidly evolving display.
+\newblock {\em The Journal of the Acoustical Society of America},
+  142(1):460--472, 2017.
+\newblock Publisher: Acoustical Society of America.
+
+\bibitem{geron_hands-machine_2019}
+A.~Géron.
+\newblock {\em Hands-on machine learning with {Scikit}-{Learn}, {Keras}, and
+  {TensorFlow}: {Concepts}, tools, and techniques to build intelligent
+  systems}.
+\newblock O'Reilly Media, Inc., 2019.
+
+\bibitem{mercado_all_2022}
+E.~Mercado and C.~E. Perazio.
+\newblock All units are equal in humpback whale songs, but some are more equal
+  than others.
+\newblock {\em Animal Cognition}, 25(1):149--177, Feb. 2022.
+
+\bibitem{reidenberg_terrestrial_2017}
+J.~S. Reidenberg.
+\newblock Terrestrial, semiaquatic, and fully aquatic mammal sound production
+  mechanisms.
+\newblock {\em Acoust Today}, 13(2):35--43, 2017.
+
+\end{thebibliography}

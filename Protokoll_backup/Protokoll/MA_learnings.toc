@@ -1,0 +1,70 @@
+\contentsline {section}{\numberline {}Papers}{4}{section.1}%
+\contentsline {subsection}{\numberline {.1}Humpback whale song hierarchical structure: Historical context and discussion of current classification issues }{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {.2}Garland-2020-Frontiers in Psychology}{7}{subsection.2.2}%
+\contentsline {subsection}{\numberline {.3}Terrestrial, Semi-aquatic, and Fully Aquatic Mammal Sound Production Mechanisms}{10}{subsection.2.3}%
+\contentsline {subsection}{\numberline {.4}The devil is in the detail: Quantifying vocal variation in a complex, mulit-levelled, and rapidly avolving display}{14}{subsection.2.4}%
+\contentsline {subsection}{\numberline {.5}Deep Machine Learning Techniques for the Detection and Classification of Sperm Whale Bioacoustics}{17}{subsection.2.5}%
+\contentsline {subsection}{\numberline {.6}Acoustic Detection of Humpback Whales Using a Convolutional Neural Network}{18}{subsection.2.6}%
+\contentsline {subsection}{\numberline {.7}All units are equal in humpback whale songs, but some are more equal than others}{20}{subsection.2.7}%
+\contentsline {section}{\numberline {}Examples}{21}{section.3}%
+\contentsline {subsection}{\numberline {.1}Statistics}{21}{subsection.4.1}%
+\contentsline {subsubsection}{\numberline {.1.1}Bootstrapping Dendrograms}{21}{subsubsection.4.1.1}%
+\contentsline {subsubsection}{\numberline {.1.2}ANOVA}{22}{subsubsection.4.1.2}%
+\contentsline {subsection}{\numberline {.2}Machine Learning}{22}{subsection.4.2}%
+\contentsline {subsubsection}{\numberline {.2.1}Perceptron training}{22}{subsubsection.4.2.1}%
+\contentsline {section}{\numberline {}Statistics}{24}{section.5}%
+\contentsline {subsection}{\numberline {.1}Transformations}{24}{subsection.6.1}%
+\contentsline {subsubsection}{\numberline {.1.1}Z-Transformation (also standardization or auto-scaling)}{24}{subsubsection.6.1.1}%
+\contentsline {subsubsection}{\numberline {.1.2}Unweighted Pair Grouped Method with Arithmetic Mean - UPGMA}{24}{subsubsection.6.1.2}%
+\contentsline {subsubsection}{\numberline {.1.3}Bootstrapping}{25}{subsubsection.6.1.3}%
+\contentsline {subsubsection}{\numberline {.1.4}Phylogenetic tree}{25}{subsubsection.6.1.4}%
+\contentsline {subsection}{\numberline {.2}Metrics}{26}{subsection.6.2}%
+\contentsline {subsubsection}{\numberline {.2.1}Levenshtein Distance}{26}{subsubsection.6.2.1}%
+\contentsline {subsubsection}{\numberline {.2.2}Cophenetic Correlation Coefficient}{26}{subsubsection.6.2.2}%
+\contentsline {subsection}{\numberline {.3}Tools}{26}{subsection.6.3}%
+\contentsline {subsubsection}{\numberline {.3.1}statistical significance}{26}{subsubsection.6.3.1}%
+\contentsline {subsubsection}{\numberline {.3.2}z-test}{27}{subsubsection.6.3.2}%
+\contentsline {subsubsection}{\numberline {.3.3}Two-Tailed Test}{27}{subsubsection.6.3.3}%
+\contentsline {subsubsection}{\numberline {.3.4}Analysis of Variance - ANOVA}{27}{subsubsection.6.3.4}%
+\contentsline {section}{\numberline {}Machine Learning}{29}{section.7}%
+\contentsline {subsection}{\numberline {.1}Algorithms}{29}{subsection.8.1}%
+\contentsline {subsubsection}{\numberline {.1.1}Decision Tree}{29}{subsubsection.8.1.1}%
+\contentsline {subsubsection}{\numberline {.1.2}Random Forest}{29}{subsubsection.8.1.2}%
+\contentsline {subsubsection}{\numberline {.1.3}Classification and Regression Tree - CART}{29}{subsubsection.8.1.3}%
+\contentsline {subsubsection}{\numberline {.1.4}Principal Component Analysis - PCA}{29}{subsubsection.8.1.4}%
+\contentsline {subsubsection}{\numberline {.1.5}t-Distributed Stochastic Neighbor Embedding (t-SNE)}{30}{subsubsection.8.1.5}%
+\contentsline {subsection}{\numberline {.2}Tools}{31}{subsection.8.2}%
+\contentsline {subsubsection}{\numberline {.2.1}Spectrogram and STFT windowing}{31}{subsubsection.8.2.1}%
+\contentsline {subsubsection}{\numberline {.2.2}Singular Value Decomposition}{32}{subsubsection.8.2.2}%
+\contentsline {subsubsection}{\numberline {.2.3}Self-organizing (feature) map - SOM}{32}{subsubsection.8.2.3}%
+\contentsline {subsubsection}{\numberline {.2.4}Cross Entropy}{32}{subsubsection.8.2.4}%
+\contentsline {subsubsection}{\numberline {.2.5}Data Augmentation}{33}{subsubsection.8.2.5}%
+\contentsline {subsection}{\numberline {.3}Precision Metrics in Binary Classification Tasks}{33}{subsection.8.3}%
+\contentsline {subsubsection}{\numberline {.3.1}Receiver Operating Characteristic Curve (ROC)}{33}{subsubsection.8.3.1}%
+\contentsline {subsubsection}{\numberline {.3.2}Precision-Recall Curve (PR)}{34}{subsubsection.8.3.2}%
+\contentsline {subsection}{\numberline {.4}Deep Neural Networks}{35}{subsection.8.4}%
+\contentsline {subsubsection}{\numberline {.4.1}Basic Structure}{35}{subsubsection.8.4.1}%
+\contentsline {subsubsection}{\numberline {.4.2}Long Short-Term Memory network (LSTM)}{38}{subsubsection.8.4.2}%
+\contentsline {subsubsection}{\numberline {.4.3}Intuition for NN structure}{38}{subsubsection.8.4.3}%
+\contentsline {subsubsection}{\numberline {.4.4}Challenges of Training Deep Neural Networks}{38}{subsubsection.8.4.4}%
+\contentsline {subsubsection}{\numberline {.4.5}Optimizations}{39}{subsubsection.8.4.5}%
+\contentsline {subsection}{\numberline {.5}Convolutional Neural Networks (CNN)}{40}{subsection.8.5}%
+\contentsline {subsubsection}{\numberline {.5.1}History and Concept}{40}{subsubsection.8.5.1}%
+\contentsline {subsubsection}{\numberline {.5.2}Implementation in TensorFlow}{42}{subsubsection.8.5.2}%
+\contentsline {subsubsection}{\numberline {.5.3}Pooling layers}{43}{subsubsection.8.5.3}%
+\contentsline {subsubsection}{\numberline {.5.4}CNN Architectures}{44}{subsubsection.8.5.4}%
+\contentsline {subsubsection}{\numberline {.5.5}LeNet-5}{46}{subsubsection.8.5.5}%
+\contentsline {subsubsection}{\numberline {.5.6}AlexNet}{47}{subsubsection.8.5.6}%
+\contentsline {subsubsection}{\numberline {.5.7}GoogLeNet}{47}{subsubsection.8.5.7}%
+\contentsline {subsubsection}{\numberline {.5.8}VGGNet}{48}{subsubsection.8.5.8}%
+\contentsline {subsubsection}{\numberline {.5.9}ResNet}{50}{subsubsection.8.5.9}%
+\contentsline {subsubsection}{\numberline {.5.10}Xception}{50}{subsubsection.8.5.10}%
+\contentsline {subsubsection}{\numberline {.5.11}SENet}{52}{subsubsection.8.5.11}%
+\contentsline {subsubsection}{\numberline {.5.12}Implementation of a ResNet-34 CNN Using Keras}{53}{subsubsection.8.5.12}%
+\contentsline {subsubsection}{\numberline {.5.13}Easy Guide to Predidctions with Pretrained Models}{55}{subsubsection.8.5.13}%
+\contentsline {subsubsection}{\numberline {.5.14}Pretrained Models for Transfer Learning}{56}{subsubsection.8.5.14}%
+\contentsline {section}{\numberline {}Taxonomy}{59}{section.9}%
+\contentsline {subsection}{\numberline {.1}Pfad zu Kateceanen}{59}{subsection.10.1}%
+\contentsline {subsection}{\numberline {.2}Cetaceans}{59}{subsection.10.2}%
+\contentsline {subsubsection}{\numberline {.2.1}Baleen whale (mysticetes) (Parvorder) - Bartenwale (Unterordnung)}{59}{subsubsection.10.2.1}%
+\contentsline {subsubsection}{\numberline {.2.2}Toothed whale (odontocetes) (Parvorder) - Zahnwale (Unterordnung)}{60}{subsubsection.10.2.2}%
