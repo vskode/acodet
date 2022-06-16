@@ -1,0 +1,66 @@
+#%% imports
+import pandas as pd
+import numpy as np
+import tensorflow as tf
+import tensorflow_hub as hub
+import glob
+
+from ketos.data_handling import selection_table as sl
+import ketos.data_handling.database_interface as dbi
+from ketos.data_handling.parsing import load_audio_representation
+from ketos.audio.spectrogram import MagSpectrogram
+from ketos.data_handling.parsing import load_audio_representation
+
+from pathlib import Path
+import os
+import librosa as lb
+import soundfile as sf
+import matplotlib.pyplot as plt
+from librosa.display import specshow
+
+#%% load files
+if not 'models' in os.listdir():
+    os.chdir('../..')
+    
+# model = hub.load('google_humpback_model')
+annotation_files = Path().glob('Daten/Catherine_annotations/**/*.txt')
+
+#%%
+def get_corresponding_sound_file(file):
+    hard_drive_path = '/media/vincent/Seagate Backup Plus Drive/COMPASS_VINCENT'
+    file_path = glob.glob(f'{hard_drive_path}/**/{file.stem.split("Table")[0]}wav',
+                      recursive = True)
+    if not file_path:
+        return f'{file.stem.split("Table")[0]}wav'
+    else:
+        return file_path[0]
+    
+def standardize_annotations(file):
+    ann = pd.read_csv(file,
+                    sep = r'\t')
+
+    ann['filename'] = get_corresponding_sound_file(file)
+    ann['label']    = 1
+    map_to_ketos_annot_std = {'Begin Time (s)': 'start', 
+                              'End Time (s)': 'end',
+                              'Low Freq (Hz)' : 'freq_min', 
+                              'High Freq (Hz)' : 'freq_max',} 
+    std_annot_train = sl.standardize(table=ann,
+                                    mapper = map_to_ketos_annot_std, 
+                                    trim_table=True)
+    return std_annot_train
+    
+def save_ket_annot_only_existing_paths(df):
+    check_if_full_path_func = lambda x: x[0] == '/'
+    df[list( map(check_if_full_path_func, 
+        df.index.get_level_values(0)) )].to_csv(
+        'Daten/ket_annot_file_exists.csv')
+
+if __name__ == '__main__':
+    df = pd.DataFrame()
+    for file in list(annotation_files):
+        
+        df = df.append(standardize_annotations(file))
+        
+    df.to_csv('Daten/ket_annot.csv')
+    save_ket_annot_only_existing_paths(df)
