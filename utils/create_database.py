@@ -75,9 +75,10 @@ spctrgrm_sttngs = {'type': 'MagSpectrogram',
 # spec_cfg = load_audio_representation('spec_config.json', name="spectrogram")
 
 
-dbi.create_database(output_file='Daten/model_data/test_database.h5', data_dir='Daten/model_data/test',
-                               dataset_name='test',selections=selections_test,
-                               audio_repres=spctrgrm_sttngs)
+dbi.create_database(output_file='Daten/model_data/test_database.h5', 
+                    data_dir='Daten/model_data/test',
+                    dataset_name='test',selections=selections_test,
+                    audio_repres=spctrgrm_sttngs)
                               
 
 
