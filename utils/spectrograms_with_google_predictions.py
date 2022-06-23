@@ -38,7 +38,7 @@ def compute_and_plt_spec(sig_segment, window_length, f_min, sr_plot, **_):
   ax.set(title='Mel-frequency spectrogram')
   return fig, ax
 
-def predict_values(sig_segment, model, sr_plot, **_):
+def predict_values(sig_segment, model, sr_plot, cntxt_wn_sz, **_):
   tensor_sig = tf.convert_to_tensor(sig_segment)
   tensor_sig = tf.expand_dims(tensor_sig, -1)  # makes a batch of size 1
   tensor_sig = tf.expand_dims(tensor_sig, 0)  # makes a batch of size 1
@@ -68,6 +68,7 @@ params = {
   "sr_plot" : 10000,
   "window_length" : 2**11,
   "f_min" : 100,
+  "cntxt_wn_sz": 39124,
   }
 
 
@@ -85,7 +86,8 @@ for file_path in PATH.iterdir():
 
   for section in range(15):
     offset = section * 120 + 3
-    sig_segment, fs = lb.load(file_path_10kHz, sr=None, offset=offset, duration = 3.9124+1.9)
+    sig_segment, fs = lb.load(file_path_10kHz, sr=None, 
+                              offset=offset, duration = 3.9124+1.9)
     if len(sig_segment) == 0:
       break
     fig, ax = compute_and_plt_spec(sig_segment, **params)

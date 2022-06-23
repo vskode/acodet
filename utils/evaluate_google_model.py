@@ -20,16 +20,18 @@ if not 'models' in os.listdir():
     
 hub_model = hub.load('https://tfhub.dev/google/humpback_whale/1')
 
+
 fine_tuning_model = tf.keras.Sequential([
   tf.keras.layers.Input([39124]),
   tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
-  hub.KerasLayer(hub_model, trainable=True)
+  hub.KerasLayer(hub_model, trainable=False),
+  tf.keras.layers.Activation('sigmoid')
 ])
 
 fine_tuning_model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-    # loss=tf.keras.losses.BinaryCrossentropy(),
-    loss='mse',
+    loss=tf.keras.losses.BinaryCrossentropy(),
+    # loss='mse',
 )
 
 
@@ -62,35 +64,55 @@ def return_array_of_39124_segments(annots, file):
   seg_ar = np.array(seg_ar)
   return seg_ar, noise_ar
 
-# def return_noise_segments(annots, file):
-#   annotations = annots[annots.filename == file]
-#   audio, fs = lb.load(file, sr = 10000, offset = 0,
-#                         duration = annotations['start'].iloc[0])
-#   seg_ar = list()
-#   for num in range(len(audio) // cntxt_wn_sz):
-#     beg = int(num*cntxt_wn_sz)
-#     end = int((num+1)*cntxt_wn_sz)
-#     seg_ar.append(audio[0][beg:end])
-#   seg_ar = np.array(seg_ar)
-#   return seg_ar
-
 # %%
 seg_ar, noise_ar = return_array_of_39124_segments(annots, files[0])
 # noise_ar = return_noise_segments(annots, files[0])#.astype('float32')
 x_test = seg_ar.astype("float32")
 y_test = np.ones(x_test.shape[0]).astype("float32")
-# %%
 model = fine_tuning_model
-print("Evaluate on test data")
-results = model.evaluate(x_test, y_test, batch_size=128)
-print("test loss, test acc:", results)
 
-# fine_tuning_model.evaluate(x_test, y_test, batch_size = 128)
 # %%
+# print("Evaluate on test data")
+# results = model.evaluate(x_test, y_test, batch_size=128)
+# print("test loss, test acc:", results)
+
+
+# %%
+print("Generate predictions for 3 samples")
+predictions = model.predict(x_test)
+print("predictions:\n", predictions)
+
+preds = []
+for seg in seg_ar:
+  tensor_sig = tf.convert_to_tensor(seg)
+  tensor_sig = tf.expand_dims(tensor_sig, -1)  # makes a batch of size 1
+  tensor_sig = tf.expand_dims(tensor_sig, 0)  # makes a batch of size 1
+  context_step_samples = tf.cast(39124, tf.int64)
+  score_fn = hub_model.signatures['score']
+  scores = score_fn(waveform=tensor_sig, 
+                    context_step_samples=context_step_samples)
+  preds.append(scores['scores'].numpy()[0, 0, 0])
+preds = np.array(preds)
+
+#%%
+
 # Generate predictions (probabilities -- the output of the last layer)
 # on new data using `predict`
-print("Generate predictions for 3 samples")
-predictions = model.predict(x_test[3:6])
-print("predictions shape:", predictions.shape)
+
+# PATH = Path('Daten/OneDrive_1_1-24-2022')
+# file_path = list(PATH.iterdir())[0]
+
+  
+# file_path_10kHz = Path(file_path.__str__()[:-4] + '_10kHz.wav')
+# # check_10kHz_file_exists(file_path_10kHz)
+
+# section = 0
+# offset = section * 120 + 3
+# sig_segment, fs = lb.load(file_path_10kHz, sr=None, 
+#                           offset=offset, duration = 3.9124+1.9)
+
+# print("Generate predictions for 3 samples")
+# predictions = model.predict(x_test)
+# print("predictions:\n", predictions)
 
 # %%
