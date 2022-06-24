@@ -46,7 +46,7 @@ ax.set_title('Stanton Bank prediction accuracy | model = google'\
 ax.set_xticks(np.arange(len(df)))
 ax.set_xticklabels(labels=df['dates'], rotation = 'vertical')
 
-pps = ax.bar(np.arange(len(df)), df['mse(google)']*100, 
+pps = ax.bar(np.arange(len(df)), df['mse_thresh(google)']*100, 
              0.5, color = colors)
 for i, p in enumerate(pps):
     height = p.get_height()
@@ -61,5 +61,5 @@ for key, value in quality_colors_dict.items():
 ax.legend(handles = patches, bbox_to_anchor=[1, 1])
 # plt.show()
 
-fig.savefig('google_pred_acc.png', dpi = 300, facecolor = 'white')
+fig.savefig('google_pred_acc_thresh=0.25.png', dpi = 300, facecolor = 'white')
 # %%

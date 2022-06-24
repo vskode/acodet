@@ -32,6 +32,7 @@ def create_data_loader_benoit(file, offset, sequence_len, cntxt_wn_hop,
                               sr, fft_window_length, fft_hop, 
                               n_freq_bins, freq_cmpr, 
                               fmin, fmax, **_):
+    sequence_len -= offset
     dataset = StridedAudioDataset(
         file.strip(),
         offset = offset,
@@ -49,7 +50,7 @@ def create_data_loader_benoit(file, offset, sequence_len, cntxt_wn_hop,
     
     data_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=int(sequence_len//cntxt_wn_hop),
+        batch_size=20,
         num_workers=4,
         pin_memory=True,
     )

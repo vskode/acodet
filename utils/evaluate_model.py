@@ -27,21 +27,22 @@ params = {
 durations = pd.read_csv('Daten/file_durations.csv')
 params["fft_hop"] = params['fft_window_length']//2
 
-thresh = .5
+thresh = .25
 
 annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
 files = np.unique(annots.filename)
-model = load_google_hub()
+model = load_google_sequential()#load_google_hub()
 
 df_mse = pd.DataFrame()
 
 #%%
-# model = load_HUMP_SPOT()
-# params["sequence_len"] = durations.duration[0]*params['cntxt_wn_sz']
-# data_loader = create_data_loader_benoit(files[0], 
-#                                         offset = 3, 
-#                                         **params)
-# preds = get_HOMP_SPOT_preds(model, data_loader)
+model = load_HUMP_SPOT()
+params["sequence_len"] = durations.duration[0]*params['sr'] #cntxt_wn_sz*20 hat auch 20 ergebnisse geliefert ... ?
+data_loader = create_data_loader_benoit(files[0], 
+                                        offset = 3, 
+                                        **params)
+preds = get_HOMP_SPOT_preds(model, data_loader)
+
 #%%
 
 for file in files:
@@ -50,11 +51,13 @@ for file in files:
     seg_ar, noise_ar = return_cntxt_wndw_arr(annotations, file, **params)
 
     model_name = 'google'
-    predictions = predict_hub(seg_ar, model, **params)
-    predictions_noise = predict_hub(noise_ar, model, **params)
     
-    y_test = return_labels(annotations, file)[:len(predictions)]
-    y_noise = np.zeros([len(predictions_noise)])
+    y_test = return_labels(annotations, file)[:len(seg_ar)]
+    y_noise = np.zeros([len(noise_ar)])
+    
+    predictions = model.predict(seg_ar).T[0]
+    if len(noise_ar) > 0:
+        predictions_noise = model.predict(noise_ar).T[0]
 
     mse, rmse, mae = get_metrics(predictions, y_test)
     mse_noise, rmse_noise, mae_noise = get_metrics(predictions_noise, y_noise)
