@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 from librosa.display import specshow
 
 
+def get_annots_for_file(annots, file):
+    return annots[annots.filename == file].sort_values('start')
+
 def return_cntxt_wndw_arr(annotations, file, nr_noise_samples, cntxt_wn_sz,
                             sr, **_):
     offset = annotations['start'].iloc[0]

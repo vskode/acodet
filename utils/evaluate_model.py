@@ -22,77 +22,89 @@ params = {
     "fmin":  50,
     "fmax":  1000,
     "nr_noise_samples": 100,
+    "sequence_len" : 39124,
+    "fft_hop": 300,
 }
+mtrxs = {'mse':0, 'rmse':0, 'mae':0}
+mtrxs.update({f'{m}_t': 0 for m in mtrxs})
+mtrxs.update({f'{m}_n': 0 for m in mtrxs})
+mtrxs.update({'bin_cross_entr': 0, 'bin_cross_entr_n': 0})
 
-durations = pd.read_csv('Daten/file_durations.csv')
-params["fft_hop"] = params['fft_window_length']//2
+preds = {'signal':[], 'thresh': [], 'noise': [], 'thresh_noise': []}
+
+
+
+# durations = pd.read_csv('Daten/file_durations.csv')
 
 thresh = .25
-
 annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
 files = np.unique(annots.filename)
-model = load_google_sequential()#load_google_hub()
-
 df_mse = pd.DataFrame()
+Gog = GooglePreds(params)
+Hum = HumpSpot(params)
 
-#%%
-model = load_HUMP_SPOT()
-params["sequence_len"] = durations.duration[0]*params['sr'] #cntxt_wn_sz*20 hat auch 20 ergebnisse geliefert ... ?
-data_loader = create_data_loader_benoit(files[0], 
-                                        offset = 3, 
-                                        **params)
-preds = get_HOMP_SPOT_preds(model, data_loader)
 
-#%%
+for mod, model_name in zip((Gog, Hum), ('google', 'benoit')):
+    for file in files[7:]:
+        
+        file_annots = get_annots_for_file(annots, file)
+        
+        mod.load_data(file, file_annots)
+        
+        preds['signal'] = mod.pred()
+        preds['thresh'] = (preds['signal'] > thresh).astype(int)
+        
+        mtrxs['bin_cross_entr'] = mod.eval()
+        if model_name == 'google':
+            y_test, y_noise = mod.return_test_data()
+        
+        # if len(y_noise) > 0:
+        #     preds['noise'] = mod.pred(noise=True)
+        #     mtrxs['bin_cross_entr_n'] = mod.eval(noise=True)
+        #     preds['thresh_noise'] = (preds['noise'] > thresh).astype(int)
+        # else:
+        #     preds['noise'] = 0
+        #     preds['thresh_noise'] = 0
+        
 
-for file in files:
-    annotations = annots[annots.filename == file].sort_values('start')
+        mtrxs['mse'], mtrxs['rmse'], mtrxs['mae'] = get_metrics(preds['signal'], 
+                                                                y_test)
+        # mtrxs['mse_n'], mtrxs['rmse_n'], mtrxs['mae_n'] = get_metrics(preds['noise'], 
+        #                                                             y_noise)
+        mtrxs['mse_t'], mtrxs['rmse_t'], mtrxs['mae_t'] = get_metrics(preds['thresh'], 
+                                                                    y_test)
+        # mtrxs['mse_t_n'], mtrxs['rmse_t_n'], mtrxs['mae_t_n'] = get_metrics(preds['thresh_noise'],
+        #                                                                     y_noise)
+        
+        # np.random.seed(33)
+        # rndm = np.random.randint(20)
+        # plot_and_save_spectrogram(y_test[rndm], Path(file).stem, 
+        #                         preds['signal'][rndm], 
+        #                         start = file_annots['start'].iloc[rndm],
+        #                         **params)
+        # if len(y_noise) > rndm:
+        #     plot_and_save_spectrogram(y_noise[rndm], Path(file).stem, 
+        #                             preds['noise'][rndm], 
+        #                             start = 0, noise=True, **params)
+        
+        print(f'{model_name} model mse: {mtrxs["mse"]*100:.2f}%')
+        print(f'{model_name} model mse_noise: {mtrxs["mse_n"]*100:.2f}%')
+        # df_mse = df_mse.append({"file": file, 
+        #                 "number_of_annots": len(y_test),
+        #                 "quality_of_recording": get_quality_of_recording(file),
+        #                 "number_of_annots_noise": len(y_noise),
+        #                 **{f"{metric}({model_name})" : \
+        #                     mtrxs[metric] for metric in mtrxs}},
+        #                     ignore_index = True)
+        mtrx_dict = {f"{metric}({model_name})" : mtrxs[metric] for metric in mtrxs}
+        
+        df_mse = df_mse.append({"file": file, 
+                            "number_of_annots": len(y_test),
+                            "quality_of_recording": get_quality_of_recording(file),
+                            "number_of_annots_noise": len(y_noise), 
+                            **mtrx_dict}, 
+                            ignore_index=True)
     
-    seg_ar, noise_ar = return_cntxt_wndw_arr(annotations, file, **params)
-
-    model_name = 'google'
-    
-    y_test = return_labels(annotations, file)[:len(seg_ar)]
-    y_noise = np.zeros([len(noise_ar)])
-    
-    predictions = model.predict(seg_ar).T[0]
-    if len(noise_ar) > 0:
-        predictions_noise = model.predict(noise_ar).T[0]
-
-    mse, rmse, mae = get_metrics(predictions, y_test)
-    mse_noise, rmse_noise, mae_noise = get_metrics(predictions_noise, y_noise)
-    
-    predictions_thresh = (predictions > thresh).astype(int)
-    mse_thresh, rmse_thresh, mae_thresh = get_metrics(predictions_thresh, y_test)
-    
-    np.random.seed(33)
-    rndm = np.random.randint(20)
-    plot_and_save_spectrogram(seg_ar[rndm], Path(file).stem, 
-                              predictions[rndm], 
-                              start = annotations['start'].iloc[rndm],
-                              **params)
-    if len(noise_ar) > rndm:
-        plot_and_save_spectrogram(noise_ar[rndm], Path(file).stem, 
-                                predictions_noise[rndm], 
-                                start = 0, noise=True, **params)
-    
-    print(f'{model_name} model mse: {mse*100:.2f}%')
-    print(f'{model_name} model mse_noise: {mse_noise*100:.2f}%')
-    df_mse = df_mse.append({"file": file, 
-                    "number_of_annots": len(y_test),
-                    "quality_of_recording": get_quality_of_recording(file),
-                    f"mse({model_name})" : mse, 
-                    f"rmse({model_name})" : rmse, 
-                    f"mae({model_name})" : mae, 
-                    f"mse_thresh({model_name})" : mse_thresh, 
-                    f"rmse_thresh({model_name})" : rmse_thresh, 
-                    f"mae_thresh({model_name})" : mae_thresh, 
-                "number_of_annots_noise": len(y_noise),
-                f"mse_noise({model_name})" : mse_noise, 
-                f"rmse_noise({model_name})" : rmse_noise,
-                f"mae_noise({model_name})" : mae_noise}, 
-                           ignore_index = True)
-    
-    df_mse.to_csv('google_model_evaluation.csv')
+    df_mse.to_csv(f'{model_name}_model_evaluation.csv')
 
 # %%

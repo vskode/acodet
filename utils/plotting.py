@@ -10,7 +10,7 @@ from pathlib import Path
 if not 'Daten' in os.listdir():
     os.chdir('../..')
     
-file_path = 'google_model_evaluation_v1.csv'
+file_path = 'google_model_evaluation.csv'
 df = pd.read_csv(file_path)
 
 
@@ -40,13 +40,14 @@ df['dates'] = pd.to_datetime(df['dates']).dt.date
 
 fig, ax = plt.subplots(figsize = [14, 9])
 
-ax.set_ylabel('MSE of predictions [%]')
+# ax.set_ylabel('MSE of predictions [%]')
+ax.set_ylabel('Binary cross-entropy')
 ax.set_title('Stanton Bank prediction accuracy | model = google'\
-                '\nnumber of annotations on bars')
+                '\nnumber of annotations on bars')  
 ax.set_xticks(np.arange(len(df)))
 ax.set_xticklabels(labels=df['dates'], rotation = 'vertical')
 
-pps = ax.bar(np.arange(len(df)), df['mse_thresh(google)']*100, 
+pps = ax.bar(np.arange(len(df)), df['bin_cross_entr(google)'], 
              0.5, color = colors)
 for i, p in enumerate(pps):
     height = p.get_height()
@@ -61,5 +62,5 @@ for key, value in quality_colors_dict.items():
 ax.legend(handles = patches, bbox_to_anchor=[1, 1])
 # plt.show()
 
-fig.savefig('google_pred_acc_thresh=0.25.png', dpi = 300, facecolor = 'white')
+fig.savefig('google_pred_acc_bin_crossentrpy.png', dpi = 300, facecolor = 'white')
 # %%
