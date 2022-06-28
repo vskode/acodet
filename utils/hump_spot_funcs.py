@@ -2,6 +2,7 @@
 from email.mime import audio
 import torch
 import torch.nn as nn
+from funcs import *
 import numpy as np
 import os
 import sys
@@ -27,10 +28,11 @@ class HumpSpotHelper():
         sr = self.params['sr']
         return first_annot + last_annot + self.params['cntxt_wn_hop']/sr
 
-    def create_data_loader_benoit(self, offset, sequence_len,
-                                cntxt_wn_hop, sr, fft_window_length, 
-                                fft_hop, n_freq_bins, freq_cmpr, 
-                                fmin, fmax, **_):
+    def create_data_loader_benoit(self, x_test, x_noise, offset, 
+                                  sequence_len, cntxt_wn_hop, sr, 
+                                  fft_window_length, fft_hop, 
+                                  n_freq_bins, freq_cmpr, 
+                                  fmin, fmax, **_):
         # sequence length = context windows length
         audio_len = self.get_audio_len()
         dataset = StridedAudioDataset(
@@ -47,28 +49,33 @@ class HumpSpotHelper():
             f_min=fmin,
             f_max=fmax,
             min_max_normalize=True,
-            annotations = self.annots
+            annotations = self.annots,
+            x_test = x_test, 
+            x_noise = x_noise, 
         )
         
-        batch_size = len(self.annots)
-        data_loader = torch.utils.data.DataLoader(
+        batch_size = max(len(x_test), len(x_noise))
+        signal_loader = torch.utils.data.DataLoader(
             dataset,
             batch_size=batch_size,
             num_workers=4,
             pin_memory=True,
         )
-        return data_loader
+        return signal_loader
 
-    def get_preds(self):
+    def get_preds(self, noise = False):
         with torch.no_grad():
             for file in self.data_loader:
                 out = self.model(file)
                 pred = torch.nn.functional.softmax(out, dim=1).numpy()[:, 0]
         return pred
 
-    def bin_cross_entropy(self):
+    def bin_cross_entropy(self, noise = False):
         bce = nn.BCELoss()
-        return bce(torch.tensor(self.preds), torch.tensor(self.labels))
+        if noise:
+            return bce(torch.tensor(self.preds), torch.tensor(self.y_noise))
+        else:
+            return bce(torch.tensor(self.preds), torch.tensor(self.y_test))
         
     @staticmethod
     def load_HUMP_SPOT():
@@ -90,18 +97,27 @@ class HumpSpotHelper():
     
 class HumpSpot(HumpSpotHelper):
 
-    def load_data(self, file, annots):
+    def load_data(self, file, annots, y_test, y_noise,
+                  x_test = None, x_noise = None):
         self.file = file
         self.annots = annots
         self.audio_len = self.get_audio_len()
         offset = self.annots['start'].iloc[0]
-        self.data_loader = self.create_data_loader_benoit(offset = offset, 
+        self.y_test = y_test
+        self.y_noise = y_noise
+        self.data_loader = self.create_data_loader_benoit(x_test, x_noise,
+                                                          offset = offset, 
                                                         **self.params)
+    def spec(self, file):
+        with torch.no_grad():
+            for file in self.data_loader:
+                file = file
+        plt.figure()
+        plt.imshow(torch.flip(file[214,0].T, [0]))    
         
     def pred(self, noise = False):
-        self.preds = self.get_preds()
-        self.labels = np.ones(len(self.preds), dtype='float32')
+        self.preds = self.get_preds(noise = noise)
         return self.preds
     
     def eval(self, noise = False):
-        return self.bin_cross_entropy().item()
+        return self.bin_cross_entropy(noise = noise).item()

@@ -39,27 +39,21 @@ class GooglePreds():
         self.model = load_google_sequential()
         self.params = params
         
-    def load_data(self, file, annots):
-        seg_ar, noise_ar = return_cntxt_wndw_arr(annots, file, **self.params)
-        self.x_test = seg_ar
-        self.x_noise = noise_ar
-        self.labels = return_labels(annots, file)[:len(seg_ar)]
-        self.y_test = self.labels
-        self.y_noise = np.zeros([len(noise_ar)])
-        
+    def load_data(self, file, annots, y_test, y_noise, x_test, x_noise):
+        self.x_test = x_test
+        self.x_noise = x_noise
+        self.y_test = y_test
+        self.y_noise = y_noise
         
     def pred(self, noise = False):
         if noise:
-            return self.mode.predict(self.x_noise).T[0]
+            return self.model.predict(self.x_noise).T[0]
         else:
             return self.model.predict(self.x_test).T[0]
     
     def eval(self, noise = False):
         if noise:
-            return self.mode.evaluate(self.x_noise, self.y_noise)
+            return self.model.evaluate(self.x_noise, self.y_noise)
         else:
-            return self.model.evaluate(self.x_test, self.labels)
-    
-    def return_test_data(self):
-        return self.y_test, self.y_noise
+            return self.model.evaluate(self.x_test, self.y_test)
     
