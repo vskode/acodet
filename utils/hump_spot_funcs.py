@@ -108,7 +108,7 @@ class BenoitMod(HumpSpotHelper):
         self.data_loader, self.dataset = self.make_data_loader(x_test, x_noise,
                                                           offset = offset, 
                                                         **self.params)
-    def spec(self, num, params, noise = False):
+    def spec(self, num, noise = False):
         if noise:
             self.dataset.get_noise = True
         else:
@@ -124,10 +124,9 @@ class BenoitMod(HumpSpotHelper):
         else:
             prediction = self.preds_call[num]
             start = self.annots['start'].iloc[num]
-        plot_and_save_spectrogram(spec_data.numpy(), self.file, 
-                                  prediction = prediction,
-                                  start = start, noise = noise, 
-                                  mod_name = type(self).__name__, **params)
+        plot_spec(spec_data.numpy(), self.file, prediction = prediction,
+                start = start, noise = noise, 
+                mod_name = type(self).__name__, **self.params)
         
     def pred(self, noise = False):
         if noise:

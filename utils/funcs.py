@@ -63,7 +63,7 @@ def get_file_durations():
 def get_time(time):
     return f'{int(time/60)}:{np.mod(time, 60):.1f}s'
 
-def plot_and_save_reference_spectrogram(signal, file_path, label, 
+def plot_ref_spec(signal, file_path, label, 
                               fft_window_length, sr, cntxt_wn_sz,
                               start, noise=False, **_):
     S = np.abs(lb.stft(signal, win_length = fft_window_length))
@@ -96,7 +96,7 @@ def plot_and_save_reference_spectrogram(signal, file_path, label,
     plt.close(fig)
 
 
-def plot_and_save_spectrogram(spec_data, file_path, prediction, start,
+def plot_spec(spec_data, file_path, prediction, start,
                               fft_window_length, sr, cntxt_wn_sz, fmin, fmax,
                               mod_name, noise=False, **_):
     fig, ax = plt.subplots(figsize = [6, 4])
@@ -121,6 +121,27 @@ def plot_and_save_spectrogram(spec_data, file_path, prediction, start,
     fig.savefig(file_name, 
             facecolor = 'white', dpi = 300)
     plt.close(fig)
+    
+def generate_spectrograms(x_test, x_noise, y_test, y_noise, model, file,
+                        file_annots, mod_iter, **params):
+    num_c = np.random.randint(len(x_test))
+    num_n = np.random.randint(len(x_noise)) if len(x_noise)>0 else 0
+    
+    # num = np.argmax(abs(y_test - preds['call']))
+    model.spec(num_c)
+    if mod_iter == 0:
+        plot_ref_spec(x_test[num_c], file, y_test[num_c], 
+                    start = file_annots.start.iloc[num_c], **params)
+        
+    if len(y_noise) > 0:
+        # num = np.argmax(abs(y_noise - preds['noise']))
+        model.spec(num_n, noise = True)
+        if mod_iter == 0:
+            plot_ref_spec(x_noise[num_n], file, 
+                        y_noise[num_n], 
+                        start = file_annots.start.iloc[-1] +\
+                        num_n*params['cntxt_wn_sz']/params['sr'],
+                        noise = True, **params)
     
 def create_dirs(path):
     path.mkdir(parents = True, exist_ok=True)

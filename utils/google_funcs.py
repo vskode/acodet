@@ -38,6 +38,8 @@ class GoogleMod():
     def __init__(self, params):
         self.model = load_google_sequential()
         self.params = params
+        self.params['fmin'] = 0
+        self.params['fmax'] = 2250
         
     def load_data(self, file, annots, y_test, y_noise, x_test, x_noise):
         self.file = file
@@ -61,7 +63,7 @@ class GoogleMod():
         else:
             return self.model.evaluate(self.x_test, self.y_test)
     
-    def spec(self, num, params, noise = False):
+    def spec(self, num, noise = False):
         if noise:
             prediction = self.preds_noise[num]
             start = self.annots['end'].iloc[-1] + \
@@ -75,7 +77,6 @@ class GoogleMod():
         tensor_sig = tf.expand_dims(tensor_sig, -1)    
         spec_data = self.model.layers[1].resolved_object.front_end(tensor_sig)
         
-        plot_and_save_spectrogram(spec_data[0].numpy().T, self.file, 
-                                  prediction = prediction,
-                                  start = start, noise = noise, 
-                                  mod_name = type(self).__name__, **params)
+        plot_spec(spec_data[0].numpy().T, self.file, prediction = prediction,
+                    start = start, noise = noise, 
+                    mod_name = type(self).__name__, **self.params)

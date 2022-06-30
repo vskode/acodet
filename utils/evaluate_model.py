@@ -7,6 +7,7 @@ import os
 from funcs import *
 from google_funcs import *
 from hump_spot_funcs import *
+from ketos_narw_funcs import *
 
 
 if not 'Daten' in os.listdir():
@@ -29,19 +30,24 @@ preds, mtrxs = get_dicts()
 
 
 thresh = .25
+specs = True
 annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
 files = np.unique(annots.filename)
 df_mse = pd.DataFrame()
 
-available_models = (BenoitMod, GoogleMod)
+available_models = (NarwMod, GoogleMod, BenoitMod)
 
 
-for model in available_models:
+for mod_iter, model in enumerate(available_models[:2]):
     np.random.seed(33)
     model = model(params)
     model_name = type(model).__name__
+    
     for i, file in enumerate(files):
+        
         file_annots = get_annots_for_file(annots, file)
+        file_annots.start -= params['cntxt_wn_sz'] / params['sr'] / 2
+        
         x_test, x_noise = return_cntxt_wndw_arr(file_annots, file, **params)
         y_test = np.ones(len(x_test), dtype = 'float32')
         y_noise = np.zeros(len(x_noise), dtype = 'float32')
@@ -50,38 +56,21 @@ for model in available_models:
         
         preds['call'] = model.pred()
         preds['thresh'] = (preds['call'] > thresh).astype(int)
-        
         mtrxs['bin_cross_entr'] = model.eval()
         
         if len(y_noise) > 0:
             preds['noise'] = model.pred(noise=True)
-            mtrxs['bin_cross_entr_n'] = model.eval(noise=True)
             preds['thresh_noise'] = (preds['noise'] > thresh).astype(int)
+            mtrxs['bin_cross_entr_n'] = model.eval(noise=True)
         else:
             preds['noise'] = 0
             preds['thresh_noise'] = 0
         
         mtrxs = collect_all_metrics(mtrxs, preds, y_test, y_noise)
         
-        
-        num = np.random.randint(len(x_test))
-        
-        # num = np.argmax(abs(y_test - preds['call']))
-        model.spec(num, params)
-        plot_and_save_reference_spectrogram(x_test[num], file, y_test[num], 
-                                        start = file_annots.start.iloc[num], 
-                                            **params)
-        if len(y_noise) > 0:
-            # num = np.argmax(abs(y_noise - preds['noise']))
-            num = np.random.randint(len(x_noise))
-            model.spec(num, params, noise = True)
-            plot_and_save_reference_spectrogram(x_noise[num], file, 
-                                                y_noise[num], 
-                                        start = file_annots.start.iloc[-1] +\
-                                        num*params['cntxt_wn_sz']/params['sr'], 
-                                                noise = True, **params)
-
-
+        if specs:
+            generate_spectrograms(x_test, x_noise, y_test, y_noise, model, 
+                                  file, file_annots, mod_iter, **params)
 
         print(f'file_{i}({model_name})_mse: {mtrxs["mse"]*100:.2f}%')
         print(f'file_{i}({model_name})_mse_noise: {mtrxs["mse_n"]*100:.2f}%')
