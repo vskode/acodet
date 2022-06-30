@@ -28,7 +28,7 @@ class HumpSpotHelper():
         sr = self.params['sr']
         return first_annot + last_annot + self.params['cntxt_wn_hop']/sr
 
-    def create_data_loader_benoit(self, x_test, x_noise, offset, 
+    def make_data_loader(self, x_test, x_noise, offset, 
                                   sequence_len, cntxt_wn_hop, sr, 
                                   fft_window_length, fft_hop, 
                                   n_freq_bins, freq_cmpr, 
@@ -61,9 +61,9 @@ class HumpSpotHelper():
             num_workers=4,
             pin_memory=True,
         )
-        return signal_loader
+        return signal_loader, dataset
 
-    def get_preds(self, noise = False):
+    def get_preds(self):
         with torch.no_grad():
             for file in self.data_loader:
                 out = self.model(file)
@@ -73,9 +73,9 @@ class HumpSpotHelper():
     def bin_cross_entropy(self, noise = False):
         bce = nn.BCELoss()
         if noise:
-            return bce(torch.tensor(self.preds), torch.tensor(self.y_noise))
+            return bce(torch.tensor(self.preds_noise), torch.tensor(self.y_noise))
         else:
-            return bce(torch.tensor(self.preds), torch.tensor(self.y_test))
+            return bce(torch.tensor(self.preds_call), torch.tensor(self.y_test))
         
     @staticmethod
     def load_HUMP_SPOT():
@@ -95,7 +95,7 @@ class HumpSpotHelper():
         return model
     
     
-class HumpSpot(HumpSpotHelper):
+class BenoitMod(HumpSpotHelper):
 
     def load_data(self, file, annots, y_test, y_noise,
                   x_test = None, x_noise = None):
@@ -105,19 +105,39 @@ class HumpSpot(HumpSpotHelper):
         offset = self.annots['start'].iloc[0]
         self.y_test = y_test
         self.y_noise = y_noise
-        self.data_loader = self.create_data_loader_benoit(x_test, x_noise,
+        self.data_loader, self.dataset = self.make_data_loader(x_test, x_noise,
                                                           offset = offset, 
                                                         **self.params)
-    def spec(self, file):
+    def spec(self, num, params, noise = False):
+        if noise:
+            self.dataset.get_noise = True
+        else:
+            self.dataset.get_noise = False
         with torch.no_grad():
             for file in self.data_loader:
                 file = file
-        plt.figure()
-        plt.imshow(torch.flip(file[214,0].T, [0]))    
+        spec_data = file[num, 0].T
+        if noise:
+            prediction = self.preds_noise[num]
+            start = self.annots['end'].iloc[-1] + \
+                    self.params['cntxt_wn_sz']*num / self.params['sr']
+        else:
+            prediction = self.preds_call[num]
+            start = self.annots['start'].iloc[num]
+        plot_and_save_spectrogram(spec_data.numpy(), self.file, 
+                                  prediction = prediction,
+                                  start = start, noise = noise, 
+                                  mod_name = type(self).__name__, **params)
         
     def pred(self, noise = False):
-        self.preds = self.get_preds(noise = noise)
-        return self.preds
+        if noise:
+            self.dataset.get_noise = True
+            self.preds_noise = self.get_preds()
+            return self.preds_noise
+        else:
+            self.dataset.get_noise = False
+            self.preds_call = self.get_preds()
+            return self.preds_call
     
     def eval(self, noise = False):
         return self.bin_cross_entropy(noise = noise).item()

@@ -60,35 +60,70 @@ def return_noise_arrays(file, sr, annotations,
 def get_file_durations():
     return pd.read_csv('Daten/file_durations.csv')
 
-def plot_and_save_spectrogram(signal, file_path, label, 
-                              fft_window_length, sr, cntxt_wn_sz, 
+def get_time(time):
+    return f'{int(time/60)}:{np.mod(time, 60):.1f}s'
+
+def plot_and_save_reference_spectrogram(signal, file_path, label, 
+                              fft_window_length, sr, cntxt_wn_sz,
                               start, noise=False, **_):
     S = np.abs(lb.stft(signal, win_length = fft_window_length))
     fig, ax = plt.subplots(figsize = [6, 4])
     # limit S first dimension from [10:256], thatway isolating frequencies
-    # (sr/2)/1025*10 = 48.78 to (sr/2)/1025*256 = 1248.78 for visualization
-    f_min = sr/2/S.shape[0]*10
-    f_max = sr/2/S.shape[0]*256
-    S_dB = lb.amplitude_to_db(S[10:256, :], ref=np.max)
+    # (sr/2)/1025*10 = 48.78 to (sr/2)/1025*266 = 1297.56 for visualization
+    fmin = sr/2/S.shape[0]*10
+    fmax = sr/2/S.shape[0]*266
+    S_dB = lb.amplitude_to_db(S[10:266, :], ref=np.max)
     img = specshow(S_dB, x_axis = 's', y_axis = 'linear', 
                    sr = sr, win_length = fft_window_length, ax=ax, 
-                x_coords = np.linspace(start, start+cntxt_wn_sz/sr, S.shape[1]),
-                y_coords = np.linspace(f_min, f_max, 246),
+                   x_coords = np.linspace(0, cntxt_wn_sz/sr, S_dB.shape[1]),
+                    y_coords = np.linspace(fmin, fmax, 2**8),
                 vmin = -40)
     fig.colorbar(img, ax=ax, format='%+2.0f dB')
-    file_name = f'{file_path}_spec_w_label.png'
-    ax.set(title=f'spec. of random sample | prediction: {label:.4f}\n'\
-                f'file: {file_path}.wav')
-    
+    file_name = f'{Path(file_path).stem}_spec_w_label.png'
+    ax.set(title=f'spec. of random sample\n'\
+                f'file: {Path(file_path).stem}.wav | start = {get_time(start)}')
     if noise:
-        dir_path = 'predictions/google/spectrograms/noise/'
+        dir_path = f'predictions/reference/spectrograms/noise/'
+        create_dirs(Path(dir_path))
         file_name = dir_path + file_name[:-4] + '_noise.png'
     else:
-        dir_path = 'predictions/google/spectrograms/calls/'
+        dir_path = f'predictions/reference/spectrograms/calls/'
+        create_dirs(Path(dir_path))
         file_name = dir_path + file_name[:-4] + '_call.png'
         
     fig.savefig(file_name, 
             facecolor = 'white', dpi = 300)
+    plt.close(fig)
+
+
+def plot_and_save_spectrogram(spec_data, file_path, prediction, start,
+                              fft_window_length, sr, cntxt_wn_sz, fmin, fmax,
+                              mod_name, noise=False, **_):
+    fig, ax = plt.subplots(figsize = [6, 4])
+    img = specshow(spec_data, x_axis = 's', y_axis = 'linear', 
+                   sr = sr, win_length = fft_window_length, ax=ax, 
+                   x_coords = np.linspace(0, cntxt_wn_sz/sr, spec_data.shape[1]),
+                    y_coords = np.linspace(fmin, fmax, spec_data.shape[0]))
+    fig.colorbar(img, ax=ax, format='%+2.1f dB')
+    file_name = f'{Path(file_path).stem}_spec_w_label.png'
+    ax.set(title=f'spec. of random sample | prediction: {prediction:.4f}\n'\
+            f'file: {Path(file_path).stem}.wav | start = {get_time(start)}')
+    
+    if noise:
+        dir_path = f'predictions/{mod_name}/spectrograms/noise/'
+        create_dirs(Path(dir_path))
+        file_name = dir_path + file_name[:-4] + '_noise.png'
+    else:
+        dir_path = f'predictions/{mod_name}/spectrograms/calls/'
+        create_dirs(Path(dir_path))
+        file_name = dir_path + file_name[:-4] + '_call.png'
+        
+    fig.savefig(file_name, 
+            facecolor = 'white', dpi = 300)
+    plt.close(fig)
+    
+def create_dirs(path):
+    path.mkdir(parents = True, exist_ok=True)
 
 def return_labels(annotations, file):
     return annotations.label.values
@@ -110,6 +145,17 @@ def get_metrics(predictions, y_test):
     mae = calc_mae(predictions, y_test)
     return mse, rmse, mae
 
+def collect_all_metrics(mtrxs, preds, y_test, y_noise):
+    mtrxs['mse'], mtrxs['rmse'], mtrxs['mae'] = get_metrics(preds['call'], 
+                                                            y_test)
+    mtrxs['mse_n'], mtrxs['rmse_n'], mtrxs['mae_n'] = get_metrics(preds['noise'], 
+                                                                y_noise)
+    mtrxs['mse_t'], mtrxs['rmse_t'], mtrxs['mae_t'] = get_metrics(preds['thresh'], 
+                                                                y_test)
+    mtrxs['mse_t_n'], mtrxs['rmse_t_n'], mtrxs['mae_t_n'] = get_metrics(preds['thresh_noise'],
+                                                                        y_noise)
+    return mtrxs
+
 def get_quality_of_recording(file):
     try:    
         path = 'Daten/Catherine_annotations/Detector_scanning_metadata.xlsx'
@@ -127,3 +173,12 @@ def get_quality_of_recording(file):
     except Exception as e:
         print(e)
         return 'unknown'
+    
+def get_dicts():
+    mtrxs = {'mse':0, 'rmse':0, 'mae':0}
+    mtrxs.update({f'{m}_t': 0 for m in mtrxs})
+    mtrxs.update({f'{m}_n': 0 for m in mtrxs})
+    mtrxs.update({'bin_cross_entr': 0, 'bin_cross_entr_n': 0})
+
+    preds = {'call':[], 'thresh': [], 'noise': [], 'thresh_noise': []}
+    return preds, mtrxs

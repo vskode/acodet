@@ -34,12 +34,14 @@ def predict_hub(data, model, cntxt_wn_sz, **_):
         preds.append(scores['scores'].numpy()[0,0,0])
     return np.array(preds)
 
-class GooglePreds():
+class GoogleMod():
     def __init__(self, params):
         self.model = load_google_sequential()
         self.params = params
         
     def load_data(self, file, annots, y_test, y_noise, x_test, x_noise):
+        self.file = file
+        self.annots = annots
         self.x_test = x_test
         self.x_noise = x_noise
         self.y_test = y_test
@@ -47,9 +49,11 @@ class GooglePreds():
         
     def pred(self, noise = False):
         if noise:
-            return self.model.predict(self.x_noise).T[0]
+            self.preds_noise = self.model.predict(self.x_noise).T[0]
+            return self.preds_noise
         else:
-            return self.model.predict(self.x_test).T[0]
+            self.preds_call = self.model.predict(self.x_test).T[0]
+            return self.preds_call
     
     def eval(self, noise = False):
         if noise:
@@ -57,3 +61,21 @@ class GooglePreds():
         else:
             return self.model.evaluate(self.x_test, self.y_test)
     
+    def spec(self, num, params, noise = False):
+        if noise:
+            prediction = self.preds_noise[num]
+            start = self.annots['end'].iloc[-1] + \
+                    self.params['cntxt_wn_sz']*num / self.params['sr']
+            tensor_sig = tf.convert_to_tensor([self.x_noise[num]])
+        else:
+            prediction = self.preds_call[num]
+            start = self.annots['start'].iloc[num]
+            tensor_sig = tf.convert_to_tensor([self.x_test[num]])
+        
+        tensor_sig = tf.expand_dims(tensor_sig, -1)    
+        spec_data = self.model.layers[1].resolved_object.front_end(tensor_sig)
+        
+        plot_and_save_spectrogram(spec_data[0].numpy().T, self.file, 
+                                  prediction = prediction,
+                                  start = start, noise = noise, 
+                                  mod_name = type(self).__name__, **params)
