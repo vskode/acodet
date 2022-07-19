@@ -31,7 +31,7 @@ class NarwMod():
         self.model = load_ketos_model()
         self.model.model.compile('Adam', 'BinaryCrossentropy')
         self.params['fmin'] = 0
-        self.params['fmin'] = 5000
+        self.params['fmax'] = 5000
         
     def load_data(self, file, annots, y_test, y_noise, x_test, x_noise):
         self.file = file
