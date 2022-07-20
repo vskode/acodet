@@ -2,7 +2,7 @@
 from email.mime import audio
 import torch
 import torch.nn as nn
-from funcs import *
+from utils.funcs import *
 import numpy as np
 import os
 import sys
@@ -12,8 +12,6 @@ from collections import OrderedDict
 from models.classifier import Classifier
 from data.audiodataset import StridedAudioDataset
 from models.residual_encoder import ResidualEncoder as Encoder
-
-#%%
 
 
 #%%

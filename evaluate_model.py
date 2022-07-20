@@ -4,14 +4,13 @@ import numpy as np
 from pathlib import Path
 import os
 
-from funcs import *
-from google_funcs import *
-from hump_spot_funcs import *
-from ketos_narw_funcs import *
-
+from utils.funcs import *
+from utils.google_funcs import GoogleMod
+from utils.hump_spot_funcs import BenoitMod
+from utils.ketos_narw_funcs import NarwMod
 
 if not 'Daten' in os.listdir():
-    os.chdir('../..')
+    os.chdir('..')
 
 params = {
     "sr" : 10000,
@@ -32,13 +31,13 @@ preds, mtrxs = get_dicts()
 thresh = .25
 specs = True
 annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
-files = np.unique(annots.filename)
+files = np.unique(annots.filename)  
 df_mse = pd.DataFrame()
 
 available_models = (NarwMod, GoogleMod, BenoitMod)
 
 
-for mod_iter, model in enumerate(available_models[:1]):
+for mod_iter, model in enumerate(available_models[1:]):
     np.random.seed(33)
     model = model(params)
     model_name = type(model).__name__

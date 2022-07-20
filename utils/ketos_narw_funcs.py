@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
 import librosa as lb
-from funcs import *
+from utils.funcs import *
 
 
 def load_ketos_model():

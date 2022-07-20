@@ -2,7 +2,14 @@ import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
 
-from funcs import *
+from utils.funcs import *
+from humpback_model import humpback_model
+
+def load_google_new():
+    model = humpback_model.Model()
+    model.load_weights('models/google_humpback_model')
+    model.build((1, 39124, 1))
+    return model
 
 def load_google_hub():
     return hub.load('https://tfhub.dev/google/humpback_whale/1')
@@ -36,7 +43,8 @@ def predict_hub(data, model, cntxt_wn_sz, **_):
 
 class GoogleMod():
     def __init__(self, params):
-        self.model = load_google_sequential()
+        self.model = load_google_new()
+        # self.model = load_google_sequential()
         self.params = params
         self.params['fmin'] = 0
         self.params['fmax'] = 2250
