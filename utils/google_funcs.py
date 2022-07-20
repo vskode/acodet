@@ -9,6 +9,10 @@ def load_google_new():
     model = humpback_model.Model()
     model.load_weights('models/google_humpback_model')
     model.build((1, 39124, 1))
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+        loss=tf.keras.losses.BinaryCrossentropy()
+    )
     return model
 
 def load_google_hub():

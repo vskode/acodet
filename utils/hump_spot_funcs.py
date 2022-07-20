@@ -6,7 +6,7 @@ from utils.funcs import *
 import numpy as np
 import os
 import sys
-sys.path.insert(1, '/home/vincent/Code/MA/models/Benoit_orca_spot/ORCA-SPOT/orca_spot')
+sys.path.insert(1, 'models/Benoit_orca_spot/ORCA-SPOT/orca_spot')
 
 from collections import OrderedDict
 from models.classifier import Classifier
