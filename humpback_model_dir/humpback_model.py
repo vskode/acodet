@@ -29,8 +29,10 @@ from urllib import request
 
 import tensorflow as tf
 
-from humpback_model import front_end
-from humpback_model import leaf_pcen
+import front_end
+import leaf_pcen
+# from humpback_model_dir import front_end
+# from humpback_model_dir import leaf_pcen
 
 TF_HUB_URL = 'https://tfhub.dev/google/humpback_whale/1?tf-hub-format=compressed'
 NUM_CLASSES = 1
@@ -339,3 +341,13 @@ class Model(tf.keras.Sequential):
         'class_names':
             tf.constant(['Mn']),
     }
+
+if __name__ == '__main__':
+    model = Model()
+    model.load_weights('models/google_humpback_model')
+    model.build((1, 39124, 1))
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+        loss=tf.keras.losses.BinaryCrossentropy()
+    )
+    print('hi')

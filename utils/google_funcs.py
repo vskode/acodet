@@ -3,7 +3,7 @@ import tensorflow_hub as hub
 import numpy as np
 
 from utils.funcs import *
-from humpback_model import humpback_model
+from humpback_model_dir import humpback_model
 
 def load_google_new():
     model = humpback_model.Model()
