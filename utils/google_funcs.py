@@ -15,6 +15,75 @@ def load_google_new():
     )
     return model
 
+def get_flat_model(model):
+    """
+    Take nested model from Harvey Matthew and flatten it for ease of use.
+    This way trainability of layers can be iteratively defined.
+
+    Args:
+        model (tf.keras.Sequential): nested Sequential model from M. Harvey
+
+    Returns:
+        tf.keras.Sequential: flat model
+    """
+    # model_list = []
+    # model_list.append(model.layers[0])
+    # model_list.append(model.layers[1])
+    # model_list.append(model.layers[2]._layers[0])
+    
+    # for layer in model.layers[2]._layers[1]._layers:
+    #   model_list.append(layer)
+    
+    # # necessary to have unique names
+    # model_list[7]._name = 'pool_0'
+    
+    # # get resnet blocks
+    # c = 0
+    # for i, high_layer in enumerate(model.layers[2]._layers[2:6]):
+    #   for j, layer in enumerate(high_layer._layers):
+    #     c+=1
+    
+    #     for low_layer in layer._residual_path._layers:
+    #       model_list.append(low_layer)
+    
+    #     for low_layer in layer._main_path._layers:
+    #       model_list.append(low_layer)
+    #     model_list.append(layer._activation)
+    
+    # # names need to be incremented to make sure every layer name is unique
+    # for ind in range(7,len(model_list)):
+    #   model_list[ind]._name += f'{ind//9}'
+    
+    # model_list.append(model.layers[2]._layers[-1])
+    # model_list.append(model.layers[-1])
+    
+    
+    model_list = []
+    model_list.append(model.layers[0])
+    model_list.append(model.layers[1])
+    model_list.append(model.layers[2]._layers[0])
+    for layer in model.layers[2]._layers[1]._layers:
+      model_list.append(layer)
+    model_list[7]._name = 'pool_0'
+    c = 0
+    for i, high_layer in enumerate(model.layers[2]._layers[2:6]):
+      for j, layer in enumerate(high_layer._layers):
+        c+=1
+        model_list.append(layer)
+        model_list[7+c]._name += f'_{i}'
+    model_list.append(model.layers[2]._layers[-1])
+    model_list.append(model.layers[-1])
+    
+    
+    # generate new model
+    new_model = tf.keras.Sequential(layers=[layer for layer in model_list])
+    new_model.build((1, 39124, 1))
+    new_model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+        loss=tf.keras.losses.BinaryCrossentropy()
+    )
+    return new_model
+
 def load_google_hub():
     return hub.load('https://tfhub.dev/google/humpback_whale/1')
 
@@ -47,7 +116,7 @@ def predict_hub(data, model, cntxt_wn_sz, **_):
 
 class GoogleMod():
     def __init__(self, params):
-        self.model = load_google_new()
+        self.model = get_flat_model(load_google_new())
         # self.model = load_google_sequential()
         self.params = params
         self.params['fmin'] = 0
