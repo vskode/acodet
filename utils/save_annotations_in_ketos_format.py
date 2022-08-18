@@ -27,13 +27,23 @@ annotation_files = Path().glob('Daten/Catherine_annotations/**/*.txt')
 
 #%%
 def get_corresponding_sound_file(file):
-    hard_drive_path = '/media/vincent/Seagate Backup Plus Drive/COMPASS_VINCENT'
+    hard_drive_path = '/media/vincent/Seagate Backup Plus Drive'
     file_path = glob.glob(f'{hard_drive_path}/**/{file.stem.split("Table")[0]}wav',
                       recursive = True)
+    
     if not file_path:
-        return f'{file.stem.split("Table")[0]}wav'
-    else:
-        return file_path[0]
+        new_file = file.stem.split("Table")[0] + 'wav'
+        file_tolsta = '336097327.'+new_file[6:].replace('_000', '').replace('_', '')
+        file_path = glob.glob(f'{hard_drive_path}/**/{file_tolsta}',
+                    recursive = True)
+        
+        if not file_path :
+            file_tolsta = '335564853.'+new_file[6:].replace('5_000', '4').replace('_', '')
+            file_path = glob.glob(f'{hard_drive_path}/**/{file_tolsta}',
+                        recursive = True)
+            if not file_path :
+                return f'{file.stem.split("Table")[0]}wav'
+    return file_path[0]
     
 def standardize_annotations(file):
     ann = pd.read_csv(file,

@@ -15,18 +15,8 @@ tfrecords_dir = 'Daten/tfrecords'
 if not Path(tfrecords_dir).exists():
     Path(tfrecords_dir).mkdir()
 
-
-annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
+annots = pd.read_csv('Daten/ket_annot.csv')
 files = np.unique(annots.filename) 
-
-# import shutil
-# src = Path('/media/vincent/Expansion/Tolsta/2021/D11_Tolsta_wavs')
-# dest = Path(files[0]).parent
-# dest = dest.joinpath('Tolsta_D11_2020_only_annot_wavs')
-# for file in ne[36:]:
-#     # file_path = '335564853.'+file[6:].replace('5_000', '4').replace('_', '')
-#     file_path = '336097327.'+file[6:].replace('_000', '').replace('_', '')
-#     shutil.copyfile(src.joinpath(file_path), dest.joinpath(file_path))
     
 def audio_feature(list_of_floats):
     """Returns a float_list from a float / double."""
