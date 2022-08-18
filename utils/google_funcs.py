@@ -18,7 +18,11 @@ def load_google_new():
 def get_flat_model(model):
     """
     Take nested model from Harvey Matthew and flatten it for ease of use.
-    This way trainability of layers can be iteratively defined.
+    This way trainability of layers can be iteratively defined. The model
+    still has a nested structure. The ResNet blocks are combined into layers
+    of type Block, but because their trainability would only be changed on the
+    block level, this degree of nesting shouldn't complicate the usage of the 
+    model.
 
     Args:
         model (tf.keras.Sequential): nested Sequential model from M. Harvey
@@ -26,58 +30,36 @@ def get_flat_model(model):
     Returns:
         tf.keras.Sequential: flat model
     """
-    # model_list = []
-    # model_list.append(model.layers[0])
-    # model_list.append(model.layers[1])
-    # model_list.append(model.layers[2]._layers[0])
-    
-    # for layer in model.layers[2]._layers[1]._layers:
-    #   model_list.append(layer)
-    
-    # # necessary to have unique names
-    # model_list[7]._name = 'pool_0'
-    
-    # # get resnet blocks
-    # c = 0
-    # for i, high_layer in enumerate(model.layers[2]._layers[2:6]):
-    #   for j, layer in enumerate(high_layer._layers):
-    #     c+=1
-    
-    #     for low_layer in layer._residual_path._layers:
-    #       model_list.append(low_layer)
-    
-    #     for low_layer in layer._main_path._layers:
-    #       model_list.append(low_layer)
-    #     model_list.append(layer._activation)
-    
-    # # names need to be incremented to make sure every layer name is unique
-    # for ind in range(7,len(model_list)):
-    #   model_list[ind]._name += f'{ind//9}'
-    
-    # model_list.append(model.layers[2]._layers[-1])
-    # model_list.append(model.layers[-1])
-    
-    
+    # create list which will contain all the layers
     model_list = []
+    # add MelSpectrogram layer
+    model_list.append(tf.keras.layers.Input([39124]))
+    model_list.append(tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)))
     model_list.append(model.layers[0])
+    # add PCEN layer
     model_list.append(model.layers[1])
+    # iterate through PreBlocks
     model_list.append(model.layers[2]._layers[0])
     for layer in model.layers[2]._layers[1]._layers:
       model_list.append(layer)
-    model_list[7]._name = 'pool_0'
+    # change name, to make sure every layer has a unique name
+    model_list[9]._name = 'pool_pre_resnet'
+    # iterate over ResNet blocks
     c = 0
     for i, high_layer in enumerate(model.layers[2]._layers[2:6]):
       for j, layer in enumerate(high_layer._layers):
         c+=1
         model_list.append(layer)
-        model_list[7+c]._name += f'_{i}'
+        model_list[9+c]._name += f'_{i}'
+    # add final Dense layers
     model_list.append(model.layers[2]._layers[-1])
     model_list.append(model.layers[-1])
-    
+    # normalize results between 0 and 1
+    model_list.append(tf.keras.layers.Activation('sigmoid'))
     
     # generate new model
     new_model = tf.keras.Sequential(layers=[layer for layer in model_list])
-    new_model.build((1, 39124, 1))
+    # new_model.build((1, 39124, 1))
     new_model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
         loss=tf.keras.losses.BinaryCrossentropy()
@@ -117,7 +99,6 @@ def predict_hub(data, model, cntxt_wn_sz, **_):
 class GoogleMod():
     def __init__(self, params):
         self.model = get_flat_model(load_google_new())
-        # self.model = load_google_sequential()
         self.params = params
         self.params['fmin'] = 0
         self.params['fmax'] = 2250
@@ -156,7 +137,7 @@ class GoogleMod():
             tensor_sig = tf.convert_to_tensor([self.x_test[num]])
         
         tensor_sig = tf.expand_dims(tensor_sig, -1)    
-        spec_data = self.model.layers[1].resolved_object.front_end(tensor_sig)
+        spec_data = self.model.layers[2].call(self.model.layers[1].call(tensor_sig))
         
         plot_spec(spec_data[0].numpy().T, self.file, prediction = prediction,
                     start = start, noise = noise, 
