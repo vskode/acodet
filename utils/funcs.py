@@ -1,3 +1,4 @@
+from webbrowser import get
 import pandas as pd
 import numpy as np
 
@@ -10,33 +11,72 @@ from librosa.display import specshow
 def get_annots_for_file(annots, file):
     return annots[annots.filename == file].sort_values('start')
 
-def return_cntxt_wndw_arr(annotations, file, nr_noise_samples, cntxt_wn_sz,
-                            sr, **_):
-    offset = annotations['start'].iloc[0]
-    audio, fs = lb.load(file, sr = sr, 
-                    offset = offset,
+def simple_spec(signal, fft_window_length=2**11, sr = 10000):
+    S = np.abs(lb.stft(signal, win_length = fft_window_length))
+    # fig, ax = plt.subplots(figsize = [6, 4])
+    # limit S first dimension from [10:256], thatway isolating frequencies
+    # (sr/2)/1025*10 = 48.78 to (sr/2)/1025*266 = 1297.56 for visualization
+    S_dB = lb.amplitude_to_db(S, ref=np.max)
+    # img = specshow(S_dB, x_axis = 's', y_axis = 'linear', 
+    #                sr = sr, win_length = fft_window_length, ax=ax, 
+    #             vmin = -40)
+    # fig.colorbar(img, ax=ax, format='%+2.0f dB')
+    plt.figure()
+    plt.imshow(S_dB, origin='lower')
+
+def return_cntxt_wndw_arr(annotations, file, *,
+                          nr_noise_samples, cntxt_wn_sz,
+                            sr, return_times = False, **kwargs):
+    # offset = annotations['start'].iloc[0]
+    audio, fs = lb.load(file, sr = 2000, 
+                    # offset = offset,
                     duration = annotations['start'].iloc[-1] +\
-                                cntxt_wn_sz/sr+offset)
+                                cntxt_wn_sz/sr)
+    audio = lb.resample(audio, orig_sr = 2000, target_sr = sr)
     
-    seg_ar = list()
+    seg_ar, times_c = list(), list()
     for index, row in annotations.iterrows():
-        beg = int((row.start - offset)*sr)
-        end = int((row.start - offset)*sr + cntxt_wn_sz)
+        beg = int((row.start)*sr)
+        end = int((row.start)*sr + cntxt_wn_sz)
+        
         
         if len(audio[beg:end]) == cntxt_wn_sz:
             seg_ar.append(audio[beg:end])
+            
+            times_c.append(beg)
         else:
             end = len(audio)
             beg = end - cntxt_wn_sz
             seg_ar.append(audio[beg:end])
+            
+            times_c.append(beg)
             break
+        
     seg_ar = np.array(seg_ar, dtype='float32')
             
-    noise_ar = return_noise_arrays(file, sr, 
-                                   annotations,
-                                   nr_noise_samples,
-                                   cntxt_wn_sz)
-    return seg_ar, noise_ar
+    noise_ar, times_n = return_inbetween_noise_arrays(audio, annotations,
+                                                        sr, cntxt_wn_sz)
+    if not return_times:
+        return seg_ar, noise_ar
+    else:
+        return seg_ar, noise_ar, times_c, times_n
+    
+def return_inbetween_noise_arrays(audio, annotations, sr, cntxt_wn_sz):
+    num_wndws_btw_end_start = ( (
+        annotations.start[1:].values-annotations.end[:-1].values
+        ) // (cntxt_wn_sz/sr) ).astype(int)
+    noise_ar, times = list(), list()
+    for ind, num_wndws in enumerate(num_wndws_btw_end_start):
+        if num_wndws < 1:
+            continue
+        for window_ind in range(num_wndws):
+            beg = int(annotations.end.iloc[ind]*sr) + cntxt_wn_sz * window_ind
+            end = beg + cntxt_wn_sz
+            noise_ar.append(audio[beg:end])
+            times.append(beg)
+    
+    return noise_ar, times
+            
 
 def return_noise_arrays(file, sr, annotations,
                         nr_noise_samples, cntxt_wn_sz):
@@ -122,15 +162,15 @@ def plot_spec(spec_data, file_path, prediction, start,
             facecolor = 'white', dpi = 300)
     plt.close(fig)
     
-def generate_spectrograms(x_test, x_noise, y_test, y_noise, model, file,
+def generate_spectrograms(x_call, x_noise, y_call, y_noise, model, file,
                         file_annots, mod_iter, **params):
-    num_c = np.random.randint(len(x_test))
+    num_c = np.random.randint(len(x_call))
     num_n = np.random.randint(len(x_noise)) if len(x_noise)>0 else 0
     
     # num = np.argmax(abs(y_test - preds['call']))
     model.spec(num_c)
     if mod_iter == 0:
-        plot_ref_spec(x_test[num_c], file, y_test[num_c], 
+        plot_ref_spec(x_call[num_c], file, y_call[num_c], 
                     start = file_annots.start.iloc[num_c], **params)
         
     if len(y_noise) > 0:
