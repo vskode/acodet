@@ -38,17 +38,63 @@ def get_dataset(filenames, batch_size):
     )
     return dataset
 
-#%%
+#%% init
 
 filenames = tf.io.gfile.glob(f"{TFRECORDS_DIR}/*.tfrec")
-filenames_trial_run = filenames[:15]
-batch_size = 32
+filenames_trial_run = filenames[:50]
+batch_size = 10
 epochs = 10
-steps_per_epoch = 50
+steps_per_epoch = 25
 AUTOTUNE = tf.data.AUTOTUNE
 
+
+
+data = get_dataset(filenames_trial_run, batch_size)
+data = data.shuffle(buffer_size=batch_size)
+train_data = data.take(200)
+test_data = data.skip(200)
+val_data = test_data.skip(60)
+test_data = test_data.take(60)
+
+#%% freeze layers
 G = GoogleMod(params)
 model = G.model
+for layer in model.layers[:-3]:
+    layer.trainable = False
+
+
+#%% define training
+
+
+# Include the epoch in the file name (uses `str.format`)
+checkpoint_path = "unfreeze_3/cp-{epoch:04d}.ckpt"
+checkpoint_dir = os.path.dirname(checkpoint_path)
+
+
+# Create a callback that saves the model's weights every 5 epochs
+cp_callback = tf.keras.callbacks.ModelCheckpoint(
+    filepath=checkpoint_path, 
+    verbose=1, 
+    save_weights_only=True,
+    save_freq=batch_size)
+
+# Save the weights using the `checkpoint_path` format
+model.save_weights(checkpoint_path.format(epoch=0))
+
+# Train the model with the new callback
+model.fit(train_data, 
+          epochs = epochs, 
+          steps_per_epoch=steps_per_epoch, 
+          validation_data = test_data,
+          callbacks=[cp_callback],
+          )
+
+#%% Evaluate the model
+
+
+# Create a new model instance
+# model = GoogleMod(params).model
+
 
 # data = get_dataset(filenames, batch_size)
 
@@ -61,32 +107,3 @@ model = G.model
 
 # model.evaluate(data, batch_size = batch_size, verbose =2)
 # model.predict(x = get_dataset(filenames, batch_size))
-
-
-
-# Include the epoch in the file name (uses `str.format`)
-checkpoint_path = "training_2/cp-{epoch:04d}.ckpt"
-checkpoint_dir = os.path.dirname(checkpoint_path)
-
-batch_size = 32
-
-# Create a callback that saves the model's weights every 5 epochs
-cp_callback = tf.keras.callbacks.ModelCheckpoint(
-    filepath=checkpoint_path, 
-    verbose=1, 
-    save_weights_only=True,
-    save_freq=5*batch_size)
-
-# Create a new model instance
-model = GoogleMod(params).model
-
-# Save the weights using the `checkpoint_path` format
-model.save_weights(checkpoint_path.format(epoch=0))
-
-# Train the model with the new callback
-model.fit(x=get_dataset(filenames_trial_run[:10], batch_size), 
-          epochs = epochs, 
-          steps_per_epoch=steps_per_epoch, 
-          validation_data = get_dataset(filenames_trial_run[10:], batch_size),
-          callbacks=[cp_callback],
-          )

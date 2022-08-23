@@ -215,11 +215,18 @@ def collect_all_metrics(mtrxs, preds, y_test, y_noise):
     return mtrxs
 
 def get_quality_of_recording(file):
-    try:    
+    try:
         path = 'Daten/Catherine_annotations/Detector_scanning_metadata.xlsx'
         stanton_bank = pd.read_excel(path, sheet_name = 'SBank')
-        file_date = pd.to_datetime(Path(file).stem, 
+        if Path(file).stem[0] == 'P':
+            file_date = pd.to_datetime(Path(file).stem, 
                                 format='PAM_%Y%m%d_%H%M%S_000')
+        elif Path(file).stem[0] == 'c':
+            file_date = pd.to_datetime(Path(file).stem.split('A_')[1],
+                                       format='%Y-%m-%d_%H-%M-%S.wav')
+        else:
+            file_date = pd.to_datetime(Path(file).stem.split('.')[1], 
+                                       format='%y%m%d%H%M%S')
         
         condition_date = pd.Timestamp(file_date.date()) == stanton_bank.Date
         hours = [elem.hour for elem in stanton_bank.hour]

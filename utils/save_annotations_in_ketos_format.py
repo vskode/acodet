@@ -28,6 +28,7 @@ annotation_files = Path().glob('Daten/Catherine_annotations/**/*.txt')
 #%%
 def get_corresponding_sound_file(file):
     hard_drive_path = '/media/vincent/Seagate Backup Plus Drive'
+    hard_drive_path = '/mnt/d'
     file_path = glob.glob(f'{hard_drive_path}/**/{file.stem.split("Table")[0]}wav',
                       recursive = True)
     

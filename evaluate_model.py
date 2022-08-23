@@ -29,7 +29,7 @@ preds, mtrxs = get_dicts()
 
 
 thresh = .25
-specs = True
+specs = False
 annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
 files = np.unique(annots.filename)  
 df_mse = pd.DataFrame()
@@ -37,7 +37,7 @@ df_mse = pd.DataFrame()
 available_models = (NarwMod, GoogleMod, BenoitMod)
 
 
-for mod_iter, model in enumerate(available_models[1:]):
+for mod_iter, model in enumerate(available_models):
     np.random.seed(33)
     model = model(params)
     model_name = type(model).__name__
