@@ -33,44 +33,60 @@ def get_dataset(filenames, batch_size):
         .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
         .map(prepare_sample, num_parallel_calls=AUTOTUNE)
         .batch(batch_size * 10)
-        .take(10)
-        # .prefetch(AUTOTUNE)
+        # .take(10)
+        .prefetch(AUTOTUNE)
     )
     return dataset
 
 #%%
 
 filenames = tf.io.gfile.glob(f"{TFRECORDS_DIR}/*.tfrec")
+filenames_trial_run = filenames[:15]
 batch_size = 32
-epochs = 1
+epochs = 10
 steps_per_epoch = 50
 AUTOTUNE = tf.data.AUTOTUNE
 
 G = GoogleMod(params)
 model = G.model
-data = get_dataset(filenames, batch_size)
 
-dset = tf.data.TFRecordDataset(f"{TFRECORDS_DIR}/file_01.tfrec").map(parse_tfrecord_fn)
-ll = list()
-for features in dset:
-    ll.append(list(features["audio"].numpy()))
-e = model.predict(np.array(ll, dtype='float32'))
+# data = get_dataset(filenames, batch_size)
 
-dataset = (
-    tf.data.TFRecordDataset(filenames[:1], num_parallel_reads=AUTOTUNE)
-    .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
-    .map(prepare_sample, num_parallel_calls=AUTOTUNE).batch(1)
-    )
-a = model.predict(dataset, verbose =2)
+# dset = tf.data.TFRecordDataset(f"{TFRECORDS_DIR}/file_01.tfrec").map(parse_tfrecord_fn)
+# ll = list()
+# for features in dset:
+#     ll.append(list(features["audio"].numpy()))
+# e = model.predict(np.array(ll, dtype='float32'))
 
 
-model.evaluate(data,
-               batch_size = batch_size, verbose =2)
-model.predict(x = get_dataset(filenames, batch_size))
+# model.evaluate(data, batch_size = batch_size, verbose =2)
+# model.predict(x = get_dataset(filenames, batch_size))
 
-model.fit(x=get_dataset(filenames, batch_size), 
+
+
+# Include the epoch in the file name (uses `str.format`)
+checkpoint_path = "training_2/cp-{epoch:04d}.ckpt"
+checkpoint_dir = os.path.dirname(checkpoint_path)
+
+batch_size = 32
+
+# Create a callback that saves the model's weights every 5 epochs
+cp_callback = tf.keras.callbacks.ModelCheckpoint(
+    filepath=checkpoint_path, 
+    verbose=1, 
+    save_weights_only=True,
+    save_freq=5*batch_size)
+
+# Create a new model instance
+model = GoogleMod(params).model
+
+# Save the weights using the `checkpoint_path` format
+model.save_weights(checkpoint_path.format(epoch=0))
+
+# Train the model with the new callback
+model.fit(x=get_dataset(filenames_trial_run[:10], batch_size), 
           epochs = epochs, 
           steps_per_epoch=steps_per_epoch, 
-          verbose=1)
-
-print('end')
+          validation_data = get_dataset(filenames_trial_run[10:], batch_size),
+          callbacks=[cp_callback],
+          )
