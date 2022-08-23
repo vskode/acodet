@@ -113,7 +113,7 @@ def read_tfrecords(num):
     Returns:
         TFRecordDataset: parsed dataset
     """
-    dataset = tf.data.TFRecordDataset(f"{TFRECORDS_DIR}/file_{num:.2i}.tfrec")
+    dataset = tf.data.TFRecordDataset(f"{TFRECORDS_DIR}/file_{num:02}.tfrec")
     return dataset.map(parse_tfrecord_fn)
 
 def read_raw_file(file):

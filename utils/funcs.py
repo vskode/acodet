@@ -24,12 +24,9 @@ def simple_spec(signal, fft_window_length=2**11, sr = 10000):
     plt.figure()
     plt.imshow(S_dB, origin='lower')
 
-def return_cntxt_wndw_arr(annotations, file, *,
-                          nr_noise_samples, cntxt_wn_sz,
+def return_cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
                             sr, return_times = False, **kwargs):
-    # offset = annotations['start'].iloc[0]
     audio, fs = lb.load(file, sr = 2000, 
-                    # offset = offset,
                     duration = annotations['start'].iloc[-1] +\
                                 cntxt_wn_sz/sr)
     audio = lb.resample(audio, orig_sr = 2000, target_sr = sr)
@@ -75,7 +72,7 @@ def return_inbetween_noise_arrays(audio, annotations, sr, cntxt_wn_sz):
             noise_ar.append(audio[beg:end])
             times.append(beg)
     
-    return noise_ar, times
+    return np.array(noise_ar, dtype='float32'), times
             
 
 def return_noise_arrays(file, sr, annotations,
