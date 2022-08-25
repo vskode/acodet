@@ -24,6 +24,7 @@ params = {
 
 TFRECORDS_DIR = 'Daten/tfrecords'
 
+
 def prepare_sample(features):
     return features["audio"], features["label"]
 
@@ -32,8 +33,8 @@ def get_dataset(filenames, batch_size):
         tf.data.TFRecordDataset(filenames, num_parallel_reads=AUTOTUNE)
         .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
         .map(prepare_sample, num_parallel_calls=AUTOTUNE)
-        .batch(batch_size * 10)
-        # .take(10)
+        # .shuffle(batch_size)
+        .batch(batch_size)
         .prefetch(AUTOTUNE)
     )
     return dataset
@@ -41,25 +42,28 @@ def get_dataset(filenames, batch_size):
 #%% init
 
 filenames = tf.io.gfile.glob(f"{TFRECORDS_DIR}/*.tfrec")
-filenames_trial_run = filenames[:50]
+filenames_trial_run = filenames[:20]
 batch_size = 10
-epochs = 10
+epochs = 30
 steps_per_epoch = 25
 AUTOTUNE = tf.data.AUTOTUNE
 
 
 
 data = get_dataset(filenames_trial_run, batch_size)
-data = data.shuffle(buffer_size=batch_size)
-train_data = data.take(200)
-test_data = data.skip(200)
-val_data = test_data.skip(60)
-test_data = test_data.take(60)
+num_arrays = len(list(data))
+
+data = data.shuffle(num_arrays)
+train_data = data.take(int (num_arrays * 0.7) )
+test_data = data.skip(int (num_arrays * 0.7) )
+val_data = test_data.skip(int (num_arrays * 0.15) )
+test_data = test_data.take(int (num_arrays * 0.15) )
+# train_data = train_data.shuffle(int (num_arrays * 0.7))
 
 #%% freeze layers
 G = GoogleMod(params)
 model = G.model
-for layer in model.layers[:-3]:
+for layer in model.layers[:-2]:
     layer.trainable = False
 
 
@@ -67,7 +71,7 @@ for layer in model.layers[:-3]:
 
 
 # Include the epoch in the file name (uses `str.format`)
-checkpoint_path = "unfreeze_3/cp-{epoch:04d}.ckpt"
+checkpoint_path = "unfreeze_21_test/cp-{epoch:04d}.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 
@@ -76,7 +80,7 @@ cp_callback = tf.keras.callbacks.ModelCheckpoint(
     filepath=checkpoint_path, 
     verbose=1, 
     save_weights_only=True,
-    save_freq=batch_size)
+    save_freq=steps_per_epoch*epochs//2)
 
 # Save the weights using the `checkpoint_path` format
 model.save_weights(checkpoint_path.format(epoch=0))

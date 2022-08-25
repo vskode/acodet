@@ -96,9 +96,15 @@ def predict_hub(data, model, cntxt_wn_sz, **_):
         preds.append(scores['scores'].numpy()[0,0,0])
     return np.array(preds)
 
+def get_saved_checkpoint_model(model, checkpoint):
+    return model.load_weights(checkpoint)
+
 class GoogleMod():
-    def __init__(self, params):
+    def __init__(self, params, checkpoint=False):
         self.model = get_flat_model(load_google_new())
+        if checkpoint:
+            chckpnt = tf.train.latest_checkpoint(checkpoint)
+            self.model.load_weights(chckpnt)
         self.params = params
         self.params['fmin'] = 0
         self.params['fmax'] = 2250

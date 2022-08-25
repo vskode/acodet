@@ -10,7 +10,7 @@ from pathlib import Path
 if not 'Daten' in os.listdir():
     os.chdir('../..')
     
-file_path = 'google_model_evaluation.csv'
+file_path = 'GoogleMod_model_evaluation.csv'
 df = pd.read_csv(file_path)
 
 
@@ -25,12 +25,22 @@ c = lambda x: quality_colors_dict[x]
 colors = list()
 dates = list()
 for index, row in df.iterrows():
-    if index < 3:
-        dates.append( pd.to_datetime(Path(row.file).stem.split('.')[1], 
-                                     format='%y%m%d%H%M%S') )
+    if Path(row.file).stem[0] == 'P':
+        file_date = pd.to_datetime(Path(row.file).stem, 
+                            format='PAM_%Y%m%d_%H%M%S_000')
+    elif Path(row.file).stem[0] == 'c':
+        file_date = pd.to_datetime(Path(row.file).stem.split('A_')[1],
+                                    format='%Y-%m-%d_%H-%M-%S')
     else:
-        dates.append( pd.to_datetime(Path(row.file).stem, 
-                                     format='PAM_%Y%m%d_%H%M%S_000') )
+        file_date = pd.to_datetime(Path(row.file).stem.split('.')[1], 
+                                    format='%y%m%d%H%M%S')
+    dates.append(file_date)
+    # if index < 3:
+    #     dates.append( pd.to_datetime(Path(row.file).stem.split('.')[1], 
+    #                                  format='%y%m%d%H%M%S') )
+    # else:
+    #     dates.append( pd.to_datetime(Path(row.file).stem, 
+    #                                  format='PAM_%Y%m%d_%H%M%S_000') )
     colors.append(c(row.quality_of_recording))
 
 df['dates'] = dates
@@ -47,7 +57,7 @@ ax.set_title('Stanton Bank prediction accuracy | model = google'\
 ax.set_xticks(np.arange(len(df)))
 ax.set_xticklabels(labels=df['dates'], rotation = 'vertical')
 
-pps = ax.bar(np.arange(len(df)), df['bin_cross_entr(google)'], 
+pps = ax.bar(np.arange(len(df)), df['bin_cross_entr(GoogleMod)'], 
              0.5, color = colors)
 for i, p in enumerate(pps):
     height = p.get_height()

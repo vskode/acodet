@@ -223,7 +223,7 @@ def get_quality_of_recording(file):
                                 format='PAM_%Y%m%d_%H%M%S_000')
         elif Path(file).stem[0] == 'c':
             file_date = pd.to_datetime(Path(file).stem.split('A_')[1],
-                                       format='%Y-%m-%d_%H-%M-%S.wav')
+                                       format='%Y-%m-%d_%H-%M-%S')
         else:
             file_date = pd.to_datetime(Path(file).stem.split('.')[1], 
                                        format='%y%m%d%H%M%S')

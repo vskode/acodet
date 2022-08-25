@@ -31,15 +31,15 @@ preds, mtrxs = get_dicts()
 thresh = .25
 specs = False
 annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
-files = np.unique(annots.filename)  
+files = np.unique(annots.filename)
 df_mse = pd.DataFrame()
 
 available_models = (NarwMod, GoogleMod, BenoitMod)
 
 
-for mod_iter, model in enumerate(available_models):
+for mod_iter, model in enumerate(available_models[1:-1]):
     np.random.seed(33)
-    model = model(params)
+    model = model(params, 'unfreeze_2_test')
     model_name = type(model).__name__
     
     for i, file in enumerate(files):

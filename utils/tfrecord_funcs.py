@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import pandas as pd
-from utils.funcs import *
+from funcs import *
 
 from pathlib import Path
 
@@ -11,11 +11,9 @@ params = {
     "nr_noise_samples": 100,
 }
 
-TFRECORDS_DIR = 'Daten/tfrecords'
 FILE_ARRAY_LIMIT = 600
+TFRECORDS_DIR = 'Daten/tfrecords'
 
-if not Path(TFRECORDS_DIR).exists():
-    Path(TFRECORDS_DIR).mkdir()
 
 annots = pd.read_csv('Daten/ket_annot.csv')
 files = np.unique(annots.filename) 
@@ -101,6 +99,8 @@ def parse_tfrecord_fn(example):
         "time" : tf.io.FixedLenFeature([], tf.int64)
     }
     example = tf.io.parse_single_example(example, feature_description)
+    audio = example['audio']
+    label = example['label']
     return example
 
 def read_tfrecords(num):
@@ -116,7 +116,7 @@ def read_tfrecords(num):
     dataset = tf.data.TFRecordDataset(f"{TFRECORDS_DIR}/file_{num:02}.tfrec")
     return dataset.map(parse_tfrecord_fn)
 
-def read_raw_file(file):
+def read_raw_file(file, shift = 0):
     """
     Load annotations for file, correct annotation starting times to make sure
     that the signal is in the window center.
@@ -129,7 +129,7 @@ def read_raw_file(file):
     """
         
     file_annots = get_annots_for_file(annots, file)
-    file_annots.start -= params['cntxt_wn_sz'] / params['sr'] / 2
+    file_annots.start -= shift * params['sr'] 
 
     x_call, x_noise, times_c, times_n = return_cntxt_wndw_arr(file_annots, 
                                                               file, 
@@ -140,7 +140,7 @@ def read_raw_file(file):
     
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
     
-def write_tfrecords(files):
+def write_tfrecords(files, shift = 0):
     """
     Write tfrecords files from wav files. 
     First the files are imported and the noise files are generated. After that 
@@ -157,7 +157,7 @@ def write_tfrecords(files):
     for i, file in enumerate(files):
         print(f'writing tf records files, progress: {i/len(files)*100:.0f} %', end = '\r')
         
-        call_tup, noise_tup = read_raw_file(file)
+        call_tup, noise_tup = read_raw_file(file, shift = shift)
         x_call, y_call, times_c = call_tup
         x_noise, y_noise, times_n = noise_tup
         
@@ -169,14 +169,14 @@ def write_tfrecords(files):
                 if array_per_file > FILE_ARRAY_LIMIT or \
                                         array_per_file == tfrec_num == 0:
                     tfrec_num += 1
-                    writer = get_tfrecords_writer(tfrec_num)
+                    writer = get_tfrecords_writer(tfrec_num, shift = shift)
                     array_per_file = 0
                     
                 example = create_example(audio, label, file, time)
                 writer.write(example.SerializeToString())
                 array_per_file += 1
 
-def get_tfrecords_writer(num):
+def get_tfrecords_writer(num, shift = 0):
     """
     Return TFRecordWriter object to write file.
 
@@ -186,7 +186,11 @@ def get_tfrecords_writer(num):
     Returns:
         TFRecordWriter object: file handle
     """
-    return tf.io.TFRecordWriter(TFRECORDS_DIR + "/file_%.2i.tfrec" % num)
+    path = TFRECORDS_DIR + f'_{shift}s_shift'
+    if not Path(path).exists():
+        Path(path).mkdir()
+    return tf.io.TFRecordWriter(path + "/file_%.2i.tfrec" % num)
 
 if __name__ == '__main__':
-    write_tfrecords(files)
+    for shift in [0, 1, 2]:
+        write_tfrecords(files, shift = shift)
