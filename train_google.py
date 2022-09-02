@@ -34,18 +34,18 @@ def get_dataset(filenames, batch_size):
         .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
         .map(prepare_sample, num_parallel_calls=AUTOTUNE)
         # .shuffle(batch_size)
-        .batch(batch_size)
-        .prefetch(AUTOTUNE)
+        # .batch(batch_size)
     )
     return dataset
 
 #%% init
 
-filenames = tf.io.gfile.glob(f"{TFRECORDS_DIR}/*.tfrec")
-filenames_trial_run = filenames[:20]
-batch_size = 10
-epochs = 30
-steps_per_epoch = 25
+filenames = tf.io.gfile.glob(f"{TFRECORDS_DIR}*/*.tfrec")
+filenames_trial_run = filenames
+unfreeze = 3
+batch_size = 30
+epochs = 100
+steps_per_epoch = 20
 AUTOTUNE = tf.data.AUTOTUNE
 
 
@@ -58,12 +58,19 @@ train_data = data.take(int (num_arrays * 0.7) )
 test_data = data.skip(int (num_arrays * 0.7) )
 val_data = test_data.skip(int (num_arrays * 0.15) )
 test_data = test_data.take(int (num_arrays * 0.15) )
+
+# train_data = train_data.shuffle(int (num_arrays * 0.7) )
+train_data = train_data.batch(batch_size)
+train_data = train_data.prefetch(AUTOTUNE)
+
+test_data = test_data.batch(batch_size)
+test_data = test_data.prefetch(AUTOTUNE)
 # train_data = train_data.shuffle(int (num_arrays * 0.7))
 
 #%% freeze layers
 G = GoogleMod(params)
 model = G.model
-for layer in model.layers[:-2]:
+for layer in model.layers[:-unfreeze]:
     layer.trainable = False
 
 
@@ -71,7 +78,7 @@ for layer in model.layers[:-2]:
 
 
 # Include the epoch in the file name (uses `str.format`)
-checkpoint_path = "unfreeze_21_test/cp-{epoch:04d}.ckpt"
+checkpoint_path = f"unfreeze_{unfreeze}_" + "test1/cp-{epoch:04d}.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 

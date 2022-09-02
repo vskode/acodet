@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import pandas as pd
-from funcs import *
+from utils.funcs import *
 
 from pathlib import Path
 
@@ -102,7 +102,6 @@ def parse_tfrecord_fn(example):
     audio = example['audio']
     label = example['label']
     return example
-
 def read_tfrecords(num):
     """
     Read tfrecords file and return the parse_dataset.
@@ -129,7 +128,7 @@ def read_raw_file(file, shift = 0):
     """
         
     file_annots = get_annots_for_file(annots, file)
-    file_annots.start -= shift * params['sr'] 
+    file_annots.start -= shift
 
     x_call, x_noise, times_c, times_n = return_cntxt_wndw_arr(file_annots, 
                                                               file, 
@@ -192,5 +191,5 @@ def get_tfrecords_writer(num, shift = 0):
     return tf.io.TFRecordWriter(path + "/file_%.2i.tfrec" % num)
 
 if __name__ == '__main__':
-    for shift in [0, 1, 2]:
+    for shift in [1, 2]:
         write_tfrecords(files, shift = shift)

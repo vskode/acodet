@@ -1,2 +1,2 @@
 utils/__*
-humpback_model_dir/__*
+*__pycache__*
