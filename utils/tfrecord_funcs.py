@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import pandas as pd
-from utils.funcs import *
+from . import funcs
 
 from pathlib import Path
 
@@ -15,8 +15,36 @@ FILE_ARRAY_LIMIT = 600
 TFRECORDS_DIR = 'Daten/tfrecords'
 
 
-annots = pd.read_csv('Daten/ket_annot.csv')
-files = np.unique(annots.filename) 
+def exclude_files_from_dataset(annots):
+    exclude_files = [
+        '180324160003',
+        'PAM_20180323',
+        'PAM_20180324',
+        'PAM_20180325_0',
+        'PAM_20180325_17',
+        'PAM_20180326',
+        'PAM_20180327',
+        'PAM_20180329',
+        'PAM_20180318',
+        'PAM_20190321',
+        '20022315',
+        '20022621',
+        '210318',
+        '210319',
+        '210327',
+    ]
+    get_stems = lambda s: Path(s).stem.split('.')[-1]
+
+    annots['stems'] = list(map(get_stems, annots.filename))
+
+    drop_files = []
+    for file in np.unique(annots.stems):
+        for exclude in exclude_files:
+            if exclude in file:
+                drop_files.append(file)
+    annots.index = annots.stems
+
+    return annots.drop(annots.loc[drop_files].index)
     
 def audio_feature(list_of_floats):
     """
@@ -99,9 +127,10 @@ def parse_tfrecord_fn(example):
         "time" : tf.io.FixedLenFeature([], tf.int64)
     }
     example = tf.io.parse_single_example(example, feature_description)
-    audio = example['audio']
-    label = example['label']
+    # audio = example['audio']
+    # label = example['label']
     return example
+
 def read_tfrecords(num):
     """
     Read tfrecords file and return the parse_dataset.
@@ -127,10 +156,10 @@ def read_raw_file(file, shift = 0):
         tuple: audio segment arrays, label arrays and time arrays
     """
         
-    file_annots = get_annots_for_file(annots, file)
+    file_annots = funcs.get_annots_for_file(annots, file)
     file_annots.start -= shift
 
-    x_call, x_noise, times_c, times_n = return_cntxt_wndw_arr(file_annots, 
+    x_call, x_noise, times_c, times_n = funcs.return_cntxt_wndw_arr(file_annots, 
                                                               file, 
                                                         return_times =True,
                                                             **params)    
@@ -191,5 +220,9 @@ def get_tfrecords_writer(num, shift = 0):
     return tf.io.TFRecordWriter(path + "/file_%.2i.tfrec" % num)
 
 if __name__ == '__main__':
-    for shift in [1, 2]:
-        write_tfrecords(files, shift = shift)
+
+    annots = pd.read_csv('Daten/ket_annot.csv')
+    annots = exclude_files_from_dataset(annots) 
+
+    for shift in [0, 1, 2]:
+        write_tfrecords(np.unique(annots.filename) , shift = shift)

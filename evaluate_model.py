@@ -37,7 +37,7 @@ df_mse = pd.DataFrame()
 available_models = (NarwMod, GoogleMod, BenoitMod)
 
 
-for mod_iter, model in enumerate(available_models[1:-1]):
+for mod_iter, model in enumerate(available_models[1:]):
     np.random.seed(33)
     model = model(params)
     model_name = type(model).__name__

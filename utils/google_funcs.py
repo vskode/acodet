@@ -1,16 +1,19 @@
 import tensorflow as tf
-import tensorflow_hub as hub
+# import tensorflow_hub as hub
 import numpy as np
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(gpus[0], True)
 
 from utils.funcs import *
 from humpback_model_dir import humpback_model
 
-def load_google_new():
+def load_google_new(lr = 1e-3, **params):
     model = humpback_model.Model()
     model.load_weights('models/google_humpback_model')
     model.build((1, 39124, 1))
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
         loss=tf.keras.losses.BinaryCrossentropy()
     )
     return model
@@ -67,7 +70,7 @@ def get_flat_model(model):
     return new_model
 
 def load_google_hub():
-    return hub.load('https://tfhub.dev/google/humpback_whale/1')
+    pass#return hub.load('https://tfhub.dev/google/humpback_whale/1')
 
 def load_google_sequential():
     sequential = tf.keras.Sequential([
@@ -101,7 +104,7 @@ def get_saved_checkpoint_model(model, checkpoint):
 
 class GoogleMod():
     def __init__(self, params, checkpoint=False):
-        self.model = get_flat_model(load_google_new())
+        self.model = get_flat_model(load_google_new(**params))
         if checkpoint:
             chckpnt = tf.train.latest_checkpoint(checkpoint)
             self.model.load_weights(chckpnt)
