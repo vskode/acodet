@@ -75,7 +75,7 @@ unfreezes = np.arange(5, 20)
 lrs = np.linspace(1.4e-4, 1.8e-4, 15)
 
 for unfreeze in unfreezes:
-    for lr in [0.0014]:
+    for lr in [0.006]:
         
         # unfreeze = 4
         params['lr'] = lr
@@ -83,8 +83,8 @@ for unfreeze in unfreezes:
         #%% freeze layers
         G = GoogleMod(params)
         model = G.model
-        for layer in model.layers[:-unfreeze]:
-            layer.trainable = False
+        # for layer in model.layers[:-unfreeze]:
+        #     layer.trainable = False
 
         #%% define training
 
@@ -187,3 +187,28 @@ for unfreeze in unfreezes:
 # 149/149 [==============================] - 63s 421ms/step - loss: 0.0892 - val_loss: 5.8304
 # Epoch 9/10
 #  16/149 [==>...........................] - ETA: 53s - loss: 0.0957
+
+
+# training mit google detector
+
+# 149/149 [==============================] - 21s 93ms/step - loss: 6.5722 - val_loss: 6.5910
+# Epoch 2/10
+# 149/149 [==============================] - 13s 88ms/step - loss: 6.5238 - val_loss: 6.8127
+# Epoch 3/10
+# 149/149 [==============================] - 13s 86ms/step - loss: 6.5457 - val_loss: 6.6809
+# Epoch 4/10
+# 149/149 [==============================] - 13s 86ms/step - loss: 6.5457 - val_loss: 6.6749
+# Epoch 5/10
+# 149/149 [==============================] - 13s 85ms/step - loss: 6.4905 - val_loss: 6.7768
+# Epoch 6/10
+# 149/149 [==============================] - 13s 84ms/step - loss: 6.4802 - val_loss: 6.8007
+# Epoch 7/10
+# 105/149 [====================>.........] - ETA: 3s - loss: 6.4482  
+# Epoch 7: saving model to trainings/unfreeze_5_lr_0.006/cp-0007.ckpt
+# 149/149 [==============================] - 14s 89ms/step - loss: 6.4789 - val_loss: 6.8187
+# Epoch 8/10
+# 149/149 [==============================] - 13s 88ms/step - loss: 6.4455 - val_loss: 6.6869
+# Epoch 9/10
+# 149/149 [==============================] - 13s 87ms/step - loss: 6.4943 - val_loss: 6.6150
+# Epoch 10/10
+# 149/149 [==============================] - 13s 85ms/step - loss: 6.4455 - val_loss: 6.4652
