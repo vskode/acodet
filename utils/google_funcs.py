@@ -2,8 +2,8 @@ import tensorflow as tf
 # import tensorflow_hub as hub
 import numpy as np
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(gpus[0], True)
+# gpus = tf.config.experimental.list_physical_devices('GPU')
+# tf.config.experimental.set_memory_growth(gpus[0], True)
 
 from utils.funcs import *
 from humpback_model_dir import humpback_model
@@ -104,8 +104,8 @@ def get_saved_checkpoint_model(model, checkpoint):
 
 class GoogleMod():
     def __init__(self, params, checkpoint=False):
-        # self.model = get_flat_model(load_google_new(**params))
-        self.model = load_google_new(**params)
+        self.model = get_flat_model(load_google_new(**params))
+        # self.model = load_google_new(**params)
         if checkpoint:
             chckpnt = tf.train.latest_checkpoint(checkpoint)
             self.model.load_weights(chckpnt)

@@ -1,12 +1,12 @@
 #%%
+import os
 import pandas as pd
 import numpy as np
 from pathlib import Path
-import os
+import tensorflow as tf
 
-from utils.funcs import *
-from utils.tfrecord_funcs import *
-from utils.google_funcs import GoogleMod
+from humpzam.utils import tfrec
+from humpzam.utils.google_funcs import GoogleMod
 
 params = {
     "sr" : 10000,
@@ -32,7 +32,7 @@ def prepare_sample(features):
 def get_dataset(filenames, batch_size):
     dataset = (
         tf.data.TFRecordDataset(filenames, num_parallel_reads=AUTOTUNE)
-        .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
+        .map(tfrec.parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
         .map(prepare_sample, num_parallel_calls=AUTOTUNE)
         # .shuffle(batch_size)
         # .batch(batch_size)
@@ -83,8 +83,8 @@ for unfreeze in unfreezes:
         #%% freeze layers
         G = GoogleMod(params)
         model = G.model
-        # for layer in model.layers[:-unfreeze]:
-        #     layer.trainable = False
+        for layer in model.layers[:-unfreeze]:
+            layer.trainable = False
 
         #%% define training
 
@@ -137,78 +137,3 @@ for unfreeze in unfreezes:
 # model.evaluate(data, batch_size = batch_size, verbose =2)
 # model.predict(x = get_dataset(filenames, batch_size))
 
-# trainingsverlauf
-
-# 149/149 [==============================] - 74s 445ms/step - loss: 0.3708 - val_loss: 2.1994
-# Epoch 2/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.2869 - val_loss: 0.6403
-# Epoch 3/10
-# 149/149 [==============================] - 63s 420ms/step - loss: 0.2330 - val_loss: 1.7759
-# Epoch 4/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.1891 - val_loss: 3.6567
-# Epoch 5/10
-# 149/149 [==============================] - 63s 422ms/step - loss: 0.1667 - val_loss: 5.8410
-# Epoch 6/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.1362 - val_loss: 0.9721
-# Epoch 7/10
-# 105/149 [====================>.........] - ETA: 17s - loss: 0.1036 
-# Epoch 7: saving model to trainings/unfreeze_5_lr_0.001/cp-0007.ckpt
-# 149/149 [==============================] - 63s 425ms/step - loss: 0.1072 - val_loss: 7.3036
-# Epoch 8/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.0778 - val_loss: 13.6656
-# Epoch 9/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.0603 - val_loss: 12.7539
-# Epoch 10/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.0553 - val_loss: 12.4619
-
-
-# 2022-09-08 11:20:19.137210: W tensorflow/core/util/tensor_slice_reader.cc:96] Could not open 
-# models/google_humpback_model: FAILED_PRECONDITION: models/google_humpback_model; Is a 
-# directory: perhaps your file is in a different file format and you need to use a different 
-# restore operator?
-
-# Epoch 1/10
-# 149/149 [==============================] - 66s 424ms/step - loss: 0.3600 - val_loss: 3.3810
-# Epoch 2/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.3021 - val_loss: 1.4117
-# Epoch 3/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.2573 - val_loss: 2.5419
-# Epoch 4/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.1970 - val_loss: 0.5688
-# Epoch 5/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.1758 - val_loss: 3.8134
-# Epoch 6/10
-# 149/149 [==============================] - 63s 420ms/step - loss: 0.1313 - val_loss: 0.7013
-# Epoch 7/10
-# 105/149 [====================>.........] - ETA: 17s - loss: 0.0965 
-# Epoch 7: saving model to trainings/unfreeze_6_lr_0.001/cp-0007.ckpt
-# 149/149 [==============================] - 63s 422ms/step - loss: 0.1105 - val_loss: 0.9925
-# Epoch 8/10
-# 149/149 [==============================] - 63s 421ms/step - loss: 0.0892 - val_loss: 5.8304
-# Epoch 9/10
-#  16/149 [==>...........................] - ETA: 53s - loss: 0.0957
-
-
-# training mit google detector
-
-# 149/149 [==============================] - 21s 93ms/step - loss: 6.5722 - val_loss: 6.5910
-# Epoch 2/10
-# 149/149 [==============================] - 13s 88ms/step - loss: 6.5238 - val_loss: 6.8127
-# Epoch 3/10
-# 149/149 [==============================] - 13s 86ms/step - loss: 6.5457 - val_loss: 6.6809
-# Epoch 4/10
-# 149/149 [==============================] - 13s 86ms/step - loss: 6.5457 - val_loss: 6.6749
-# Epoch 5/10
-# 149/149 [==============================] - 13s 85ms/step - loss: 6.4905 - val_loss: 6.7768
-# Epoch 6/10
-# 149/149 [==============================] - 13s 84ms/step - loss: 6.4802 - val_loss: 6.8007
-# Epoch 7/10
-# 105/149 [====================>.........] - ETA: 3s - loss: 6.4482  
-# Epoch 7: saving model to trainings/unfreeze_5_lr_0.006/cp-0007.ckpt
-# 149/149 [==============================] - 14s 89ms/step - loss: 6.4789 - val_loss: 6.8187
-# Epoch 8/10
-# 149/149 [==============================] - 13s 88ms/step - loss: 6.4455 - val_loss: 6.6869
-# Epoch 9/10
-# 149/149 [==============================] - 13s 87ms/step - loss: 6.4943 - val_loss: 6.6150
-# Epoch 10/10
-# 149/149 [==============================] - 13s 85ms/step - loss: 6.4455 - val_loss: 6.4652

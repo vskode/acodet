@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
 import pandas as pd
-from . import funcs
-
+from humpzam.utils import funcs
+import random
 from pathlib import Path
 
 params = {
@@ -16,6 +16,17 @@ TFRECORDS_DIR = 'Daten/tfrecords'
 
 
 def exclude_files_from_dataset(annots):
+    """
+    Because some of the calls are very faint, a number of files are rexcluded
+    from the dataset to make sure that the model performance isn't obscured 
+    by poor data. 
+
+    Args:
+        annots (pd.DataFrame): annotations
+
+    Returns:
+        pd.DataFrame: cleaned annotation dataframe
+    """
     exclude_files = [
         '180324160003',
         'PAM_20180323',
@@ -126,23 +137,7 @@ def parse_tfrecord_fn(example):
         "file" : tf.io.FixedLenFeature([], tf.string),
         "time" : tf.io.FixedLenFeature([], tf.int64)
     }
-    example = tf.io.parse_single_example(example, feature_description)
-    # audio = example['audio']
-    # label = example['label']
-    return example
-
-def read_tfrecords(num):
-    """
-    Read tfrecords file and return the parse_dataset.
-
-    Args:
-        num (int): number of tfrecords file
-
-    Returns:
-        TFRecordDataset: parsed dataset
-    """
-    dataset = tf.data.TFRecordDataset(f"{TFRECORDS_DIR}/file_{num:02}.tfrec")
-    return dataset.map(parse_tfrecord_fn)
+    return tf.io.parse_single_example(example, feature_description)
 
 def read_raw_file(file, shift = 0):
     """
@@ -182,27 +177,40 @@ def write_tfrecords(files, shift = 0):
     """
     tfrec_num, array_per_file = 0, 0
     
+    random.shuffle(files)
+    
     for i, file in enumerate(files):
-        print(f'writing tf records files, progress: {i/len(files)*100:.0f} %', end = '\r')
+        print('writing tf records files, progress:'
+              f'{i/len(files)*100:.0f} %', end = '\r')
         
         call_tup, noise_tup = read_raw_file(file, shift = shift)
-        x_call, y_call, times_c = call_tup
-        x_noise, y_noise, times_n = noise_tup
         
-        calls = zip(x_call, y_call, [file]*len(x_call), times_c)
-        noise = zip(x_noise, y_noise, [file]*len(x_noise), times_n)
+        calls = randomize_arrays(call_tup, file)
+        noise = randomize_arrays(noise_tup, file)
 
-        for samples in [calls, noise]:
-            for audio, label, file, time in samples:
-                if array_per_file > FILE_ARRAY_LIMIT or \
-                                        array_per_file == tfrec_num == 0:
-                    tfrec_num += 1
-                    writer = get_tfrecords_writer(tfrec_num, shift = shift)
-                    array_per_file = 0
-                    
-                example = create_example(audio, label, file, time)
-                writer.write(example.SerializeToString())
-                array_per_file += 1
+        fill_tfrecords_file(calls, noise, shift, tfrec_num, array_per_file)
+
+def randomize_arrays(tup, file):
+    x, y, times = tup
+    
+    rand = np.arange(len(x))
+    random.shuffle(rand)
+    
+    return zip(x[rand], y[rand], [file]*len(x), np.array(times)[rand])
+    
+
+def fill_tfrecords_file(calls, noise, shift, tfrec_num, array_per_file):
+    for samples in [calls, noise]:
+        for audio, label, file, time in samples:
+            if array_per_file > FILE_ARRAY_LIMIT or \
+                                    array_per_file == tfrec_num == 0:
+                tfrec_num += 1
+                writer = get_tfrecords_writer(tfrec_num, shift = shift)
+                array_per_file = 0
+                
+            example = create_example(audio, label, file, time)
+            writer.write(example.SerializeToString())
+            array_per_file += 1
 
 def get_tfrecords_writer(num, shift = 0):
     """
