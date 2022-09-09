@@ -8,17 +8,12 @@ import numpy as np
 from utils.funcs import *
 from humpback_model_dir import humpback_model
 
-def load_google_new(lr = 1e-3, **params):
+def load_google_new():
     model = humpback_model.Model()
     model.load_weights('models/google_humpback_model')
-    model.build((1, 39124, 1))
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
-        loss=tf.keras.losses.BinaryCrossentropy()
-    )
     return model
 
-def get_flat_model(model):
+def get_flat_model(model, lr = 1e-3):
     """
     Take nested model from Harvey Matthew and flatten it for ease of use.
     This way trainability of layers can be iteratively defined. The model
@@ -64,8 +59,11 @@ def get_flat_model(model):
     new_model = tf.keras.Sequential(layers=[layer for layer in model_list])
     # new_model.build((1, 39124, 1))
     new_model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-        loss=tf.keras.losses.BinaryCrossentropy()
+        optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics = [tf.keras.metrics.BinaryAccuracy(),
+                    tf.keras.metrics.Precision(),
+                    tf.keras.metrics.Recall()]
     )
     return new_model
 
@@ -104,7 +102,7 @@ def get_saved_checkpoint_model(model, checkpoint):
 
 class GoogleMod():
     def __init__(self, params, checkpoint=False):
-        self.model = get_flat_model(load_google_new(**params))
+        self.model = get_flat_model(load_google_new(), params['lr'])
         # self.model = load_google_new(**params)
         if checkpoint:
             chckpnt = tf.train.latest_checkpoint(checkpoint)

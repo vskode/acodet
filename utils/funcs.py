@@ -11,18 +11,36 @@ from librosa.display import specshow
 def get_annots_for_file(annots, file):
     return annots[annots.filename == file].sort_values('start')
 
-def simple_spec(signal, fft_window_length=2**11, sr = 10000):
+def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
+    audio, sr = lb.load(file, sr = sr, offset = start/sr, 
+                        duration = cntxt_wn_sz/sr)
+    return simple_spec(audio, sr = sr, cntxt_wn_sz=cntxt_wn_sz, **kwArgs)
+
+def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000, 
+                cntxt_wn_sz = 39124, fig = None, colorbar = True):
     S = np.abs(lb.stft(signal, win_length = fft_window_length))
-    # fig, ax = plt.subplots(figsize = [6, 4])
+    if not ax:
+        fig_new, ax = plt.subplots()
+    if fig:
+        fig_new = fig
     # limit S first dimension from [10:256], thatway isolating frequencies
     # (sr/2)/1025*10 = 48.78 to (sr/2)/1025*266 = 1297.56 for visualization
-    S_dB = lb.amplitude_to_db(S, ref=np.max)
-    # img = specshow(S_dB, x_axis = 's', y_axis = 'linear', 
-    #                sr = sr, win_length = fft_window_length, ax=ax, 
-    #             vmin = -40)
-    # fig.colorbar(img, ax=ax, format='%+2.0f dB')
-    plt.figure()
-    plt.imshow(S_dB, origin='lower')
+    fmin = sr/2/S.shape[0]*10
+    fmax = sr/2/S.shape[0]*266
+    S_dB = lb.amplitude_to_db(S[10:266, :], ref=np.max)
+    img = specshow(S_dB, x_axis = 's', y_axis = 'linear', 
+                   sr = sr, win_length = fft_window_length, ax=ax, 
+                   x_coords = np.linspace(0, cntxt_wn_sz/sr, S_dB.shape[1]),
+                    y_coords = np.linspace(fmin, fmax, 2**8),
+                vmin = -60)
+    
+    if colorbar:
+        fig_new.colorbar(img, ax=ax, format='%+2.0f dB')
+    # fig, ax = plt.subplots()
+    # ax.imshow(S_dB, origin='lower')
+        return fig_new, ax
+    else:
+        return ax
 
 def return_cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
                             sr, return_times = False, **kwargs):
