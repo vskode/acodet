@@ -32,7 +32,7 @@ AUTOTUNE = tf.data.AUTOTUNE
 #%% init
 # time.sleep(2000)
 batch_size = 32
-epochs = 100
+epochs = 50
 steps_per_epoch = 200
 rep = 1
 
@@ -94,6 +94,12 @@ for unfreeze in unfreezes:
 
     with open(f"{checkpoint_dir}/results.json", 'w') as f:
         json.dump(result, f)
+
+
+#%%
+
+
+    
 
 #%% Evaluate the model
 
