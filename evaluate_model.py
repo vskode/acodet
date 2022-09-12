@@ -30,7 +30,7 @@ preds, mtrxs = get_dicts()
 
 thresh = .25
 specs = False
-annots = pd.read_csv('Daten/ket_annot_file_exists.csv')
+annots = pd.read_csv('Daten/ket_annot.csv')
 files = np.unique(annots.filename)
 df_mse = pd.DataFrame()
 

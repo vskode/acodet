@@ -101,12 +101,3 @@ for unfreeze in unfreezes:
 
     
 
-#%% Evaluate the model
-
-
-# Create a new model instance
-# model = GoogleMod(params).model
-
-# model.evaluate(data, batch_size = batch_size, verbose =2)
-# model.predict(x = get_dataset(filenames, batch_size))
-

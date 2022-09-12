@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-import tensorflow_hub as hub
+# import tensorflow_hub as hub
 import glob
 
 from ketos.data_handling import selection_table as sl
@@ -28,9 +28,10 @@ annotation_files = Path().glob('Daten/Catherine_annotations/**/*.txt')
 #%%
 def get_corresponding_sound_file(file):
     # hard_drive_path = '/media/vincent/Seagate Backup Plus Drive'
-    hard_drive_path = '/mnt/d'
+    hard_drive_path = '/mnt/d/VINCENT_RawData'
     file_path = glob.glob(f'{hard_drive_path}/**/{file.stem.split("Table")[0]}wav',
                       recursive = True)
+
     
     if not file_path:
         new_file = file.stem.split("Table")[0] + 'wav'
@@ -44,7 +45,15 @@ def get_corresponding_sound_file(file):
                         recursive = True)
             if not file_path :
                 return f'{file.stem.split("Table")[0]}wav'
-    return file_path[0]
+    
+    if len(file_path) > 1:
+        for path in file_path:
+            if file.parent.parent.stem in path:
+                file_path = path
+    else:
+        file_path = file_path[0]
+
+    return file_path
     
 def standardize_annotations(file):
     ann = pd.read_csv(file,
