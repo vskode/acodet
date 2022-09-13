@@ -17,7 +17,7 @@ params = {
     "fft_hop": 300,
     "lr": 1e-3,
 }
-TFRECORDS_DIR = 'Daten/tfrecords_0s_shift'
+TFRECORDS_DIR = 'Daten/lacking_duplicates/tfrecords_1s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 
@@ -37,13 +37,13 @@ train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 
-train_data = train_data.shuffle(50)
+# train_data = train_data.shuffle(50)
 
 # Create a new model instance
 G = GoogleMod(params)
 model = G.model
 
-model.load_weights('trainings/unfreeze_5_lr_exp/cp-0035.ckpt')
+model.load_weights('trainings/unfreeze_25_lr_exp/cp-0035.ckpt')
 
-model.evaluate(test_data, batch_size = batch_size, verbose =2)
-# model.predict(x = test_data)
+model.evaluate(train_data, batch_size = batch_size, verbose =2)
+# print(model.predict(x = test_data))

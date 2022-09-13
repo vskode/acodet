@@ -40,7 +40,7 @@ rep = 1
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
 # num_arrays = len(list(train_data))
-check_random_spectrogram(train_files, dataset_size = 13000)
+# check_random_spectrogram(train_files, dataset_size = 13000)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
@@ -48,10 +48,10 @@ test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 train_data = train_data.shuffle(50)
 
 unfreezes = [2, 4, 5, 7, 9, 10, 15, 20, 25]
-lrs = np.linspace(1.4e-3, 2.5e-3, 5)
-lr = tf.keras.optimizers.schedules.ExponentialDecay(1e-2,
+# lrs = np.linspace(1.4e-3, 2.5e-3, 5)
+lr = tf.keras.optimizers.schedules.ExponentialDecay(1e-4,
                                         decay_steps = 432,
-                                        decay_rate = 0.75,
+                                        decay_rate = 0.9,
                                         staircase = True)
 for unfreeze in unfreezes:
     # for lr in lrs:
@@ -62,6 +62,8 @@ for unfreeze in unfreezes:
     model = G.model
     for layer in model.layers[:-unfreeze]:
         layer.trainable = False
+
+    model.load_weights(f'trainings/unfreeze_{unfreeze}_lr_exp/cp-0035.ckpt')
 
     #%% define training
     checkpoint_path = f"trainings/unfreeze_{unfreeze}_" + \
@@ -90,9 +92,9 @@ for unfreeze in unfreezes:
     result = hist.history
     avg_val_loss = np.mean(result['val_loss'][-int(len(result)/3):])
 
-    pd.DataFrame().to_csv(f"{checkpoint_dir}/res_{avg_val_loss:.2f}.csv")
+    pd.DataFrame().to_csv(f"{checkpoint_dir}/res_2nd_run_{avg_val_loss:.2f}.csv")
 
-    with open(f"{checkpoint_dir}/results.json", 'w') as f:
+    with open(f"{checkpoint_dir}/results_2nd_run.json", 'w') as f:
         json.dump(result, f)
 
 

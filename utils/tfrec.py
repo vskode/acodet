@@ -62,7 +62,7 @@ def exclude_files_from_dataset(annots):
                 drop_files.append(file)
     annots.index = annots.stems
 
-    return annots.drop(annots.loc[drop_files].index)
+    return annots.drop(annots.loc[drop_files].index), annots.loc[drop_files]
     
 def audio_feature(list_of_floats):
     """
@@ -152,7 +152,7 @@ def read_raw_file(file, shift = 0):
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
 
     
-def write_tfrecords(files, shift = 0):
+def write_tfrecords(files, shift = 0, **kwArgs):
     """
     Write tfrecords files from wav files. 
     First the files are imported and the noise files are generated. After that 
@@ -190,7 +190,7 @@ def write_tfrecords(files, shift = 0):
                                         array_per_file == tfrec_num == 0:
                     tfrec_num += 1
                     writer = get_tfrecords_writer(tfrec_num, folder, 
-                                                shift = shift)
+                                                shift = shift, **kwArgs)
                     array_per_file = 0
                     
                 example = create_example(audio, label, file, time)
@@ -206,7 +206,7 @@ def randomize_arrays(tup, file):
     return zip(x[rand], y[rand], [file]*len(x), np.array(times)[rand])
     
 
-def get_tfrecords_writer(num, fold, shift = 0):
+def get_tfrecords_writer(num, fold, shift = 0, alt_subdir = ''):
     """
     Return TFRecordWriter object to write file.
 
@@ -216,11 +216,12 @@ def get_tfrecords_writer(num, fold, shift = 0):
     Returns:
         TFRecordWriter object: file handle
     """
-    path = TFRECORDS_DIR + f'_{shift}s_shift'
+    path = TFRECORDS_DIR + alt_subdir + f'_{shift}s_shift'
     if not Path(path).exists():
         Path(path).mkdir()
         Path(path + f'/{fold}').mkdir()
-    return tf.io.TFRecordWriter(path + f"/{fold}" + "/file_%.2i.tfrec" % num)
+    return tf.io.TFRecordWriter(path + f"/{fold}/"
+                                "file_%.2i.tfrec" % num)
 
 
 ########################################################
@@ -291,7 +292,9 @@ def get_dataset(filenames, batch_size, AUTOTUNE):
 if __name__ == '__main__':
 
     annots = pd.read_csv('Daten/ket_annot.csv')
-    annots = exclude_files_from_dataset(annots) 
-
-    for shift in [0, 1, 2]:
-        write_tfrecords(np.unique(annots.filename) , shift = shift)
+    annots, annots_poor = exclude_files_from_dataset(annots)
+    
+    for shift in [0, 0.5, 1, 1.5, 2]:
+        write_tfrecords(np.unique(annots.filename), shift = shift)
+        write_tfrecords(np.unique(annots_poor.filename), 
+                        shift = shift, alt_subdir = 'noisy')
