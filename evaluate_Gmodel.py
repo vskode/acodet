@@ -1,6 +1,7 @@
 from utils.google_funcs import GoogleMod
 from utils.tfrec import get_dataset
 import tensorflow as tf
+
 #%% Evaluate the model
 
 params = {
@@ -43,7 +44,8 @@ test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 G = GoogleMod(params)
 model = G.model
 
-model.load_weights('trainings/unfreeze_25_lr_exp/cp-0035.ckpt')
+# model.load_weights('trainings/unfreeze_25_lr_exp/cp-0035.ckpt')
 
-model.evaluate(train_data, batch_size = batch_size, verbose =2)
+print(model.evaluate(train_data, batch_size = batch_size, verbose =2))
 # print(model.predict(x = test_data))
+

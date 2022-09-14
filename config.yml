@@ -1,0 +1,17 @@
+preproc:
+  sr : 10000
+  cntxt_wn_hop: 39124
+  cntxt_wn_sz: 39124
+  fft_window_length : 2048
+  n_freq_bins: 256
+  freq_cmpr: 'linear'
+  fmin:  50
+  fmax:  1000
+  nr_noise_samples: 100
+  sequence_len : 39124
+  fft_hop: 300
+
+model:
+  sr: 10000
+  lr: 0.001
+  thresh: 0.5
