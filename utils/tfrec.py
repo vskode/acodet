@@ -51,16 +51,12 @@ def exclude_files_from_dataset(annots):
         '210319',
         '210327',
     ]
-    get_stems = lambda s: Path(s).stem.split('.')[-1]
-
-    annots['stems'] = list(map(get_stems, annots.filename))
-
     drop_files = []
-    for file in np.unique(annots.stems):
+    for file in np.unique(annots.filename):
         for exclude in exclude_files:
             if exclude in file:
                 drop_files.append(file)
-    annots.index = annots.stems
+    annots.index = annots.filename
 
     return annots.drop(annots.loc[drop_files].index), annots.loc[drop_files]
     
@@ -127,7 +123,7 @@ def create_example(audio, label, file, time):
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
-def read_raw_file(file, shift = 0):
+def read_raw_file(file, annots, shift = 0):
     """
     Load annotations for file, correct annotation starting times to make sure
     that the signal is in the window center.
@@ -152,7 +148,7 @@ def read_raw_file(file, shift = 0):
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
 
     
-def write_tfrecords(files, shift = 0, **kwArgs):
+def write_tfrecords(annots, shift = 0, **kwArgs):
     """
     Write tfrecords files from wav files. 
     First the files are imported and the noise files are generated. After that 
@@ -165,6 +161,8 @@ def write_tfrecords(files, shift = 0, **kwArgs):
         files (list): list of file paths to the audio files
     """
     tfrec_num, array_per_file = 0, 0
+
+    files = np.unique(annots.filename)
     
     random.shuffle(files)
 
@@ -172,14 +170,14 @@ def write_tfrecords(files, shift = 0, **kwArgs):
     
     for i, file in enumerate(files):
         print('writing tf records files, progress:'
-              f'{i/len(files)*100:.0f} %', end = '\r')
+              f'{i/len(files)*100:.0f} %')
         
         if i < train_file_index:
             folder = 'train'
         else:
             folder = 'test'
 
-        call_tup, noise_tup = read_raw_file(file, shift = shift)
+        call_tup, noise_tup = read_raw_file(file, annots, shift = shift)
         
         calls = randomize_arrays(call_tup, file)
         noise = randomize_arrays(noise_tup, file)
@@ -216,10 +214,9 @@ def get_tfrecords_writer(num, fold, shift = 0, alt_subdir = ''):
     Returns:
         TFRecordWriter object: file handle
     """
-    path = TFRECORDS_DIR + alt_subdir + f'_{shift}s_shift'
-    if not Path(path).exists():
-        Path(path).mkdir()
-        Path(path + f'/{fold}').mkdir()
+    path = TFRECORDS_DIR + alt_subdir + \
+            f"_{str(shift).replace('.','-')}s_shift"
+    Path(path + f'/{fold}').mkdir(parents = True, exist_ok = True)
     return tf.io.TFRecordWriter(path + f"/{fold}/"
                                 "file_%.2i.tfrec" % num)
 
@@ -256,7 +253,7 @@ def check_random_spectrogram(filenames, dataset_size = FILE_ARRAY_LIMIT):
         .take(1)
     )
 
-    sample = list(dataset)[0]
+    sample = next(iter(dataset))
     aud, file, lab, time = (sample[k].numpy() for k in list(sample.keys()))
     file = file.decode()
 
@@ -287,14 +284,3 @@ def get_dataset(filenames, batch_size, AUTOTUNE):
         .prefetch(AUTOTUNE)
     )
     return dataset
-
-
-if __name__ == '__main__':
-
-    annots = pd.read_csv('Daten/ket_annot.csv')
-    annots, annots_poor = exclude_files_from_dataset(annots)
-    
-    for shift in [0, 0.5, 1, 1.5, 2]:
-        write_tfrecords(np.unique(annots.filename), shift = shift)
-        write_tfrecords(np.unique(annots_poor.filename), 
-                        shift = shift, alt_subdir = 'noisy')

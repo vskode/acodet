@@ -25,7 +25,7 @@ params = {
     "lr": 1e-3,
 }
 
-TFRECORDS_DIR = 'Daten/tfrecords_0s_shift'
+TFRECORDS_DIR = 'Daten/tfrecords*s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 
@@ -33,25 +33,24 @@ AUTOTUNE = tf.data.AUTOTUNE
 # time.sleep(2000)
 batch_size = 32
 epochs = 50
-steps_per_epoch = 200
+# steps_per_epoch = 400
 rep = 1
 
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
-# num_arrays = len(list(train_data))
-# check_random_spectrogram(train_files, dataset_size = 13000)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 
 train_data = train_data.shuffle(50)
+check_random_spectrogram(train_files, dataset_size = 20000)
 
-unfreezes = [2, 4, 5, 7, 9, 10, 15, 20, 25]
+unfreezes = [2, 9, 15, 25]
 # lrs = np.linspace(1.4e-3, 2.5e-3, 5)
-lr = tf.keras.optimizers.schedules.ExponentialDecay(1e-4,
-                                        decay_steps = 432,
-                                        decay_rate = 0.9,
+lr = tf.keras.optimizers.schedules.ExponentialDecay(1e-2,
+                                        decay_steps = 1000,
+                                        decay_rate = 0.7,
                                         staircase = True)
 for unfreeze in unfreezes:
     # for lr in lrs:
@@ -63,11 +62,11 @@ for unfreeze in unfreezes:
     for layer in model.layers[:-unfreeze]:
         layer.trainable = False
 
-    model.load_weights(f'trainings/unfreeze_{unfreeze}_lr_exp/cp-0035.ckpt')
+    # model.load_weights(f'trainings/unfreeze_{unfreeze}_lr_exp/cp-0035.ckpt')
 
     #%% define training
     checkpoint_path = f"trainings/unfreeze_{unfreeze}_" + \
-                        f"lr_exp" + \
+                        f"lr_exp_all_data" + \
                         "/cp-{epoch:04d}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 

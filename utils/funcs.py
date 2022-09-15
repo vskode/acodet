@@ -36,8 +36,6 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
     
     if colorbar:
         fig_new.colorbar(img, ax=ax, format='%+2.0f dB')
-    # fig, ax = plt.subplots()
-    # ax.imshow(S_dB, origin='lower')
         return fig_new, ax
     else:
         return ax
