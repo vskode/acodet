@@ -7,10 +7,10 @@ import json
 import yaml
 from utils.tfrec import get_dataset, check_random_spectrogram
 from utils.google_funcs import GoogleMod
+from utils.model_funcs import plot_model_results
 
 with open('humpzam/config.yml', 'r') as f:
     config = yaml.safe_load(f)
-params = config['preproc']
 
 
 
@@ -76,15 +76,14 @@ test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 train_data = train_data.shuffle(50)
 check_random_spectrogram(train_files, dataset_size = dataset_size*batch_size)
 
-
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 decay_steps = dataset_size,
                                 decay_rate = (final_lr/init_lr)**(1/epochs),
                                 staircase = True)
+
 for ind, unfreeze in enumerate(unfreezes):
         
     config['model']['lr'] = lr
-
 
     G = GoogleMod(config['model'])
     model = G.model
@@ -95,8 +94,7 @@ for ind, unfreeze in enumerate(unfreezes):
         model.load_weights(
             f'trainings/unfreeze_{unfreeze}_lr_exp/cp-0035.ckpt')
 
-    checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}_" + \
-                        f"lr_exp_all_data" + \
+    checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
                         "/cp-{epoch:04d}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
     
@@ -131,7 +129,5 @@ for ind, unfreeze in enumerate(unfreezes):
     with open(f"{checkpoint_dir}/results.json", 'w') as f:
         json.dump(result, f)
 
-
-
-    
+plot_model_results(unfreezes, f'trainings/{time_start}')
 

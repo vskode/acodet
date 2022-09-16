@@ -3,18 +3,16 @@ import matplotlib.pyplot as plt
 import json
 import time
 
-unfreezes = [2, 4, 5, 7, 9, 10, 15, 20, 25]
-
 def plot_model_results(unfreezes, path):
 
     fig, ax = plt.subplots(ncols = 4, nrows = 2, figsize = [15, 8])
 
     for unfreeze in unfreezes:
-        checkpoint_path = f"trainings/unfreeze_{unfreeze}_lr_exp"
+        checkpoint_path = f"{path}/unfreeze_{unfreeze}"
 
         f"{checkpoint_path}/results.json"
 
-        with open(f"{checkpoint_path}/results_2nd_run.json", 'r') as f:
+        with open(f"{checkpoint_path}/results.json", 'r') as f:
             results = json.load(f)
 
         for i, m in enumerate(results.keys()):
