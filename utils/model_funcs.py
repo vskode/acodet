@@ -18,13 +18,13 @@ def plot_model_results(unfreezes, path):
         for i, m in enumerate(results.keys()):
             row = i // 4
             col = np.mod(i, 4)
-            if row == 1 and col == 0:
-                ax[row, col].plot(np.log10(results[m]), 
-                                label = f'{unfreeze}')
-                ax[row, col].set_title(r'log$_{10}$(val_loss)')
-            else:
-                ax[row, col].plot(results[m], 
-                                label = f'{unfreeze}')
+            # if row == 1 and col == 0:
+            #     ax[row, col].plot(np.log10(results[m]), 
+            #                     label = f'{unfreeze}')
+            #     ax[row, col].set_title(r'log$_{10}$(val_loss)')
+            # else:
+            ax[row, col].plot(results[m], 
+                            label = f'{unfreeze}')
             if row == 0:
                 ax[row, col].set_title(f'{m}')
             if row == col == 0:
