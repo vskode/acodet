@@ -5,6 +5,7 @@ import tensorflow as tf
 import time
 import json
 import yaml
+from keras.utils.layer_utils import count_params
 from utils.tfrec import get_dataset, check_random_spectrogram
 from utils.google_funcs import GoogleMod
 from utils.model_funcs import plot_model_results
@@ -19,7 +20,7 @@ AUTOTUNE = tf.data.AUTOTUNE
 
 
 batch_size = 32
-epochs = 50
+epochs = 20
 
 load_weights = False
 steps_per_epoch = False
@@ -30,10 +31,10 @@ num_of_shifts = 5
 init_lr = 1e-2
 final_lr = 1e-5
 
-unfreezes = [2, 9, 15, 25]
+unfreezes = [11, 15, 18, 5]
 
 
-
+# for TFRECORDS_DIR, poor_file_size in (('Daten/tfrecords*s_shift', 236), ('Daten/tfrecords_*s_shift', 0)):
 info_text = f"""Model run INFO:
 
 model: untrained model 
@@ -92,7 +93,7 @@ for ind, unfreeze in enumerate(unfreezes):
 
     if load_weights:
         model.load_weights(
-            f'trainings/unfreeze_{unfreeze}_lr_exp/cp-0035.ckpt')
+            f'trainings/2022-09-16_10/unfreeze_{unfreeze}/cp-0032.ckpt')
 
     checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
                         "/cp-{epoch:04d}.ckpt"
@@ -122,9 +123,9 @@ for ind, unfreeze in enumerate(unfreezes):
             )
 
     result = hist.history
-    avg_val_loss = np.mean(result['val_loss'][-int(len(result)/3):])
 
-    pd.DataFrame().to_csv(f"{checkpoint_dir}/results_{avg_val_loss:.2f}.csv")
+    pd.DataFrame().to_csv(f"{checkpoint_dir}/trainable_"
+                        f"{count_params(model.trainable_weights):.0f}.csv")
 
     with open(f"{checkpoint_dir}/results.json", 'w') as f:
         json.dump(result, f)

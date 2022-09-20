@@ -18,7 +18,7 @@ params = {
     "fft_hop": 300,
     "lr": 1e-3,
 }
-TFRECORDS_DIR = 'Daten/tfrecords_2s_shift'
+TFRECORDS_DIR = 'Daten/tfrecordsnoisy_2s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 
@@ -44,7 +44,7 @@ test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 G = GoogleMod(params)
 model = G.model
 
-model.load_weights('trainings/unfreeze_25_lr_exp/cp-0035.ckpt')
+model.load_weights('trainings/2022-09-16_17/unfreeze_2/cp-0050.ckpt')
 # model.load_weights('models/google_humpback_model')
 
 print(model.evaluate(train_data, batch_size = batch_size, verbose =2))
