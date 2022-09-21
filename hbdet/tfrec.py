@@ -7,7 +7,7 @@ import yaml
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-with open('hbdet/config.yml', 'r') as f:
+with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
 params = config['preproc']

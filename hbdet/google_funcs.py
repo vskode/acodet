@@ -5,8 +5,8 @@ import numpy as np
 # gpus = tf.config.experimental.list_physical_devices('GPU')
 # tf.config.experimental.set_memory_growth(gpus[0], True)
 
-from utils.funcs import *
-from humpback_model_dir import humpback_model
+from . import funcs
+from .humpback_model_dir import humpback_model
 
 def load_google_new():
     model = humpback_model.Model()
@@ -147,6 +147,6 @@ class GoogleMod():
         tensor_sig = tf.expand_dims(tensor_sig, -1)    
         spec_data = self.model.layers[2].call(self.model.layers[1].call(tensor_sig))
         
-        plot_spec(spec_data[0].numpy().T, self.file, prediction = prediction,
+        funcs.plot_spec(spec_data[0].numpy().T, self.file, prediction = prediction,
                     start = start, noise = noise, 
                     mod_name = type(self).__name__, **self.params)
