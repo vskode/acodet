@@ -2,7 +2,7 @@
 from email.mime import audio
 import torch
 import torch.nn as nn
-from utils.funcs import *
+from funcs import *
 import numpy as np
 import os
 import sys

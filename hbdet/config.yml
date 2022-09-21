@@ -11,6 +11,9 @@ preproc:
   sequence_len : 39124
   fft_hop: 300
 
+tfrec:
+  train_ratio: 0.8
+
 model:
   sr: 10000
   lr: 0.001

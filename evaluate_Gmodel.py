@@ -1,6 +1,6 @@
 import tensorflow as tf
-from hbdet.utils.tfrec import get_dataset
-from hbdet.utils.google_funcs import GoogleMod
+from hbdet.tfrec import get_dataset
+from hbdet.google_funcs import GoogleMod
 
 #%% Evaluate the model
 
@@ -20,7 +20,6 @@ params = {
 }
 TFRECORDS_DIR = 'Daten/tfrecordsnoisy_2s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
-
 
 #%% init
 # time.sleep(2000)

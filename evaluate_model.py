@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from hbdet.hbdet.utils.funcs import *
-from hbdet.hbdet.utils.google_funcs import GoogleMod
-from hbdet.hbdet.utils.hump_spot_funcs import BenoitMod
-from hbdet.hbdet.utils.ketos_narw_funcs import NarwMod
+from hbdet.funcs import *
+from hbdet.google_funcs import GoogleMod
+from hbdet.hump_spot_funcs import BenoitMod
+from hbdet.ketos_narw_funcs import NarwMod
 
 if not 'Daten' in os.listdir():
     os.chdir('..')

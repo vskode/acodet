@@ -5,10 +5,10 @@ import json
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from hbdet.utils.google_funcs import GoogleMod
+from hbdet.google_funcs import GoogleMod
 from keras.utils.layer_utils import count_params
-from hbdet.utils.model_funcs import plot_model_results
-from hbdet.utils.tfrec import get_dataset, check_random_spectrogram
+from hbdet.plotting import plot_model_results
+from hbdet.tfrec import get_dataset, check_random_spectrogram
 
 with open('humpzam/config.yml', 'r') as f:
     config = yaml.safe_load(f)
@@ -90,8 +90,7 @@ for ind, unfreeze in enumerate(unfreezes):
     model = G.model
     for layer in model.layers[:-unfreeze]:
         layer.trainable = False
-
-    if load_weights:
+    if load_weights is not False:
         model.load_weights(
             f'trainings/2022-09-16_10/unfreeze_{unfreeze}/cp-0032.ckpt')
 
@@ -99,7 +98,6 @@ for ind, unfreeze in enumerate(unfreezes):
                         "/cp-{epoch:04d}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
     
-
     # Create a callback that saves the model's weights every 5 epochs
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path, 
@@ -109,7 +107,6 @@ for ind, unfreeze in enumerate(unfreezes):
 
     # Save the weights using the `checkpoint_path` format
     model.save_weights(checkpoint_path.format(epoch=0))
-    
     if ind == 0:
         with open(f'trainings/{time_start}/training_info.txt', 'w') as f:
             f.write(info_text)
@@ -121,12 +118,10 @@ for ind, unfreeze in enumerate(unfreezes):
             validation_data = test_data,
             callbacks=[cp_callback]
             )
-
     result = hist.history
 
     pd.DataFrame().to_csv(f"{checkpoint_dir}/trainable_"
                         f"{count_params(model.trainable_weights):.0f}.csv")
-
     with open(f"{checkpoint_dir}/results.json", 'w') as f:
         json.dump(result, f)
 

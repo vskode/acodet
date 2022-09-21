@@ -3,17 +3,15 @@ import tensorflow as tf
 import pandas as pd
 from . import funcs
 import random
+import yaml
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-params = {
-    "sr" : 10000,
-    "cntxt_wn_sz": 39124,
-    "nr_noise_samples": 100,
-}
-config = {
-    'train_ratio' : 0.8
-}
+with open('hbdet/config.yml', 'r') as f:
+    config = yaml.safe_load(f)
+
+params = config['preproc']
+
 FILE_ARRAY_LIMIT = 600
 TFRECORDS_DIR = 'Daten/tfrecords'
 
@@ -166,7 +164,7 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
     
     random.shuffle(files)
 
-    train_file_index = int( len(files) * config['train_ratio'] )
+    train_file_index = int(len(files)*config['tfrec']['train_ratio'])
     
     for i, file in enumerate(files):
         print('writing tf records files, progress:'

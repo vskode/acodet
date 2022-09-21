@@ -4,7 +4,7 @@ import pandas as pd
 import librosa as lb
 import tensorflow as tf
 from pathlib import Path
-from hbdet.utils.google_funcs import GoogleMod
+from hbdet.google_funcs import GoogleMod
 
 with open('humpzam/config.yml', 'r') as f:
     config = yaml.safe_load(f)
