@@ -29,10 +29,8 @@ from urllib import request
 
 import tensorflow as tf
 
-# import front_end
-# import leaf_pcen
-from humpback_model_dir import front_end
-from humpback_model_dir import leaf_pcen
+from . import front_end
+from . import leaf_pcen
 
 TF_HUB_URL = 'https://tfhub.dev/google/humpback_whale/1?tf-hub-format=compressed'
 NUM_CLASSES = 1

@@ -1,13 +1,13 @@
 #%%
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import os
+import numpy as np
+import pandas as pd
+from pathlib import Path
 
-from utils.funcs import *
-from utils.google_funcs import GoogleMod
-from utils.hump_spot_funcs import BenoitMod
-from utils.ketos_narw_funcs import NarwMod
+from hbdet.hbdet.utils.funcs import *
+from hbdet.hbdet.utils.google_funcs import GoogleMod
+from hbdet.hbdet.utils.hump_spot_funcs import BenoitMod
+from hbdet.hbdet.utils.ketos_narw_funcs import NarwMod
 
 if not 'Daten' in os.listdir():
     os.chdir('..')

@@ -1,6 +1,6 @@
-from utils.google_funcs import GoogleMod
-from utils.tfrec import get_dataset
 import tensorflow as tf
+from hbdet.utils.tfrec import get_dataset
+from hbdet.utils.google_funcs import GoogleMod
 
 #%% Evaluate the model
 

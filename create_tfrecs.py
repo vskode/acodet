@@ -1,6 +1,6 @@
-from utils.tfrec import write_tfrecords, exclude_files_from_dataset
-import pandas as pd
 import numpy as np
+import pandas as pd
+from hbdet.utils.tfrec import write_tfrecords, exclude_files_from_dataset
 
 annots = pd.read_csv('Daten/ket_annot.csv')
 annots, annots_poor = exclude_files_from_dataset(annots)

@@ -1,14 +1,14 @@
 import os
-import pandas as pd
-import numpy as np
-import tensorflow as tf
+import yaml
 import time
 import json
-import yaml
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from hbdet.utils.google_funcs import GoogleMod
 from keras.utils.layer_utils import count_params
-from utils.tfrec import get_dataset, check_random_spectrogram
-from utils.google_funcs import GoogleMod
-from utils.model_funcs import plot_model_results
+from hbdet.utils.model_funcs import plot_model_results
+from hbdet.utils.tfrec import get_dataset, check_random_spectrogram
 
 with open('humpzam/config.yml', 'r') as f:
     config = yaml.safe_load(f)
@@ -130,5 +130,5 @@ for ind, unfreeze in enumerate(unfreezes):
     with open(f"{checkpoint_dir}/results.json", 'w') as f:
         json.dump(result, f)
 
-plot_model_results(unfreezes, f'trainings/{time_start}')
+plot_model_results(f'{time_start}')
 

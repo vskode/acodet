@@ -1,10 +1,10 @@
-from utils.google_funcs import GoogleMod
-import librosa as lb
+import yaml
 import numpy as np
 import pandas as pd
+import librosa as lb
 import tensorflow as tf
-import yaml
 from pathlib import Path
+from hbdet.utils.google_funcs import GoogleMod
 
 with open('humpzam/config.yml', 'r') as f:
     config = yaml.safe_load(f)
