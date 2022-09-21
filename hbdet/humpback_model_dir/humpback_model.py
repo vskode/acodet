@@ -352,14 +352,3 @@ class Model(tf.keras.Sequential):
         'class_names':
             tf.constant(['Mn']),
     }
-
-if __name__ == '__main__':
-    model = Model()
-    model.load_weights('models/google_humpback_model')
-    model.build((1, 39124, 1))
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-        loss=tf.keras.losses.BinaryCrossentropy()
-    )
-    print('hi')
-    
