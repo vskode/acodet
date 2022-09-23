@@ -1,16 +1,18 @@
 import os
 import yaml
 import time
+time.sleep(3600*26)
 import json
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from hbdet.google_funcs import GoogleMod
-from keras.utils.layer_utils import count_params
 from hbdet.plotting import plot_model_results
+from keras.utils.layer_utils import count_params
+from evaluate_Gmodel import create_and_save_figure
 from hbdet.tfrec import get_dataset, check_random_spectrogram
 
-with open('humpzam/config.yml', 'r') as f:
+with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
 
@@ -20,25 +22,26 @@ AUTOTUNE = tf.data.AUTOTUNE
 
 
 batch_size = 32
-epochs = 20
+epochs = 100
 
 load_weights = False
 steps_per_epoch = False
 rep = 1
-good_file_size = 432
-poor_file_size = 236
+good_file_size = 380
+poor_file_size = 209
+data_description = 'good and poor data, 5 x 0.5s shifts'
 num_of_shifts = 5
-init_lr = 1e-2
+init_lr = 5e-4
 final_lr = 1e-5
 
-unfreezes = [11, 15, 18, 5]
+unfreezes = [15, 5]
 
 
-# for TFRECORDS_DIR, poor_file_size in (('Daten/tfrecords*s_shift', 236), ('Daten/tfrecords_*s_shift', 0)):
+# for TFRECORDS_DIR, poor_file_size in (('Daten/tfrecords_*s_shift', 0), ('Daten/tfrecords*s_shift', 209)):
 info_text = f"""Model run INFO:
 
 model: untrained model 
-dataset: good and poor data, 5 shifts from 0s - 2s
+dataset: {data_description}
 lr: new lr settings
 comments:
 
@@ -90,7 +93,7 @@ for ind, unfreeze in enumerate(unfreezes):
     model = G.model
     for layer in model.layers[:-unfreeze]:
         layer.trainable = False
-    if load_weights is not False:
+    if load_weights:
         model.load_weights(
             f'trainings/2022-09-16_10/unfreeze_{unfreeze}/cp-0032.ckpt')
 
@@ -125,5 +128,7 @@ for ind, unfreeze in enumerate(unfreezes):
     with open(f"{checkpoint_dir}/results.json", 'w') as f:
         json.dump(result, f)
 
-plot_model_results(f'{time_start}')
-
+plot_model_results(time_start, data = data_description, lr_begin = init_lr,
+                    lr_end = final_lr)
+create_and_save_figure('tfrecords_2s_shift', batch_size, time_start,
+                        data = data_description)
