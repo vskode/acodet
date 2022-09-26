@@ -10,6 +10,7 @@ preproc:
   nr_noise_samples: 100
   sequence_len : 39124
   fft_hop: 300
+  sec_length: 
 
 tfrec:
   train_ratio: 0.8
@@ -18,3 +19,5 @@ model:
   sr: 10000
   lr: 0.001
   thresh: 0.5
+  # prediction window limit
+  pred_win_lim: 20
