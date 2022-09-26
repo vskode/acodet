@@ -13,7 +13,7 @@ params = config['preproc']
 AUTOTUNE = tf.data.AUTOTUNE
 
 def get_val_data(tfrec_path, batch_size, debug=False, **kwArgs):
-    test_files = tf.io.gfile.glob(f"Daten/{tfrec_path}/test/*.tfrec")
+    test_files = tf.io.gfile.glob(f"Daten/{tfrec_path}/val/*.tfrec")
     test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 
     if debug:
@@ -65,11 +65,19 @@ def plot_pr_curve(ax, val_data, length, training_path, **kwArgs):
     return ax
     
     
-def create_and_save_figure(tfrec_path, batch_size, training_runs, debug = False):
+def create_and_save_figure(tfrec_path, batch_size, train_date, 
+                            debug = False, **kwargs):
+    
+    training_runs = Path(f'trainings/{train_date}').glob('unfreeze*')
     val_data, length = get_val_data(tfrec_path, batch_size, debug=debug)
     
     fig, ax = plt.subplots()
-    fig.suptitle('Precision and Recall Curve')
+
+    info_string = ''
+    for key, val in kwargs.items():
+        info_string += f' | {key}: {val}'
+    
+    fig.suptitle(f'Precision and Recall Curve{info_string}')
     
     for i, run in enumerate(training_runs):
         if i == 0:
@@ -81,11 +89,12 @@ def create_and_save_figure(tfrec_path, batch_size, training_runs, debug = False)
     ax.set_ylabel('precision')
     ax.set_xlabel('recall')
     ax.legend()
+    ax.grid(True)
     plt.savefig(f'{run.parent}/pr_curve.png')
     
 if __name__ == '__main__':
     tfrec_path = 'tfrecords_0s_shift'
-    train_date = '2022-09-21_08'
+    train_date = '2022-09-21_20'
     batch_size = 32
-    training_runs = Path(f'trainings/{train_date}').glob('unfreeze*')
-    create_and_save_figure(tfrec_path, batch_size, training_runs)
+    create_and_save_figure(tfrec_path, batch_size, train_date, 
+                            init_lr='1e-2', end_lr='1e-5')

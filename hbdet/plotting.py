@@ -72,9 +72,11 @@ def plot_performance_per_file():
     ax.legend(handles = patches, bbox_to_anchor=[1, 1])
     # plt.show()
 
-    fig.savefig('google_pred_acc_bin_crossentrpy.png', dpi = 300, facecolor = 'white')
+    fig.savefig('google_pred_acc_bin_crossentrpy.png', dpi = 300, 
+                facecolor = 'white')
 
-def plot_model_results(datetime):
+
+def plot_model_results(datetime, **kwargs):
 
     fig, ax = plt.subplots(ncols = 4, nrows = 2, figsize = [15, 8])
 
@@ -102,12 +104,17 @@ def plot_model_results(datetime):
                 ax[row, col].set_ylabel('val')
     ax[0, 0].legend()
 
+    info_string = ''
+    for key, val in kwargs.items():
+        info_string += f' | {key}: {val}'
+    
     today = time.ctime()
-    fig.suptitle('Model Results '
-                'with varying number of unfrozen layers\n'
+    fig.suptitle(f'Model Results{info_string}'
+                '\n'
                 f'{today}')
     ref_time = time.strftime('%Y%m%d', time.gmtime())
     fig.savefig(f'trainings/{datetime}/model_results_{ref_time}.png')
 
 if __name__ == '__main__':
-    plot_model_results('2022-09-21_08')
+    plot_model_results('2022-09-21_08', dataset = 'good and poor data, 5 shifts from 0s - 2s',
+                                        begin_lr = '0.005', end_lr = '1e-5')
