@@ -12,7 +12,8 @@ preproc:
   fft_hop: 300
 
 tfrec:
-  train_ratio: 0.8
+  train_ratio: 0.7
+  test_val_ratio: 0.2
 
 model:
   sr: 10000

@@ -10,7 +10,7 @@ from .humpback_model_dir import humpback_model
 
 def load_google_new():
     model = humpback_model.Model()
-    model.load_weights('models/google_humpback_model')
+    # model.load_weights('models/google_humpback_model')
     return model
 
 def get_flat_model(model, lr = 1e-3):

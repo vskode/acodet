@@ -1,7 +1,7 @@
 import os
 import yaml
 import time
-time.sleep(3600*26)
+# time.sleep(3600*26)
 import json
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ with open('hbdet/hbdet/config.yml', 'r') as f:
 
 
 
-TFRECORDS_DIR = 'Daten/tfrecords*s_shift'
+TFRECORDS_DIR = 'Daten/tfrecords_*s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 
@@ -28,10 +28,10 @@ load_weights = False
 steps_per_epoch = False
 rep = 1
 good_file_size = 380
-poor_file_size = 209
-data_description = 'good and poor data, 5 x 0.5s shifts'
+poor_file_size = 0
+data_description = 'good data, 7 x 0.5s shifts'
 num_of_shifts = 5
-init_lr = 5e-4
+init_lr = 1e-3
 final_lr = 1e-5
 
 unfreezes = [15, 5]
