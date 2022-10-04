@@ -13,7 +13,7 @@ params = config['preproc']
 AUTOTUNE = tf.data.AUTOTUNE
 
 def get_val_data(tfrec_path, batch_size, debug=False, **kwArgs):
-    test_files = tf.io.gfile.glob(f"Daten/{tfrec_path}/val/*.tfrec")
+    test_files = tf.io.gfile.glob(f"{tfrec_path}/val/*.tfrec")
     test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 
     if debug:

@@ -8,9 +8,10 @@ import numpy as np
 from . import funcs
 from .humpback_model_dir import humpback_model
 
-def load_google_new():
+def load_google_new(load_g_ckpt=True, **_):
     model = humpback_model.Model()
-    # model.load_weights('models/google_humpback_model')
+    if load_g_ckpt:
+        model.load_weights('models/google_humpback_model')
     return model
 
 def get_flat_model(model, lr = 1e-3):
@@ -57,7 +58,7 @@ def get_flat_model(model, lr = 1e-3):
     
     # generate new model
     new_model = tf.keras.Sequential(layers=[layer for layer in model_list])
-    # new_model.build((1, 39124, 1))
+
     new_model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
         loss=tf.keras.losses.BinaryCrossentropy(),
@@ -102,8 +103,7 @@ def get_saved_checkpoint_model(model, checkpoint):
 
 class GoogleMod():
     def __init__(self, params, checkpoint=False):
-        self.model = get_flat_model(load_google_new(), params['lr'])
-        # self.model = load_google_new(**params)
+        self.model = get_flat_model(load_google_new(params), params['lr'])
         if checkpoint:
             chckpnt = tf.train.latest_checkpoint(checkpoint)
             self.model.load_weights(chckpnt)
