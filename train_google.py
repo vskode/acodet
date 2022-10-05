@@ -34,12 +34,13 @@ final_lr = 1e-6
 pre_blocks = 9
 
 unfreezes = ['no-TF', 15, 5, 19]
-
+data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem, 
+                                           num_of_shifts)
 
 info_text = f"""Model run INFO:
 
 model: untrained model 
-dataset: {data_description.format(Path(TFRECORDS_DIR).parent.stem, num_of_shifts)}
+dataset: {data_description}
 lr: new lr settings
 comments:
 
@@ -65,7 +66,6 @@ preproc blocks  = {pre_blocks}
 #############################################################################
 #############################  RUN  #########################################
 #############################################################################
-
 
 
 time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())

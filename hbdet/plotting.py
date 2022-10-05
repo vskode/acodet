@@ -82,7 +82,7 @@ def plot_model_results(datetime, **kwargs):
 
     checkpoint_paths = Path(f"trainings/{datetime}").glob('unfreeze_*')
     for checkpoint_path in checkpoint_paths:
-        unfreeze = int(checkpoint_path.stem.split('_')[-1])
+        unfreeze = checkpoint_path.stem.split('_')[-1]
 
         if not Path(f"{checkpoint_path}/results.json").exists():
             continue
@@ -116,5 +116,5 @@ def plot_model_results(datetime, **kwargs):
     fig.savefig(f'trainings/{datetime}/model_results_{ref_time}.png')
 
 if __name__ == '__main__':
-    plot_model_results('2022-09-21_08', dataset = 'good and poor data, 5 shifts from 0s - 2s',
+    plot_model_results('2022-10-04_15', dataset = 'good and poor data, 5 shifts from 0s - 2s',
                                         begin_lr = '0.005', end_lr = '1e-5')
