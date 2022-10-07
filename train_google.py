@@ -7,11 +7,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from hbdet.humpback_model_dir import front_end
 from hbdet.google_funcs import GoogleMod
 from hbdet.plotting import plot_model_results
 from keras.utils.layer_utils import count_params
 from evaluate_Gmodel import create_and_save_figure
 from hbdet.tfrec import get_dataset, check_random_spectrogram
+
+from hbdet.augmentation import CropAndFill
 
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
@@ -61,11 +64,42 @@ preproc blocks  = {pre_blocks}
 """
 
 
-
-
 #############################################################################
 #############################  RUN  #########################################
 #############################################################################
+h, w = 1, 39124
+
+crop = tf.keras.Sequential([
+    CropAndFill(w, seed = 100)
+    # tf.keras.layers.RandomRotation(0.2)
+])
+
+spec = tf.keras.Sequential([
+    tf.keras.layers.Input([39124]),
+    tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
+    front_end.MelSpectrogram()
+])
+
+def prepare(ds, shuffle=False, augment=False):
+    # Resize and rescale all datasets.
+    # ds = ds.map(lambda x, y: (resize_and_rescale(x), y), 
+    #             num_parallel_calls=AUTOTUNE)
+
+    if shuffle:
+        ds = ds.shuffle(1000)
+
+    # Batch all datasets.
+    ds = ds.batch(batch_size)
+
+    # Use data augmentation only on the training set.
+    if augment:
+        ds = ds.map(lambda x, y: (crop(x, training=True), y), 
+                num_parallel_calls=AUTOTUNE)
+        
+    ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
+
+    # Use buffered prefetching on all datasets.
+    return ds.prefetch(buffer_size=AUTOTUNE)
 
 
 time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
@@ -73,11 +107,17 @@ dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
+train_data = prepare(train_data, shuffle=True)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
+test_data = prepare(test_data)
 
-train_data = train_data.shuffle(50)
+# batch_audio = next(iter(train_data))[0]
+# l = [[tf.expand_dims(i, -1)] for i in batch_audio]
+# t = crop(l[:1])
+
+# train_data = train_data.shuffle(50)
 # check_random_spectrogram(train_files, dataset_size = dataset_size*batch_size)
 
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,

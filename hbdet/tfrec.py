@@ -136,10 +136,8 @@ def read_raw_file(file, annots, shift = 0):
     file_annots = funcs.get_annots_for_file(annots, file)
     file_annots.start -= shift
 
-    x_call, x_noise, times_c, times_n = funcs.return_cntxt_wndw_arr(file_annots, 
-                                                              file, 
-                                                        return_times =True,
-                                                            **params)    
+    x_call, x_noise, times_c, times_n = funcs.cntxt_wndw_arr(file_annots,
+                                                            file, **params) 
     y_call = np.ones(len(x_call), dtype = 'float32')
     y_noise = np.zeros(len(x_noise), dtype = 'float32')
     
@@ -337,7 +335,5 @@ def get_dataset(filenames, batch_size, AUTOTUNE):
         tf.data.TFRecordDataset(filenames, num_parallel_reads=AUTOTUNE)
         .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
         .map(prepare_sample, num_parallel_calls=AUTOTUNE)
-        .batch(batch_size)
-        .prefetch(AUTOTUNE)
     )
     return dataset

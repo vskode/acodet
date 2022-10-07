@@ -47,7 +47,7 @@ for mod_iter, model in enumerate(available_models[1:]):
         file_annots = get_annots_for_file(annots, file)
         file_annots.start -= params['cntxt_wn_sz'] / params['sr'] / 2
         
-        x_test, x_noise = return_cntxt_wndw_arr(file_annots, file, **params)
+        x_test, x_noise, _, _ = cntxt_wndw_arr(file_annots, file, **params)
         y_test = np.ones(len(x_test), dtype = 'float32')
         y_noise = np.zeros(len(x_noise), dtype = 'float32')
         

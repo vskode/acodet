@@ -40,8 +40,8 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
     else:
         return ax
 
-def return_cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
-                            sr, return_times = False, **kwargs):
+def cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
+                            sr, **kwargs):
     audio, fs = lb.load(file, sr = 2000, 
                     duration = annotations['start'].iloc[-1] +\
                                 cntxt_wn_sz/sr)
@@ -69,10 +69,7 @@ def return_cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
             
     noise_ar, times_n = return_inbetween_noise_arrays(audio, annotations,
                                                         sr, cntxt_wn_sz)
-    if not return_times:
-        return seg_ar, noise_ar
-    else:
-        return seg_ar, noise_ar, times_c, times_n
+    return seg_ar, noise_ar, times_c, times_n
     
 def return_inbetween_noise_arrays(audio, annotations, sr, cntxt_wn_sz):
     num_wndws_btw_end_start = ( (
