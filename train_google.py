@@ -67,10 +67,10 @@ preproc blocks  = {pre_blocks}
 #############################################################################
 #############################  RUN  #########################################
 #############################################################################
-h, w = 1, 39124
+h, w = 64, 128
 
 crop = tf.keras.Sequential([
-    CropAndFill(w, seed = 100)
+    CropAndFill(h, w, seed = 100)
     # tf.keras.layers.RandomRotation(0.2)
 ])
 
@@ -80,7 +80,7 @@ spec = tf.keras.Sequential([
     front_end.MelSpectrogram()
 ])
 
-def prepare(ds, shuffle=False, augment=False):
+def prepare(ds, augments=7, shuffle=False, augment=False):
     # Resize and rescale all datasets.
     # ds = ds.map(lambda x, y: (resize_and_rescale(x), y), 
     #             num_parallel_calls=AUTOTUNE)
@@ -92,11 +92,15 @@ def prepare(ds, shuffle=False, augment=False):
     ds = ds.batch(batch_size)
 
     # Use data augmentation only on the training set.
-    if augment:
-        ds = ds.map(lambda x, y: (crop(x, training=True), y), 
-                num_parallel_calls=AUTOTUNE)
         
     ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
+    if augment:
+        ds_augs = []
+        for i in range(augments):
+            ds_augs.append(ds.map(lambda x, y: (crop(x, training=True), y), 
+                    num_parallel_calls=AUTOTUNE))
+        for a in ds_augs:
+            ds = ds.concatenate(a)
 
     # Use buffered prefetching on all datasets.
     return ds.prefetch(buffer_size=AUTOTUNE)
@@ -107,12 +111,12 @@ dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
-train_data = prepare(train_data, shuffle=True)
+train_data = prepare(train_data, shuffle=True, augment=True)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
-test_data = prepare(test_data)
-
+test_data = prepare(test_data, augment=True)
+len(list(train_data))
 # batch_audio = next(iter(train_data))[0]
 # l = [[tf.expand_dims(i, -1)] for i in batch_audio]
 # t = crop(l[:1])
