@@ -19,8 +19,11 @@ def get_files():
     # file = Path('/mnt/c/Documents and Settings/sa01vk/Documents/NOAA/MELLINGER_NOVA-SCOTIA_200508_EmrldN/EmrldN-00000005-050821-153834.wav')
     # file = Path('/home/vincent/Code/MA/Daten/googles_train_data/Hawaii_K_02_080506_183545.d20.x.wav')
     # file = Path('/media/vincent/Expansion/NOAA/NRS08_20162018_new20220711/NRS08_20160414_233332.wav')
-    folder = Path('/mnt/e/MA/SAMOSAS_VINCENT')
-    return folder.glob('*_2kHz_March-April/2021-03-13_*/**/*.wav')
+    # folder = Path('/mnt/e/MA/SAMOSAS_VINCENT')
+    folder = Path('generated_annotations/src')
+    # fold_glob = folder.glob('*_2kHz_March-April/2021-03-13_*/**/*.wav')
+    fold_glob = folder.glob('*2009*')
+    return fold_glob
 
 # Create a new model instance
 def get_model(model_checkpoint, untrained = False):
