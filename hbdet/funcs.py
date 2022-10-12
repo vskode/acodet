@@ -16,6 +16,22 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
                         duration = cntxt_wn_sz/sr)
     return simple_spec(audio, sr = sr, cntxt_wn_sz=cntxt_wn_sz, **kwArgs)
 
+def save_rndm_spectrogram(dataset,  fft_window_length=2**11, sr = 10000, 
+                cntxt_wn_sz = 39124, fig = None, colorbar = True):
+    ds_size = sum(1 for _ in dataset)
+    sample = dataset.skip(np.random.randint(ds_size)).take(1)
+    sample = next(iter(sample))[0][:8]
+    fmin = sr/2/sample[0].numpy().shape[0]
+    fmax = sr/2/sample[0].numpy().shape[0]*250
+    fig, axes = plt.subplots(nrows = 2, ncols = 4)
+    for i, ax, samp in enumerate(zip(axes, sample)):
+        axes[i//4][i%4] = specshow(samp.numpy(), x_axis = 's', y_axis = 'linear', 
+                    sr = sr, win_length = fft_window_length, ax=ax, 
+                    x_coords = np.linspace(0, cntxt_wn_sz/sr, samp.numpy().shape[1]),
+                    y_coords = np.linspace(fmin, fmax, 2**8),
+                vmin = -60)
+    fig.savefig('test.png')
+
 def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000, 
                 cntxt_wn_sz = 39124, fig = None, colorbar = True):
     S = np.abs(lb.stft(signal, win_length = fft_window_length))

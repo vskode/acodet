@@ -297,9 +297,9 @@ def parse_tfrecord_fn(example):
         "time" : tf.io.FixedLenFeature([], tf.int64)
     }
     return tf.io.parse_single_example(example, feature_description)
+    
 
-
-def check_random_spectrogram(filenames, dataset_size = FILE_ARRAY_LIMIT):
+def compare_random_spectrogram(filenames, dataset_size = FILE_ARRAY_LIMIT):
     r = np.random.randint(dataset_size)
     dataset = (
         tf.data.TFRecordDataset(filenames)

@@ -12,14 +12,15 @@ from hbdet.google_funcs import GoogleMod
 from hbdet.plotting import plot_model_results
 from keras.utils.layer_utils import count_params
 from evaluate_Gmodel import create_and_save_figure
-from hbdet.tfrec import get_dataset, check_random_spectrogram
+from hbdet.tfrec import get_dataset
+from hbdet.funcs import save_rndm_spectrogram
 
 from hbdet.augmentation import CropAndFill
 
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/tfrecords_*'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/tfrecords_0s*'
 AUTOTUNE = tf.data.AUTOTUNE
 
 batch_size = 32
@@ -28,7 +29,7 @@ epochs = 50
 load_weights = False
 steps_per_epoch = False
 rep = 1
-good_file_size = 380
+good_file_size = 370
 poor_file_size = 0
 num_of_shifts = 7
 data_description = '{}, {} x 0.5s shifts, pretrained'
@@ -80,29 +81,22 @@ spec = tf.keras.Sequential([
     front_end.MelSpectrogram()
 ])
 
-def prepare(ds, augments=7, shuffle=False, augment=False):
-    # Resize and rescale all datasets.
-    # ds = ds.map(lambda x, y: (resize_and_rescale(x), y), 
-    #             num_parallel_calls=AUTOTUNE)
-
-    if shuffle:
-        ds = ds.shuffle(1000)
-
-    # Batch all datasets.
+def prepare(ds, augments=3, shuffle=False, time_aug=False):
     ds = ds.batch(batch_size)
-
-    # Use data augmentation only on the training set.
-        
+    # create specs from audio arrays
     ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
-    if augment:
+    
+    if time_aug:
         ds_augs = []
         for i in range(augments):
             ds_augs.append(ds.map(lambda x, y: (crop(x, training=True), y), 
                     num_parallel_calls=AUTOTUNE))
         for a in ds_augs:
             ds = ds.concatenate(a)
-
-    # Use buffered prefetching on all datasets.
+    
+    if shuffle:
+        ds = ds.shuffle(1000)
+        
     return ds.prefetch(buffer_size=AUTOTUNE)
 
 
@@ -111,18 +105,14 @@ dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
-train_data = prepare(train_data, shuffle=True, augment=True)
+train_data = prepare(train_data, shuffle=True, time_aug=True)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
-test_data = prepare(test_data, augment=True)
-len(list(train_data))
-# batch_audio = next(iter(train_data))[0]
-# l = [[tf.expand_dims(i, -1)] for i in batch_audio]
-# t = crop(l[:1])
+test_data = prepare(test_data)
 
-# train_data = train_data.shuffle(50)
-# check_random_spectrogram(train_files, dataset_size = dataset_size*batch_size)
+save_rndm_spectrogram(train_data)
+save_rndm_spectrogram(test_data)
 
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 decay_steps = dataset_size,
@@ -152,6 +142,9 @@ for ind, unfreeze in enumerate(unfreezes):
     # Create a callback that saves the model's weights every 5 epochs
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path, 
+        monitor = 'val_loss',
+        mode = 'min',
+        save_best_only = True, 
         verbose=1, 
         save_weights_only=True,
         save_freq='epoch')
