@@ -1,207 +1,87 @@
 import tensorflow as tf
-# import tensorflow_hub as hub
-import numpy as np
 
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# tf.config.experimental.set_memory_growth(gpus[0], True)
-
-from . import funcs
 from .humpback_model_dir import humpback_model
 
-def load_google_new(load_g_ckpt=True, **_):
-    model = humpback_model.Model()
-    if load_g_ckpt:
-        model.load_weights('models/google_humpback_model')
-    return model
-
-def get_flat_model(model, lr = 1e-3):
-    """
-    Take nested model from Harvey Matthew and flatten it for ease of use.
-    This way trainability of layers can be iteratively defined. The model
-    still has a nested structure. The ResNet blocks are combined into layers
-    of type Block, but because their trainability would only be changed on the
-    block level, this degree of nesting shouldn't complicate the usage of the 
-    model.
-
-    Args:
-        model (tf.keras.Sequential): nested Sequential model from M. Harvey
-
-    Returns:
-        tf.keras.Sequential: flat model
-    """
-    # create list which will contain all the layers
-    model_list = []
-    # add MelSpectrogram layer
-    model_list.append(tf.keras.layers.Input([39124]))
-    model_list.append(tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)))
-    model_list.append(model.layers[0])
-    # add PCEN layer
-    model_list.append(model.layers[1])
-    # iterate through PreBlocks
-    model_list.append(model.layers[2]._layers[0])
-    for layer in model.layers[2]._layers[1]._layers:
-      model_list.append(layer)
-    # change name, to make sure every layer has a unique name
-    model_list[9]._name = 'pool_pre_resnet'
-    # iterate over ResNet blocks
-    c = 0
-    for i, high_layer in enumerate(model.layers[2]._layers[2:6]):
-      for j, layer in enumerate(high_layer._layers):
-        c+=1
-        model_list.append(layer)
-        model_list[9+c]._name += f'_{i}'
-    # add final Dense layers
-    model_list.append(model.layers[2]._layers[-1])
-    model_list.append(model.layers[-1])
-    # normalize results between 0 and 1
-    model_list.append(tf.keras.layers.Activation('sigmoid'))
-    
-    # generate new model
-    new_model = tf.keras.Sequential(layers=[layer for layer in model_list])
-
-    new_model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
-        loss=tf.keras.losses.BinaryCrossentropy(),
-        metrics = [tf.keras.metrics.BinaryAccuracy(),
-                    tf.keras.metrics.Precision(),
-                    tf.keras.metrics.Recall()]
-    )
-    return new_model
-
-def gmodel_no_spec(model, lr = 1e-3):
-    """
-    Take nested model from Harvey Matthew and flatten it for ease of use.
-    This way trainability of layers can be iteratively defined. The model
-    still has a nested structure. The ResNet blocks are combined into layers
-    of type Block, but because their trainability would only be changed on the
-    block level, this degree of nesting shouldn't complicate the usage of the 
-    model.
-
-    Args:
-        model (tf.keras.Sequential): nested Sequential model from M. Harvey
-
-    Returns:
-        tf.keras.Sequential: flat model
-    """
-    # create list which will contain all the layers
-    model_list = []
-    # add MelSpectrogram layer
-    model_list.append(tf.keras.layers.Input([128, 64]))
-    # model_list.append(tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)))
-    # model_list.append(model.layers[0])
-    # add PCEN layer
-    model_list.append(model.layers[1])
-    # iterate through PreBlocks
-    model_list.append(model.layers[2]._layers[0])
-    for layer in model.layers[2]._layers[1]._layers:
-      model_list.append(layer)
-    # change name, to make sure every layer has a unique name
-    model_list[7]._name = 'pool_pre_resnet'
-    # iterate over ResNet blocks
-    c = 0
-    for i, high_layer in enumerate(model.layers[2]._layers[2:6]):
-      for j, layer in enumerate(high_layer._layers):
-        c+=1
-        model_list.append(layer)
-        model_list[7+c]._name += f'_{i}'
-    # add final Dense layers
-    model_list.append(model.layers[2]._layers[-1])
-    model_list.append(model.layers[-1])
-    # normalize results between 0 and 1
-    model_list.append(tf.keras.layers.Activation('sigmoid'))
-    
-    # generate new model
-    new_model = tf.keras.Sequential(layers=[layer for layer in model_list])
-
-    new_model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
-        loss=tf.keras.losses.BinaryCrossentropy(),
-        metrics = [tf.keras.metrics.BinaryAccuracy(),
-                    tf.keras.metrics.Precision(),
-                    tf.keras.metrics.Recall()]
-    )
-    return new_model
-
-def load_google_hub():
-    pass#return hub.load('https://tfhub.dev/google/humpback_whale/1')
-
-def load_google_sequential():
-    sequential = tf.keras.Sequential([
-        tf.keras.layers.Input([39124]),
-        tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
-        hub.KerasLayer(load_google_hub(), trainable=False),
-        tf.keras.layers.Activation('sigmoid')
-    ])
-
-    sequential.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-        loss=tf.keras.losses.BinaryCrossentropy(),
-    )
-    return sequential
-
-def predict_hub(data, model, cntxt_wn_sz, **_):
-    preds = []
-    for segment in data:
-        tensor_sig = tf.convert_to_tensor(segment)
-        tensor_sig = tf.expand_dims(tensor_sig, -1)  # makes a batch of size 1
-        tensor_sig = tf.expand_dims(tensor_sig, 0)  # makes a batch of size 1
-        context_step_samples = tf.cast(cntxt_wn_sz, tf.int64)
-        score_fn = model.signatures['score']
-        scores = score_fn(waveform=tensor_sig, 
-                            context_step_samples=context_step_samples)
-        preds.append(scores['scores'].numpy()[0,0,0])
-    return np.array(preds)
-
-def get_saved_checkpoint_model(model, checkpoint):
-    return model.load_weights(checkpoint)
-
 class GoogleMod():
-    def __init__(self, params, checkpoint=False):
-        # self.model = get_flat_model(load_google_new(params), params['lr'])
-        self.model = gmodel_no_spec(load_google_new(params), params['lr'])
-        if checkpoint:
-            chckpnt = tf.train.latest_checkpoint(checkpoint)
-            self.model.load_weights(chckpnt)
-        self.params = params
-        self.params['fmin'] = 0
-        self.params['fmax'] = 2250
-        
-    def load_data(self, file, annots, y_test, y_noise, x_test, x_noise):
-        self.file = file
-        self.annots = annots
-        self.x_test = x_test
-        self.x_noise = x_noise
-        self.y_test = y_test
-        self.y_noise = y_noise
-        
-    def pred(self, noise = False):
-        if noise:
-            self.preds_noise = self.model.predict(self.x_noise).T[0]
-            return self.preds_noise
-        else:
-            self.preds_call = self.model.predict(self.x_test).T[0]
-            return self.preds_call
+    def __init__(self, params) -> None:
+        """
+        This class is the framework to load and flatten the model created
+        by Matthew Harvey in collaboration with Ann Allen for the 
+        PIFSC HARP data 
+        (https://www.frontiersin.org/article/10.3389/fmars.2021.607321). 
+
+        Args:
+            params (dict): model parameters
+        """
+        self.load_google_new(params)
+        self.get_flat_model(params)
     
-    def eval(self, noise = False):
-        if noise:
-            return self.model.evaluate(self.x_noise, self.y_noise)
+    def load_google_new(self, load_g_ckpt=True, **_):
+        """
+        Load google model architecture. By default the model weights are 
+        initiated with the pretrained weights from the google checkpoint. 
+
+        Args:
+            load_g_ckpt (bool, optional): Initialize model weights with Google
+            pretrained weights. Defaults to True.
+        """
+        self.model = humpback_model.Model()
+        if load_g_ckpt:
+            self.model.load_weights('models/google_humpback_model')
+
+    def get_flat_model(self, input_tensors='spectrograms', **_):
+        """
+        Take nested model architecture from Harvey Matthew and flatten it for 
+        ease of use. This way trainability of layers can be iteratively 
+        defined. The model still has a nested structure. The ResNet blocks are
+        combined into layers of type Block, but because their trainability would 
+        only be changed on the block level, this degree of nesting shouldn't
+        complicate the usage of the model.
+        By default the model is itiated with spectrograms of shape [128, 64] as
+        inputs. This means that spectrograms have to be precomputed. 
+        Alternatively if the argument input_tensors is set to something else, 
+        inputs are assumed to be audio arrays of 39124 samples length.
+        As this process is very specific to the model ascertained from 
+        Mr. Harvey, layer indices are hard coded.
+
+        Args:
+            input_tensors (str): input type, if not spectrograms, they are 
+            assumed to be audio arrays of 39124 samples length. 
+            Defaults to 'spectrograms'.
+        """
+        # create list which will contain all the layers
+        model_list = []
+        if input_tensors == 'spectrograms':
+            # add Input layer
+            model_list.append(tf.keras.layers.Input([128, 64]))
         else:
-            return self.model.evaluate(self.x_test, self.y_test)
-    
-    def spec(self, num, noise = False):
-        if noise:
-            prediction = self.preds_noise[num]
-            start = self.annots['end'].iloc[-1] + \
-                    self.params['cntxt_wn_sz']*num / self.params['sr']
-            tensor_sig = tf.convert_to_tensor([self.x_noise[num]])
-        else:
-            prediction = self.preds_call[num]
-            start = self.annots['start'].iloc[num]
-            tensor_sig = tf.convert_to_tensor([self.x_test[num]])
+            # add MelSpectrogram layer
+            model_list.append(tf.keras.layers.Input([39124]))
+            model_list.append(tf.keras.layers.Lambda(
+                lambda t: tf.expand_dims(t, -1)))
+            model_list.append(self.model.layers[0])
+        # add PCEN layer
+        model_list.append(self.model.layers[1])
+        # iterate through PreBlocks
+        model_list.append(self.model.layers[2]._layers[0])
+        for layer in self.model.layers[2]._layers[1]._layers:
+            model_list.append(layer)
+        # change name, to make sure every layer has a unique name
+        num_preproc_layers = len(model_list)
+        model_list[num_preproc_layers-1]._name = 'pool_pre_resnet'
+        # iterate over ResNet blocks
+        c = 0
+        for i, high_layer in enumerate(self.model.layers[2]._layers[2:6]):
+            for j, layer in enumerate(high_layer._layers):
+                c+=1
+                model_list.append(layer)
+                model_list[num_preproc_layers-1+c]._name += f'_{i}'
+        # add final Dense layers
+        model_list.append(self.model.layers[2]._layers[-1])
+        model_list.append(self.model.layers[-1])
+        # normalize results between 0 and 1
+        model_list.append(tf.keras.layers.Activation('sigmoid'))
         
-        tensor_sig = tf.expand_dims(tensor_sig, -1)    
-        spec_data = self.model.layers[2].call(self.model.layers[1].call(tensor_sig))
-        
-        funcs.plot_spec(spec_data[0].numpy().T, self.file, prediction = prediction,
-                    start = start, noise = noise, 
-                    mod_name = type(self).__name__, **self.params)
+        # generate new model
+        self.model = tf.keras.Sequential(
+            layers=[layer for layer in model_list])

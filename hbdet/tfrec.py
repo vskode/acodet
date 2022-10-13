@@ -163,7 +163,9 @@ def _write_tfrecords(annots, shift = 0, **kwArgs):
     random.shuffle(files)
 
     train_file_index = int(len(files)*config['tfrec']['train_ratio'])
-    test_file_index = int(len(files)*config['tfrec']['test_val_ratio'])
+    test_file_index = int(len(files)
+                      *(1-config['tfrec']['train_ratio'])
+                      *config['tfrec']['test_val_ratio'])
     
     for i, file in enumerate(files):
         print('writing tf records files, progress:'
@@ -213,7 +215,9 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
     # random.shuffle(files)
 
     train_file_index = int(len(files)*config['tfrec']['train_ratio'])
-    test_file_index = int(len(files)*config['tfrec']['test_val_ratio'])
+    test_file_index = int(len(files)
+                      *(1-config['tfrec']['train_ratio'])
+                      *config['tfrec']['test_val_ratio'])
     
     for i, file in enumerate(files):
         print('writing tf records files, progress:'

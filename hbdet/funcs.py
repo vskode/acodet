@@ -24,12 +24,12 @@ def save_rndm_spectrogram(dataset,  fft_window_length=2**11, sr = 10000,
     fmin = sr/2/sample[0].numpy().shape[0]
     fmax = sr/2/sample[0].numpy().shape[0]*250
     fig, axes = plt.subplots(nrows = 2, ncols = 4)
-    for i, ax, samp in enumerate(zip(axes, sample)):
+    for i, samp in enumerate(sample):
         axes[i//4][i%4] = specshow(samp.numpy(), x_axis = 's', y_axis = 'linear', 
-                    sr = sr, win_length = fft_window_length, ax=ax, 
-                    x_coords = np.linspace(0, cntxt_wn_sz/sr, samp.numpy().shape[1]),
-                    y_coords = np.linspace(fmin, fmax, 2**8),
-                vmin = -60)
+                    sr = sr, win_length = fft_window_length, ax=axes[i//4][i%4] )
+                    # x_coords = np.linspace(0, cntxt_wn_sz/sr, samp.numpy().shape[1]),
+                    # y_coords = np.linspace(fmin, fmax, 2**8),
+                # vmin = -60)
     fig.savefig('test.png')
 
 def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000, 

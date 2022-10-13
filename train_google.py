@@ -121,12 +121,22 @@ lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
 
 for ind, unfreeze in enumerate(unfreezes):
         
-    config['model']['lr'] = lr
     if unfreeze == 'no-TF':
         config['model']['load_g_ckpt'] = False
 
-    G = GoogleMod(config['model'])
-    model = G.model
+    model = GoogleMod(config['model']).model
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics = [tf.keras.metrics.BinaryAccuracy(),
+                    tf.keras.metrics.Precision(),
+                    tf.keras.metrics.Recall()]
+    )
+    
+    if load_weights:  
+        ckpt = tf.train.latest_checkpoint(load_weights)
+        model.load_weights(ckpt)
+    
     if not unfreeze == 'no-TF':
         for layer in model.layers[pre_blocks:-unfreeze]:
             layer.trainable = False
