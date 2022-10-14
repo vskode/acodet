@@ -1,19 +1,19 @@
 import os
 import yaml
 import time
-# time.sleep(3600*26)
 import json
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+
 from hbdet.humpback_model_dir import front_end
 from hbdet.google_funcs import GoogleMod
-from hbdet.plotting import plot_model_results
+from hbdet.plot_utils import plot_model_results
 from keras.utils.layer_utils import count_params
 from evaluate_Gmodel import create_and_save_figure
 from hbdet.tfrec import get_dataset
-from hbdet.funcs import save_rndm_spectrogram
+from hbdet.plot_utils import save_rndm_spectrogram
 
 from hbdet.augmentation import CropAndFill
 
