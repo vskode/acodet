@@ -13,8 +13,8 @@ class GoogleMod():
         Args:
             params (dict): model parameters
         """
-        self.load_google_new(params)
-        self.get_flat_model(params)
+        self.load_google_new(**params)
+        self.get_flat_model(**params)
     
     def load_google_new(self, load_g_ckpt=True, **_):
         """

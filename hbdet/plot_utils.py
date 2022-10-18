@@ -6,7 +6,6 @@ import json
 import librosa as lb
 
 def plot_model_results(datetime, **kwargs):
-
     fig, ax = plt.subplots(ncols = 4, nrows = 2, figsize = [15, 8])
 
     checkpoint_paths = Path(f"trainings/{datetime}").glob('unfreeze_*')
@@ -18,20 +17,20 @@ def plot_model_results(datetime, **kwargs):
         with open(f"{checkpoint_path}/results.json", 'r') as f:
             results = json.load(f)
 
-        for i, m in enumerate(results.keys()):
-            row = i // 4
-            col = np.mod(i, 4)
-            if row == 1 and col == 0:
-                ax[row, col].set_ylim([0, 2])
-            ax[row, col].plot(results[m], 
+        for i, key in enumerate(results.keys()):
+            ax[i//2, i%4].plot(results[key], 
                             label = f'{unfreeze}')
-            if row == 0:
-                ax[row, col].set_title(f'{m}')
-            if row == col == 0:
-                ax[row, col].set_ylabel('training')
-            elif row == 1 and col == 0:
-                ax[row, col].set_ylabel('val')
-    ax[0, 0].legend()
+            
+            # axis handling depending on subplot index
+            if i//2 == 1 and i%4 == 0:
+                ax[i//2, i%4].set_ylim([0, 2])
+            if i//2 == 0:
+                ax[i//2, i%4].set_title(f'{key}')
+            if i//2 == i%4 == 0:
+                ax[i//2, i%4].set_ylabel('training')
+                ax[i//2, i%4].legend()
+            elif i//2 == 1 and i%4 == 0:
+                ax[i//2, i%4].set_ylabel('val')
 
     info_string = ''
     for key, val in kwargs.items():
@@ -53,31 +52,32 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
 def save_rndm_spectrogram(dataset,  path, sr = 10000):
     ds_size = sum(1 for _ in dataset)
     
+    r, c = 4, 4 
     sample = dataset.skip(np.random.randint(ds_size)).take(1)
-    sample = next(iter(sample))[0][:16]
+    sample = next(iter(sample))[0][:r*c]
     
     fmin = sr/2/sample[0].numpy().shape[0]
     fmax = sr/2/sample[0].numpy().shape[0]*(128//5)
-    fig, axes = plt.subplots(nrows = 4, ncols = 4, figsize=[12, 10])
+    fig, axes = plt.subplots(nrows = r, ncols = c, figsize=[12, 10])
     
     for i, samp in enumerate(sample):
-        ar = samp.numpy()[:,1:128//5].T
-        axes[i//4][i%4].imshow(ar, origin='lower', interpolation='nearest',
+        ar = samp.numpy()[:,1:].T
+        axes[i//r][i%c].imshow(ar, origin='lower', interpolation='nearest',
                                 aspect='auto')
-        if i//4 == 3 and i%4 == 0:
-            axes[i//4][i%4].set_xticks(np.linspace(0, ar.shape[1], 5))
+        if i//r == r-1 and i%c == 0:
+            axes[i//r][i%c].set_xticks(np.linspace(0, ar.shape[1], 5))
             xlabs = np.linspace(0, 3.9, 5).astype(str)
-            axes[i//4][i%4].set_xticklabels(xlabs)
-            axes[i//4][i%4].set_xlabel('time in s')
-            axes[i//4][i%4].set_yticks(np.linspace(0, ar.shape[0]-1, 7))
+            axes[i//r][i%c].set_xticklabels(xlabs)
+            axes[i//r][i%c].set_xlabel('time in s')
+            axes[i//r][i%c].set_yticks(np.linspace(0, ar.shape[0]-1, 7))
             ylabs = np.linspace(fmin, fmax, 7).astype(int).astype(str)
-            axes[i//4][i%4].set_yticklabels(ylabs)
-            axes[i//4][i%4].set_ylabel('freq in Hz')
+            axes[i//r][i%c].set_yticklabels(ylabs)
+            axes[i//r][i%c].set_ylabel('freq in Hz')
         else:
-            axes[i//4][i%4].set_xticks([])
-            axes[i//4][i%4].set_xticklabels([])         
-            axes[i//4][i%4].set_yticks([])
-            axes[i//4][i%4].set_yticklabels([])
+            axes[i//r][i%c].set_xticks([])
+            axes[i//r][i%c].set_xticklabels([])         
+            axes[i//r][i%c].set_yticks([])
+            axes[i//r][i%c].set_yticklabels([])
             
     fig.suptitle('Random sample of 16 spectrograms')
     fig.savefig(path)
@@ -105,7 +105,3 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
         return fig_new, ax
     else:
         return ax
-
-if __name__ == '__main__':
-    plot_model_results('2022-10-04_15', dataset = 'good and poor data, 5 shifts from 0s - 2s',
-                                        begin_lr = '0.005', end_lr = '1e-5')

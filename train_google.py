@@ -15,12 +15,12 @@ from evaluate_Gmodel import create_and_save_figure
 from hbdet.tfrec import get_dataset
 from hbdet.plot_utils import save_rndm_spectrogram
 
-from hbdet.augmentation import CropAndFill
+from hbdet.augmentation import prepare
 
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/tfrecords_0s_shift'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz/tfrecords_0s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 batch_size = 32
@@ -31,13 +31,13 @@ steps_per_epoch = False
 rep = 1
 good_file_size = 370
 poor_file_size = 0
-num_of_shifts = 7
-data_description = '{}, {} x 0.5s shifts, pretrained'
+num_of_shifts = 3
+data_description = '{}, {} x time shifts'
 init_lr = 1e-3
 final_lr = 1e-6
 pre_blocks = 9
 
-unfreezes = ['no-TF', 15, 5, 19]
+unfreezes = ['no-TF']#, 15, 5, 19]
 data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem, 
                                            num_of_shifts)
 
@@ -68,52 +68,21 @@ preproc blocks  = {pre_blocks}
 #############################################################################
 #############################  RUN  #########################################
 #############################################################################
-h, w = 64, 128
-
-crop = tf.keras.Sequential([
-    CropAndFill(h, w, seed = 100)
-    # tf.keras.layers.RandomRotation(0.2)
-])
-
-spec = tf.keras.Sequential([
-    tf.keras.layers.Input([39124]),
-    tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
-    front_end.MelSpectrogram()
-])
-
-def prepare(ds, augments=3, shuffle=False, time_aug=False):
-    ds = ds.batch(batch_size)
-    # create specs from audio arrays
-    ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
-    
-    if time_aug:
-        ds_augs = []
-        for i in range(augments):
-            ds_augs.append(ds.map(lambda x, y: (crop(x, training=True), y), 
-                    num_parallel_calls=AUTOTUNE))
-        for a in ds_augs:
-            ds = ds.concatenate(a)
-    
-    if shuffle:
-        ds = ds.shuffle(1000)
-        
-    return ds.prefetch(buffer_size=AUTOTUNE)
-
 
 time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
-time_start = '2022-10-12_10'
 dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
-train_data = prepare(train_data, shuffle=True, time_aug=True)
+train_data = prepare(train_data, 32, shuffle=True, time_aug=True)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
-test_data = prepare(test_data)
+test_data = prepare(test_data, 32)
 
+Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 save_rndm_spectrogram(train_data, f'trainings/{time_start}/train_sample.png')
-save_rndm_spectrogram(test_data, f'trainings/{time_start}/test_sample.png')
+# save_rndm_spectrogram(test_data, f'trainings/{time_start}/test_sample.png')
 
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 decay_steps = dataset_size,

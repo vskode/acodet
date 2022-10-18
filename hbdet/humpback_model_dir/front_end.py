@@ -44,7 +44,8 @@ Attributes:
   lower_f: Lower boundary of mel bins in Hz.
   upper_f: Upper boundary of mel bins in Hz.
 """
-Config.__new__.__defaults__ = (1024, 300, 64, 10000.0, 0.0, 5000.0)
+# Config.__new__.__defaults__ = (1024, 300, 64, 10000.0, 0.0, 5000.0)
+Config.__new__.__defaults__ = (1024, 53, 64, 2000.0, 0.0, 1000.0)
 
 
 class MelSpectrogram(tf.keras.layers.Layer):

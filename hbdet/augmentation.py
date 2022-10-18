@@ -1,6 +1,12 @@
 import tensorflow as tf
 from keras_cv.layers import BaseImageAugmentationLayer
 import numpy as np
+import yaml
+from hbdet.humpback_model_dir import front_end
+
+with open('hbdet/hbdet/config.yml', 'r') as f:
+    config = yaml.safe_load(f)
+AUTOTUNE = tf.data.AUTOTUNE    
 
 class CropAndFill(BaseImageAugmentationLayer):
     def __init__(self, height: int, width: int, seed: int=None) -> None:
@@ -46,3 +52,35 @@ class CropAndFill(BaseImageAugmentationLayer):
             audio = audio[0][0]
             
         return tf.concat([audio[beg:], audio[:beg]], 0)
+
+##############################################################################
+##############################################################################
+##############################################################################
+
+crop = tf.keras.Sequential([
+    CropAndFill(64, 128, seed = 100)
+])
+
+spec = tf.keras.Sequential([
+    tf.keras.layers.Input([config['preproc']['cntxt_wn_sz']]),
+    tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
+    front_end.MelSpectrogram()
+])
+
+def prepare(ds, batch_size, augments=3, shuffle=False, time_aug=False):
+    ds = ds.batch(batch_size)
+    # create specs from audio arrays
+    ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
+    
+    if time_aug:
+        ds_augs = []
+        for i in range(augments):
+            ds_augs.append(ds.map(lambda x, y: (crop(x, training=True), y), 
+                    num_parallel_calls=AUTOTUNE))
+        for a in ds_augs:
+            ds = ds.concatenate(a)
+    
+    if shuffle:
+        ds = ds.shuffle(1000)
+        
+    return ds.prefetch(buffer_size=AUTOTUNE)
