@@ -4,16 +4,16 @@
 preproc:
   # relevant for model!
   sr : 2000
-  cntxt_wn_hop: 7825
-  cntxt_wn_sz: 7825
+  cntxt_wn_hop: 7808
+  cntxt_wn_sz: 7808
   fft_window_length : 2048
   n_freq_bins: 256
   freq_cmpr: 'linear'
   fmin:  50
   fmax:  1000
   nr_noise_samples: 100
-  sequence_len : 7825
-  fft_hop: 300
+  sequence_len : 7808
+  fft_hop: 53
 
 # settings for creation of tfrecord dataset
 tfrec:

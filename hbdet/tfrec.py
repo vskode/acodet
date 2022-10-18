@@ -13,7 +13,7 @@ with open('hbdet/hbdet/config.yml', 'r') as f:
 params = config['preproc']
 
 FILE_ARRAY_LIMIT = 600
-TFRECORDS_DIR = 'Daten/tfrecords'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz/'
 
 ########################################################
 #################  WRITING   ###########################
@@ -208,11 +208,9 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
     Args:
         files (list): list of file paths to the audio files
     """
-    tfrec_num, array_per_file = 0, 0
-
     files = np.unique(annots.filename)
     
-    # random.shuffle(files)
+    random.shuffle(files)
 
     train_file_index = int(len(files)*config['tfrec']['train_ratio'])
     test_file_index = int(len(files)
@@ -232,27 +230,17 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
 
         call_tup, noise_tup = read_raw_file(file, annots, shift = shift)
         
-        calls = list(randomize_arrays(call_tup, file))
-        noise = list(randomize_arrays(noise_tup, file))
+        calls = randomize_arrays(call_tup, file)
+        noise = randomize_arrays(noise_tup, file)
+        samples = [*calls, *noise]
+        random.shuffle(samples)
         
-        tfrec_num += 1
-        # writers = []
-        writer = get_tfrecords_writer(tfrec_num, folder, 
+        writer = get_tfrecords_writer(i+1, folder, 
                                     shift = shift, **kwArgs)
         
-        # writers.append(get_tfrecords_writer(tfrec_num, 'test', 
-        #                             shift = shift, **kwArgs))
-        
-        # writers.append(get_tfrecords_writer(tfrec_num, 'val', 
-        #                             shift = shift, **kwArgs))
-        
-        for samps in [calls, noise]:
-            # for i, samples in enumerate([samps[:(int(len(samps)*0.7))], samps[(int(len(samps)*0.7)):int(len(samps)*0.85)], samps[(int(len(samps)*0.85)):]]):
-            for audio, label, file, time in samps:
-                    
-                examples = create_example(audio, label, file, time)
-                writer.write(examples.SerializeToString())
-                # array_per_file += 1
+        for audio, label, file, time in samples:
+            examples = create_example(audio, label, file, time)
+            writer.write(examples.SerializeToString())
 
 def randomize_arrays(tup, file):
     x, y, times = tup
