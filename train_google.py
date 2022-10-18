@@ -20,7 +20,7 @@ from hbdet.augmentation import CropAndFill
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/tfrecords_0s*'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/tfrecords_0s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 batch_size = 32
@@ -101,6 +101,7 @@ def prepare(ds, augments=3, shuffle=False, time_aug=False):
 
 
 time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
+time_start = '2022-10-12_10'
 dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
@@ -111,8 +112,8 @@ test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 test_data = prepare(test_data)
 
-save_rndm_spectrogram(train_data)
-save_rndm_spectrogram(test_data)
+save_rndm_spectrogram(train_data, f'trainings/{time_start}/train_sample.png')
+save_rndm_spectrogram(test_data, f'trainings/{time_start}/test_sample.png')
 
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 decay_steps = dataset_size,
@@ -120,7 +121,7 @@ lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 staircase = True)
 
 for ind, unfreeze in enumerate(unfreezes):
-        
+    
     if unfreeze == 'no-TF':
         config['model']['load_g_ckpt'] = False
 

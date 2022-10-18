@@ -3,16 +3,16 @@
 # Preprocessing settings
 preproc:
   # relevant for model!
-  sr : 10000
-  cntxt_wn_hop: 39124
-  cntxt_wn_sz: 39124
+  sr : 2000
+  cntxt_wn_hop: 7825
+  cntxt_wn_sz: 7825
   fft_window_length : 2048
   n_freq_bins: 256
   freq_cmpr: 'linear'
   fmin:  50
   fmax:  1000
   nr_noise_samples: 100
-  sequence_len : 39124
+  sequence_len : 7825
   fft_hop: 300
 
 # settings for creation of tfrecord dataset
@@ -23,7 +23,7 @@ tfrec:
   test_val_ratio: 0.7
 
 model:
-  sr: 10000
+  sr: 2000
   # default lr if not specified otherwise
   lr: 0.001
   # threshold for predictions

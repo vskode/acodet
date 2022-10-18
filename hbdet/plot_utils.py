@@ -50,39 +50,37 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
                         duration = cntxt_wn_sz/sr)
     return simple_spec(audio, sr = sr, cntxt_wn_sz=cntxt_wn_sz, **kwArgs)
 
-def save_rndm_spectrogram(dataset,  fft_window_length=2**11, sr = 10000, 
-                cntxt_wn_sz = 39124, fig = None, colorbar = True):
+def save_rndm_spectrogram(dataset,  path, sr = 10000):
     ds_size = sum(1 for _ in dataset)
+    
     sample = dataset.skip(np.random.randint(ds_size)).take(1)
-    sample = next(iter(sample))[0][:8]
+    sample = next(iter(sample))[0][:16]
+    
     fmin = sr/2/sample[0].numpy().shape[0]
     fmax = sr/2/sample[0].numpy().shape[0]*(128//5)
-    fig, axes = plt.subplots(nrows = 2, ncols = 4, figsize=[12, 10])
+    fig, axes = plt.subplots(nrows = 4, ncols = 4, figsize=[12, 10])
+    
     for i, samp in enumerate(sample):
         ar = samp.numpy()[:,1:128//5].T
         axes[i//4][i%4].imshow(ar, origin='lower', interpolation='nearest',
                                 aspect='auto')
-        if i//4 == 1:
+        if i//4 == 3 and i%4 == 0:
             axes[i//4][i%4].set_xticks(np.linspace(0, ar.shape[1], 5))
             xlabs = np.linspace(0, 3.9, 5).astype(str)
             axes[i//4][i%4].set_xticklabels(xlabs)
             axes[i//4][i%4].set_xlabel('time in s')
-        else:
-            axes[i//4][i%4].set_xticks([])
-            axes[i//4][i%4].set_xticklabels([])         
-            
-        if i%4 == 0:
             axes[i//4][i%4].set_yticks(np.linspace(0, ar.shape[0]-1, 7))
-            ylabs = np.linspace(fmin, fmax, 7).astype(str)
+            ylabs = np.linspace(fmin, fmax, 7).astype(int).astype(str)
             axes[i//4][i%4].set_yticklabels(ylabs)
             axes[i//4][i%4].set_ylabel('freq in Hz')
         else:
+            axes[i//4][i%4].set_xticks([])
+            axes[i//4][i%4].set_xticklabels([])         
             axes[i//4][i%4].set_yticks([])
             axes[i//4][i%4].set_yticklabels([])
-        
-        
-                                            #   vmin = -3)
-    fig.savefig('test.png')
+            
+    fig.suptitle('Random sample of 16 spectrograms')
+    fig.savefig(path)
 
 def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000, 
                 cntxt_wn_sz = 39124, fig = None, colorbar = True):

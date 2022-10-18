@@ -17,9 +17,9 @@ def get_val_data(tfrec_path, batch_size, debug=False, **kwArgs):
     test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
 
     if debug:
-        return test_data.unbatch().take(100), 100
+        return test_data.take(100), 100
     else:
-        return test_data.unbatch(), len(list(test_data.unbatch()))
+        return test_data, len(list(test_data))
     
 def get_val_labels(val_data, num_of_samples):
     return list(val_data.batch(num_of_samples))[0][1].numpy()

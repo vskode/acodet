@@ -237,7 +237,7 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
         
         tfrec_num += 1
         # writers = []
-        writer = get_tfrecords_writer(tfrec_num, 'train', 
+        writer = get_tfrecords_writer(tfrec_num, folder, 
                                     shift = shift, **kwArgs)
         
         # writers.append(get_tfrecords_writer(tfrec_num, 'test', 
