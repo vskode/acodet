@@ -3,7 +3,7 @@ import tensorflow as tf
 from .humpback_model_dir import humpback_model
 
 class GoogleMod():
-    def __init__(self, params) -> None:
+    def __init__(self, **params) -> None:
         """
         This class is the framework to load and flatten the model created
         by Matthew Harvey in collaboration with Ann Allen for the 

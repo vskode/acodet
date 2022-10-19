@@ -25,7 +25,7 @@ def get_val_labels(val_data, num_of_samples):
     return list(val_data.batch(num_of_samples))[0][1].numpy()
 
 def init_model(checkpoint_dir, load_untrained_model=False, **kwArgs):
-    g = GoogleMod(config['model'])
+    g = GoogleMod(**config['model'], input_tensors='array')
     model = g.model
     if not load_untrained_model:
         checkpoints = list(checkpoint_dir.glob('cp-*.index'))

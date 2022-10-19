@@ -4,9 +4,14 @@ import time
 from pathlib import Path
 import json
 import librosa as lb
+import yaml
+
+with open('hbdet/hbdet/config.yml', 'r') as f:
+    config = yaml.safe_load(f)
 
 def plot_model_results(datetime, **kwargs):
-    fig, ax = plt.subplots(ncols = 4, nrows = 2, figsize = [15, 8])
+    r, c = 2, 4
+    fig, ax = plt.subplots(ncols = c, nrows = r, figsize = [15, 8])
 
     checkpoint_paths = Path(f"trainings/{datetime}").glob('unfreeze_*')
     for checkpoint_path in checkpoint_paths:
@@ -18,19 +23,19 @@ def plot_model_results(datetime, **kwargs):
             results = json.load(f)
 
         for i, key in enumerate(results.keys()):
-            ax[i//2, i%4].plot(results[key], 
+            ax[i//c, i%c].plot(results[key], 
                             label = f'{unfreeze}')
             
             # axis handling depending on subplot index
-            if i//2 == 1 and i%4 == 0:
-                ax[i//2, i%4].set_ylim([0, 2])
-            if i//2 == 0:
-                ax[i//2, i%4].set_title(f'{key}')
-            if i//2 == i%4 == 0:
-                ax[i//2, i%4].set_ylabel('training')
-                ax[i//2, i%4].legend()
-            elif i//2 == 1 and i%4 == 0:
-                ax[i//2, i%4].set_ylabel('val')
+            if i//c == 1 and i%c == 0:
+                ax[i//c, i%c].set_ylim([0, 2])
+            if i//c == 0:
+                ax[i//c, i%c].set_title(f'{key}')
+            if i//c == i%c == 0:
+                ax[i//c, i%c].set_ylabel('training')
+                ax[i//c, i%c].legend()
+            elif i//c == 1 and i%c == 0:
+                ax[i//c, i%c].set_ylabel('val')
 
     info_string = ''
     for key, val in kwargs.items():
@@ -49,19 +54,21 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
                         duration = cntxt_wn_sz/sr)
     return simple_spec(audio, sr = sr, cntxt_wn_sz=cntxt_wn_sz, **kwArgs)
 
-def save_rndm_spectrogram(dataset,  path, sr = 10000):
+def save_rndm_spectrogram(dataset,  path, sr = config['preproc']['sr']):
     ds_size = sum(1 for _ in dataset)
     
     r, c = 4, 4 
     sample = dataset.skip(np.random.randint(ds_size)).take(1)
     sample = next(iter(sample))[0][:r*c]
     
+    max_freq_bin = 128//(config['preproc']['sr']//2000)
+    
     fmin = sr/2/sample[0].numpy().shape[0]
-    fmax = sr/2/sample[0].numpy().shape[0]*(128//5)
+    fmax = sr/2/sample[0].numpy().shape[0]*max_freq_bin
     fig, axes = plt.subplots(nrows = r, ncols = c, figsize=[12, 10])
     
     for i, samp in enumerate(sample):
-        ar = samp.numpy()[:,1:].T
+        ar = samp.numpy()[:,1:max_freq_bin].T
         axes[i//r][i%c].imshow(ar, origin='lower', interpolation='nearest',
                                 aspect='auto')
         if i//r == r-1 and i%c == 0:

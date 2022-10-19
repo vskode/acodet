@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from hbdet.humpback_model_dir import front_end
 from hbdet.google_funcs import GoogleMod
@@ -24,20 +25,22 @@ TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz/tfrecords_0s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 batch_size = 32
-epochs = 50
+epochs = 10
 
 load_weights = False
 steps_per_epoch = False
 rep = 1
 good_file_size = 370
 poor_file_size = 0
-num_of_shifts = 3
+num_of_shifts = 2
 data_description = '{}, {} x time shifts'
 init_lr = 1e-3
-final_lr = 1e-6
+final_lr = 1e-5
 pre_blocks = 9
+f_score_beta = 0.5
+f_score_thresh = 0.5
 
-unfreezes = ['no-TF']#, 15, 5, 19]
+unfreezes = ['no-TF']
 data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem, 
                                            num_of_shifts)
 
@@ -46,7 +49,7 @@ info_text = f"""Model run INFO:
 model: untrained model 
 dataset: {data_description}
 lr: new lr settings
-comments:
+comments: first training on 2 kHz data, included fscore
 
 VARS:
 data_path       = {TFRECORDS_DIR}
@@ -54,6 +57,8 @@ batch_size      = {batch_size}
 epochs          = {epochs}
 load_weights    = {load_weights}
 steps_per_epoch = {steps_per_epoch}
+f_score_beta    = {f_score_beta}
+f_score_thresh  = {f_score_thresh}
 rep             = {rep}
 good_file_size  = {good_file_size}
 poor_file_size  = {poor_file_size}
@@ -74,15 +79,16 @@ dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
-train_data = prepare(train_data, 32, shuffle=True, time_aug=True)
+train_data = prepare(train_data, batch_size, augments = num_of_shifts,
+                     shuffle=True, time_aug=True)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
-test_data = prepare(test_data, 32)
+test_data = prepare(test_data, batch_size)
 
 Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 save_rndm_spectrogram(train_data, f'trainings/{time_start}/train_sample.png')
-# save_rndm_spectrogram(test_data, f'trainings/{time_start}/test_sample.png')
+save_rndm_spectrogram(test_data, f'trainings/{time_start}/test_sample.png')
 
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 decay_steps = dataset_size,
@@ -94,13 +100,18 @@ for ind, unfreeze in enumerate(unfreezes):
     if unfreeze == 'no-TF':
         config['model']['load_g_ckpt'] = False
 
-    model = GoogleMod(config['model']).model
+    model = GoogleMod(**config['model']).model
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
         loss=tf.keras.losses.BinaryCrossentropy(),
         metrics = [tf.keras.metrics.BinaryAccuracy(),
                     tf.keras.metrics.Precision(),
-                    tf.keras.metrics.Recall()]
+                    tf.keras.metrics.Recall(),
+                    tfa.metrics.FBetaScore(num_classes=1,
+                                            beta=f_score_beta,
+                                            threshold=f_score_thresh,
+                                            name='fbeta'),           
+        ]
     )
     
     if load_weights:  
@@ -116,7 +127,8 @@ for ind, unfreeze in enumerate(unfreezes):
             f'trainings/2022-09-16_10/unfreeze_{unfreeze}/cp-0032.ckpt')
 
     checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
-                        "/cp-{epoch:04d}.ckpt"
+                        "/cp-last.ckpt"
+                        # "/cp-{epoch:04d}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
     
     # Create a callback that saves the model's weights every 5 epochs
@@ -124,7 +136,7 @@ for ind, unfreeze in enumerate(unfreezes):
         filepath=checkpoint_path, 
         monitor = 'val_loss',
         mode = 'min',
-        save_best_only = True, 
+        save_best_only = False, 
         verbose=1, 
         save_weights_only=True,
         save_freq='epoch')
@@ -146,6 +158,9 @@ for ind, unfreeze in enumerate(unfreezes):
 
     pd.DataFrame().to_csv(f"{checkpoint_dir}/trainable_"
                         f"{count_params(model.trainable_weights):.0f}.csv")
+    
+    result['fbeta'] = [float(n) for n in result['fbeta']]
+    result['val_fbeta'] = [float(n) for n in result['val_fbeta']]
     with open(f"{checkpoint_dir}/results.json", 'w') as f:
         json.dump(result, f)
 

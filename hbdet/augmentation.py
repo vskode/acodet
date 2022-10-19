@@ -52,7 +52,17 @@ class CropAndFill(BaseImageAugmentationLayer):
             audio = audio[0][0]
             
         return tf.concat([audio[beg:], audio[:beg]], 0)
+    
+class MixCallAndNoise(BaseImageAugmentationLayer):
+    def __init__(self, seed: int=None, **kwargs) -> None:
+        super().__init__()
+        if seed is None:
+            self.seed = 123
+        else:
+            self.seed = seed
 
+    def call(self, call: tf.Tensor, ds_noise: tf.data.Dataset):
+        pass
 ##############################################################################
 ##############################################################################
 ##############################################################################
@@ -81,6 +91,6 @@ def prepare(ds, batch_size, augments=3, shuffle=False, time_aug=False):
             ds = ds.concatenate(a)
     
     if shuffle:
-        ds = ds.shuffle(1000)
+        ds = ds.shuffle(300)
         
     return ds.prefetch(buffer_size=AUTOTUNE)

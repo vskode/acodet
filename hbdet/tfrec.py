@@ -143,58 +143,6 @@ def read_raw_file(file, annots, shift = 0):
     
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
 
-    
-def _write_tfrecords(annots, shift = 0, **kwArgs):
-    """
-    Write tfrecords files from wav files. 
-    First the files are imported and the noise files are generated. After that 
-    a loop iterates through the tuples containing the audio arrays, labels, and
-    startint times of the audio arrays within the given file. tfrecord files
-    contain no more than 600 audio arrays. The respective audio segments, 
-    labels, starting times, and file paths are saved in the files.
-
-    Args:
-        files (list): list of file paths to the audio files
-    """
-    tfrec_num, array_per_file = 0, 0
-
-    files = np.unique(annots.filename)
-    
-    random.shuffle(files)
-
-    train_file_index = int(len(files)*config['tfrec']['train_ratio'])
-    test_file_index = int(len(files)
-                      *(1-config['tfrec']['train_ratio'])
-                      *config['tfrec']['test_val_ratio'])
-    
-    for i, file in enumerate(files):
-        print('writing tf records files, progress:'
-              f'{i/len(files)*100:.0f} %')
-        
-        if i < train_file_index:
-            folder = 'train'
-        elif i < train_file_index + test_file_index:
-            folder = 'test'
-        else:
-            folder = 'val'
-
-        call_tup, noise_tup = read_raw_file(file, annots, shift = shift)
-        
-        calls = randomize_arrays(call_tup, file)
-        noise = randomize_arrays(noise_tup, file)
-        
-        for samples in [calls, noise]:
-            for audio, label, file, time in samples:
-                if array_per_file > FILE_ARRAY_LIMIT or \
-                                        array_per_file == tfrec_num == 0:
-                    tfrec_num += 1
-                    writer = get_tfrecords_writer(tfrec_num, folder, 
-                                                shift = shift, **kwArgs)
-                    array_per_file = 0
-                    
-                example = create_example(audio, label, file, time)
-                writer.write(example.SerializeToString())
-                array_per_file += 1
                 
 def write_tfrecords(annots, shift = 0, **kwArgs):
     """
@@ -216,7 +164,7 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
     test_file_index = int(len(files)
                       *(1-config['tfrec']['train_ratio'])
                       *config['tfrec']['test_val_ratio'])
-    
+    tfrec_num = 0
     for i, file in enumerate(files):
         print('writing tf records files, progress:'
               f'{i/len(files)*100:.0f} %')
@@ -235,12 +183,16 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
         samples = [*calls, *noise]
         random.shuffle(samples)
         
-        writer = get_tfrecords_writer(i+1, folder, 
-                                    shift = shift, **kwArgs)
-        
-        for audio, label, file, time in samples:
-            examples = create_example(audio, label, file, time)
-            writer.write(examples.SerializeToString())
+        split_by_max_length = [samples[j*FILE_ARRAY_LIMIT:(j+1) * FILE_ARRAY_LIMIT] \
+                                for j in range(samples//FILE_ARRAY_LIMIT + 1)]
+        for samps in split_by_max_length:
+            tfrec_num += 1
+            writer = get_tfrecords_writer(tfrec_num, folder, 
+                                        shift = shift, **kwArgs)
+            
+            for audio, label, file, time in samps:
+                examples = create_example(audio, label, file, time)
+                writer.write(examples.SerializeToString())
 
 def randomize_arrays(tup, file):
     x, y, times = tup
