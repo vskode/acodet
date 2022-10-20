@@ -1,4 +1,5 @@
 from webbrowser import get
+import json
 import pandas as pd
 import numpy as np
 
@@ -7,6 +8,11 @@ import librosa as lb
 import matplotlib.pyplot as plt
 from librosa.display import specshow
 
+def save_model_results(ckpt_dir, result):
+    result['fbeta'] = [float(n) for n in result['fbeta']]
+    result['val_fbeta'] = [float(n) for n in result['val_fbeta']]
+    with open(f"{ckpt_dir}/results.json", 'w') as f:
+        json.dump(result, f)
 
 def get_annots_for_file(annots, file):
     return annots[annots.filename == file].sort_values('start')

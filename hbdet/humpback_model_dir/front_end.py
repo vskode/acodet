@@ -48,11 +48,11 @@ Attributes:
   upper_f: Upper boundary of mel bins in Hz.
 """
 Config.__new__.__defaults__ = (1024, 
-                               config['preproc']['fft_hop'], 
+                               config['fft_hop'], 
                                64, 
-                               config['preproc']['sr'], 
+                               config['sr'], 
                                0.0, 
-                               config['preproc']['sr']/2)
+                               config['sr']/2)
 
 
 class MelSpectrogram(tf.keras.layers.Layer):

@@ -29,10 +29,7 @@ class CropAndFill(BaseImageAugmentationLayer):
         super().__init__()
         self.height = height
         self.width = width
-        if seed is None:
-            self.seed = 123
-        else:
-            self.seed = seed
+        self.seed = seed
     
     def call(self, audio: tf.Tensor):
         """
@@ -46,7 +43,8 @@ class CropAndFill(BaseImageAugmentationLayer):
             tf.Tensor: reordered image
         """
         np.random.seed(self.seed)
-        beg = np.random.randint(self.width)
+        beg = np.random.randint(self.width//2) + self.width//2
+        
         # for debugging purposes
         if not isinstance(audio, tf.Tensor):
             audio = audio[0][0]
@@ -68,29 +66,34 @@ class MixCallAndNoise(BaseImageAugmentationLayer):
 ##############################################################################
 
 crop = tf.keras.Sequential([
-    CropAndFill(64, 128, seed = 100)
+    CropAndFill(64, 128)
 ])
 
 spec = tf.keras.Sequential([
-    tf.keras.layers.Input([config['preproc']['cntxt_wn_sz']]),
+    tf.keras.layers.Input([config['cntxt_wn_sz']]),
     tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
     front_end.MelSpectrogram()
 ])
 
-def prepare(ds, batch_size, augments=3, shuffle=False, time_aug=False):
-    ds = ds.batch(batch_size)
-    # create specs from audio arrays
-    ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
-    
+def augment(ds, augments=3, time_aug=False):
     if time_aug:
         ds_augs = []
         for i in range(augments):
             ds_augs.append(ds.map(lambda x, y: (crop(x, training=True), y), 
                     num_parallel_calls=AUTOTUNE))
-        for a in ds_augs:
-            ds = ds.concatenate(a)
-    
+    return ds_augs
+
+def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, augmented_data=None):
+    if not augmented_data is None:
+        for ds_aug in augmented_data:
+            ds = ds.concatenate(ds_aug)
     if shuffle:
-        ds = ds.shuffle(300)
-        
+        ds = ds.shuffle(shuffle_buffer)    
+    ds = ds.batch(batch_size)
+    # create specs from audio arrays
     return ds.prefetch(buffer_size=AUTOTUNE)
+
+def make_spec_tensor(ds):
+    ds = ds.batch(1)
+    ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
+    return ds.unbatch()

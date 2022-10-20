@@ -10,8 +10,6 @@ from pathlib import Path
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
-params = config['preproc']
-
 FILE_ARRAY_LIMIT = 600
 TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz/'
 
@@ -137,7 +135,7 @@ def read_raw_file(file, annots, shift = 0):
     file_annots.start -= shift
 
     x_call, x_noise, times_c, times_n = funcs.cntxt_wndw_arr(file_annots,
-                                                            file, **params) 
+                                                            file, **config) 
     y_call = np.ones(len(x_call), dtype = 'float32')
     y_noise = np.zeros(len(x_noise), dtype = 'float32')
     
@@ -160,10 +158,10 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
     
     random.shuffle(files)
 
-    train_file_index = int(len(files)*config['tfrec']['train_ratio'])
+    train_file_index = int(len(files)*config['train_ratio'])
     test_file_index = int(len(files)
-                      *(1-config['tfrec']['train_ratio'])
-                      *config['tfrec']['test_val_ratio'])
+                      *(1-config['train_ratio'])
+                      *config['test_val_ratio'])
     tfrec_num = 0
     for i, file in enumerate(files):
         print('writing tf records files, progress:'
@@ -235,7 +233,7 @@ def parse_tfrecord_fn(example):
         tf.io object: tensorflow object containg the data
     """
     feature_description = {
-        "audio": tf.io.FixedLenFeature([params['cntxt_wn_sz']], tf.float32),
+        "audio": tf.io.FixedLenFeature([config['cntxt_wn_sz']], tf.float32),
         "label": tf.io.FixedLenFeature([], tf.int64),
         "file" : tf.io.FixedLenFeature([], tf.string),
         "time" : tf.io.FixedLenFeature([], tf.int64)

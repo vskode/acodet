@@ -1,32 +1,29 @@
 # Configuration file
 
 # Preprocessing settings
-preproc:
-  # relevant for model!
-  sr : 2000
-  cntxt_wn_hop: 7755
-  cntxt_wn_sz: 7755
-  fft_window_length : 2048
-  n_freq_bins: 256
-  freq_cmpr: 'linear'
-  fmin:  50
-  fmax:  1000
-  nr_noise_samples: 100
-  sequence_len : 7755
-  fft_hop: 53
+
+# relevant for model!
+sr : 2000
+# cntxt_wn_hop: 7755
+cntxt_wn_sz: 7755
+fft_window_length : 2048
+n_freq_bins: 256
+freq_cmpr: 'linear'
+fmin:  50
+fmax:  1000
+nr_noise_samples: 100
+# sequence_len : 7755
+fft_hop: 53
 
 # settings for creation of tfrecord dataset
-tfrec:
-  # train/test split
-  train_ratio: 0.7
-  # test/val split
-  test_val_ratio: 0.7
+# train/test split
+train_ratio: 0.7
+# test/val split
+test_val_ratio: 0.7
 
-model:
-  sr: 2000
-  # default lr if not specified otherwise
-  lr: 0.001
-  # threshold for predictions
-  thresh: 0.5
-  # prediction window limit
-  pred_win_lim: 20
+# default lr if not specified otherwise
+lr: 0.001
+# threshold for predictions
+thresh: 0.5
+# prediction window limit
+pred_win_lim: 20

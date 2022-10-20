@@ -1,4 +1,7 @@
 import tensorflow as tf
+import yaml
+with open('hbdet/hbdet/config.yml', 'r') as f:
+    config = yaml.safe_load(f)
 
 from .humpback_model_dir import humpback_model
 
@@ -14,7 +17,7 @@ class GoogleMod():
             params (dict): model parameters
         """
         self.load_google_new(**params)
-        self.get_flat_model(**params)
+        self.load_flat_model(**params)
     
     def load_google_new(self, load_g_ckpt=True, **_):
         """
@@ -29,7 +32,7 @@ class GoogleMod():
         if load_g_ckpt:
             self.model.load_weights('models/google_humpback_model')
 
-    def get_flat_model(self, input_tensors='spectrograms', **_):
+    def load_flat_model(self, input_tensors='spectrograms', **_):
         """
         Take nested model architecture from Harvey Matthew and flatten it for 
         ease of use. This way trainability of layers can be iteratively 
@@ -56,7 +59,8 @@ class GoogleMod():
             model_list.append(tf.keras.layers.Input([128, 64]))
         else:
             # add MelSpectrogram layer
-            model_list.append(tf.keras.layers.Input([39124]))
+            model_list.append(tf.keras.layers.Input(
+                [config['cntxt_wn_sz']]))
             model_list.append(tf.keras.layers.Lambda(
                 lambda t: tf.expand_dims(t, -1)))
             model_list.append(self.model.layers[0])

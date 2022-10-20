@@ -1,4 +1,3 @@
-import yaml
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -6,9 +5,6 @@ from hbdet.tfrec import get_dataset
 from hbdet.google_funcs import GoogleMod
 import matplotlib.pyplot as plt
 
-with open('hbdet/hbdet/config.yml', 'r') as f:
-    config = yaml.safe_load(f)
-params = config['preproc']
 
 AUTOTUNE = tf.data.AUTOTUNE
 
@@ -25,7 +21,7 @@ def get_val_labels(val_data, num_of_samples):
     return list(val_data.batch(num_of_samples))[0][1].numpy()
 
 def init_model(checkpoint_dir, load_untrained_model=False, **kwArgs):
-    g = GoogleMod(**config['model'], input_tensors='array')
+    g = GoogleMod(input_tensors='array')
     model = g.model
     if not load_untrained_model:
         checkpoints = list(checkpoint_dir.glob('cp-*.index'))

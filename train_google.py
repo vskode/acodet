@@ -1,5 +1,4 @@
 import os
-import yaml
 import time
 import json
 from pathlib import Path
@@ -9,33 +8,32 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 
 from hbdet.humpback_model_dir import front_end
+from hbdet.funcs import save_model_results
 from hbdet.google_funcs import GoogleMod
 from hbdet.plot_utils import plot_model_results
 from keras.utils.layer_utils import count_params
 from evaluate_Gmodel import create_and_save_figure
 from hbdet.tfrec import get_dataset
-from hbdet.plot_utils import save_rndm_spectrogram
+from hbdet.plot_utils import plot_sample_spectrograms
 
-from hbdet.augmentation import prepare
+from hbdet.augmentation import prepare, augment, make_spec_tensor
 
-with open('hbdet/hbdet/config.yml', 'r') as f:
-    config = yaml.safe_load(f)
 
 TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz/tfrecords_0s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 batch_size = 32
-epochs = 10
+epochs = 1
 
 load_weights = False
 steps_per_epoch = False
 rep = 1
 good_file_size = 370
 poor_file_size = 0
-num_of_shifts = 2
+num_of_shifts = 3
 data_description = '{}, {} x time shifts'
-init_lr = 1e-3
-final_lr = 1e-5
+init_lr = 3e-3
+final_lr = 1e-6
 pre_blocks = 9
 f_score_beta = 0.5
 f_score_thresh = 0.5
@@ -75,21 +73,31 @@ preproc blocks  = {pre_blocks}
 #############################################################################
 
 time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
+Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 dataset_size = (good_file_size + poor_file_size)*num_of_shifts
+seed = np.random.randint(100)
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
-train_data = prepare(train_data, batch_size, augments = num_of_shifts,
-                     shuffle=True, time_aug=True)
+train_data = make_spec_tensor(train_data)
+augmented_data = augment(train_data, augments = num_of_shifts, time_aug=True)
+
+plot_sample_spectrograms(train_data, dir = time_start, name = 'train', 
+                         seed=seed)
+for i, augmentation in enumerate(augmented_data):
+    plot_sample_spectrograms(augmentation, dir = time_start, 
+                            name=f'augment_{i}', seed=seed)
+train_data = prepare(train_data, batch_size, shuffle=True, 
+                     shuffle_buffer=dataset_size//2, 
+                     augmented_data=augmented_data)
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
+test_data = make_spec_tensor(test_data)
+plot_sample_spectrograms(test_data, dir = time_start, name = 'test')
 test_data = prepare(test_data, batch_size)
 
-Path(f'trainings/{time_start}').mkdir(exist_ok=True)
-save_rndm_spectrogram(train_data, f'trainings/{time_start}/train_sample.png')
-save_rndm_spectrogram(test_data, f'trainings/{time_start}/test_sample.png')
-
+open(f'trainings/{time_start}/training_info.txt', 'w').write(info_text)
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 decay_steps = dataset_size,
                                 decay_rate = (final_lr/init_lr)**(1/epochs),
@@ -98,9 +106,11 @@ lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
 for ind, unfreeze in enumerate(unfreezes):
     
     if unfreeze == 'no-TF':
-        config['model']['load_g_ckpt'] = False
+        load_g_ckpt = True
+    else:
+        load_g_ckpt = False
 
-    model = GoogleMod(**config['model']).model
+    model = GoogleMod(load_g_ckpt=load_g_ckpt).model
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
         loss=tf.keras.losses.BinaryCrossentropy(),
@@ -128,41 +138,27 @@ for ind, unfreeze in enumerate(unfreezes):
 
     checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
                         "/cp-last.ckpt"
-                        # "/cp-{epoch:04d}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
     
     # Create a callback that saves the model's weights every 5 epochs
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path, 
-        monitor = 'val_loss',
         mode = 'min',
-        save_best_only = False, 
         verbose=1, 
         save_weights_only=True,
         save_freq='epoch')
 
     # Save the weights using the `checkpoint_path` format
     model.save_weights(checkpoint_path.format(epoch=0))
-    if ind == 0:
-        with open(f'trainings/{time_start}/training_info.txt', 'w') as f:
-            f.write(info_text)
 
     # Train the model with the new callback
     hist = model.fit(train_data, 
             epochs = epochs, 
             # steps_per_epoch=steps_per_epoch, 
             validation_data = test_data,
-            callbacks=[cp_callback]
-            )
+            callbacks=[cp_callback])
     result = hist.history
-
-    pd.DataFrame().to_csv(f"{checkpoint_dir}/trainable_"
-                        f"{count_params(model.trainable_weights):.0f}.csv")
-    
-    result['fbeta'] = [float(n) for n in result['fbeta']]
-    result['val_fbeta'] = [float(n) for n in result['val_fbeta']]
-    with open(f"{checkpoint_dir}/results.json", 'w') as f:
-        json.dump(result, f)
+    save_model_results(checkpoint_dir, result)
 
 plot_model_results(time_start, data = data_description, lr_begin = init_lr,
                     lr_end = final_lr)

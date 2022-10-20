@@ -10,7 +10,7 @@ with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
 def plot_model_results(datetime, **kwargs):
-    r, c = 2, 4
+    r, c = 2, 5
     fig, ax = plt.subplots(ncols = c, nrows = r, figsize = [15, 8])
 
     checkpoint_paths = Path(f"trainings/{datetime}").glob('unfreeze_*')
@@ -54,23 +54,29 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
                         duration = cntxt_wn_sz/sr)
     return simple_spec(audio, sr = sr, cntxt_wn_sz=cntxt_wn_sz, **kwArgs)
 
-def save_rndm_spectrogram(dataset,  path, sr = config['preproc']['sr']):
-    ds_size = sum(1 for _ in dataset)
+def plot_sample_spectrograms(dataset,  *, dir, name,
+                          random=True, seed=None, sr=config['sr'], 
+                          rows=4, cols=4):
+    r, c = rows, cols 
+    if random:
+        ds_size = sum(1 for _ in dataset)
+        np.random.seed(seed)
+        rand_skip = np.random.randint(ds_size)
+        sample = dataset.skip(rand_skip).take(r*c)
+    else:
+        sample = dataset.take(r*c)
     
-    r, c = 4, 4 
-    sample = dataset.skip(np.random.randint(ds_size)).take(1)
-    sample = next(iter(sample))[0][:r*c]
+    max_freq_bin = 128//(config['sr']//2000)
     
-    max_freq_bin = 128//(config['preproc']['sr']//2000)
-    
-    fmin = sr/2/sample[0].numpy().shape[0]
-    fmax = sr/2/sample[0].numpy().shape[0]*max_freq_bin
+    fmin = sr/2/next(iter(sample))[0].numpy().shape[0]
+    fmax = sr/2/next(iter(sample))[0].numpy().shape[0]*max_freq_bin
     fig, axes = plt.subplots(nrows = r, ncols = c, figsize=[12, 10])
     
-    for i, samp in enumerate(sample):
-        ar = samp.numpy()[:,1:max_freq_bin].T
+    for i, (aud, lab) in enumerate(sample):
+        ar = aud.numpy()[:,1:max_freq_bin].T
         axes[i//r][i%c].imshow(ar, origin='lower', interpolation='nearest',
                                 aspect='auto')
+        axes[i//r][i%c].set_title(f'label: {lab}')
         if i//r == r-1 and i%c == 0:
             axes[i//r][i%c].set_xticks(np.linspace(0, ar.shape[1], 5))
             xlabs = np.linspace(0, 3.9, 5).astype(str)
@@ -86,8 +92,8 @@ def save_rndm_spectrogram(dataset,  path, sr = config['preproc']['sr']):
             axes[i//r][i%c].set_yticks([])
             axes[i//r][i%c].set_yticklabels([])
             
-    fig.suptitle('Random sample of 16 spectrograms')
-    fig.savefig(path)
+    fig.suptitle(f'{name} sample of 16 spectrograms. random={random}')
+    fig.savefig(f'trainings/{dir}/{name}_sample.png')
 
 def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000, 
                 cntxt_wn_sz = 39124, fig = None, colorbar = True):
