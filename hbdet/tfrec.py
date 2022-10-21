@@ -11,7 +11,7 @@ with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
 FILE_ARRAY_LIMIT = 600
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz/'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/'
 
 ########################################################
 #################  WRITING   ###########################
@@ -141,6 +141,17 @@ def read_raw_file(file, annots, shift = 0):
     
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
 
+def write_tfrecs_for_mixup(file):
+    noise, t = funcs.return_windowed_file(file, config['sr'], 
+                                       config['cntxt_wn_sz'])
+    noise_tups = list(zip(noise, [0]*len(t), [file]*len(t), t))
+    random.shuffle(noise_tups)
+    
+    writer = get_tfrecords_writer(1, 'noise', 
+                                shift = 0)
+    for audio, label, file, time in noise_tups:
+        examples = create_example(audio, label, file, time)
+        writer.write(examples.SerializeToString())
                 
 def write_tfrecords(annots, shift = 0, **kwArgs):
     """
@@ -212,7 +223,7 @@ def get_tfrecords_writer(num, fold, shift = 0, alt_subdir = ''):
         TFRecordWriter object: file handle
     """
     path = TFRECORDS_DIR + alt_subdir + \
-            f"_{str(shift).replace('.','-')}s_shift_b"
+            f"_{str(shift).replace('.','-')}s_shift"
     Path(path + f'/{fold}').mkdir(parents = True, exist_ok = True)
     return tf.io.TFRecordWriter(path + f"/{fold}/"
                                 "file_%.2i.tfrec" % num)

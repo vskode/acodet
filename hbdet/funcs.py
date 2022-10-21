@@ -17,6 +17,15 @@ def save_model_results(ckpt_dir, result):
 def get_annots_for_file(annots, file):
     return annots[annots.filename == file].sort_values('start')
 
+def return_windowed_file(file, sr, cntxt_wn_sz):
+    audio, fs = lb.load(file, sr = 2000)
+    audio = lb.resample(audio, orig_sr = 2000, target_sr = sr)
+    audio = audio[:len(audio)//cntxt_wn_sz * cntxt_wn_sz]
+    audio_arr = audio.reshape([len(audio)//cntxt_wn_sz, cntxt_wn_sz])
+    
+    times = np.arange(0, audio_arr.shape[0]*cntxt_wn_sz/sr, cntxt_wn_sz/sr)
+    return audio_arr, times
+
 def cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
                             sr, **kwargs):
     audio, fs = lb.load(file, sr = 2000, 
