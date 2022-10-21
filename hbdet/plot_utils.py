@@ -54,12 +54,12 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
                         duration = cntxt_wn_sz/sr)
     return simple_spec(audio, sr = sr, cntxt_wn_sz=cntxt_wn_sz, **kwArgs)
 
-def plot_sample_spectrograms(dataset,  *, dir, name,
+def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
                           random=True, seed=None, sr=config['sr'], 
                           rows=4, cols=4):
     r, c = rows, cols 
     if random:
-        ds_size = sum(1 for _ in dataset)
+        if ds_size is None: ds_size = sum(1 for _ in dataset)
         np.random.seed(seed)
         rand_skip = np.random.randint(ds_size)
         sample = dataset.skip(rand_skip).take(r*c)

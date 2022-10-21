@@ -52,22 +52,27 @@ class CropAndFill(BaseImageAugmentationLayer):
         return tf.concat([audio[beg:], audio[:beg]], 0)
     
 class MixCallAndNoise(BaseImageAugmentationLayer):
-    def __init__(self, seed: int=None, **kwargs) -> None:
+    def __init__(self, noise_data: tf.data.Dataset, seed: int=None, 
+                 alpha: float=0.3, **kwargs) -> None:
         super().__init__()
-        if seed is None:
-            self.seed = 123
-        else:
-            self.seed = seed
-
-    def call(self, call: tf.Tensor, ds_noise: tf.data.Dataset):
-        pass
+        self.seed = seed
+        self.alpha = alpha
+        self.noise_ds = noise_data
+        self.len = 370 - 1
+        
+    def call(self, train_sample: tf.Tensor):
+        np.random.seed(self.seed)
+        r = np.random.randint(self.len)
+        self.noise_audio, _ = next(iter(self.noise_ds.take(1)))
+        return train_sample*(1-self.alpha) + self.noise_audio*self.alpha
+    
+    
 ##############################################################################
 ##############################################################################
 ##############################################################################
 
-crop = tf.keras.Sequential([
-    CropAndFill(64, 128)
-])
+time_shift = tf.keras.Sequential([CropAndFill(64, 128)])
+
 
 spec = tf.keras.Sequential([
     tf.keras.layers.Input([config['cntxt_wn_sz']]),
@@ -75,12 +80,11 @@ spec = tf.keras.Sequential([
     front_end.MelSpectrogram()
 ])
 
-def augment(ds, augments=3, time_aug=False):
-    if time_aug:
-        ds_augs = []
-        for i in range(augments):
-            ds_augs.append(ds.map(lambda x, y: (crop(x, training=True), y), 
-                    num_parallel_calls=AUTOTUNE))
+def augment(ds, augments=1, aug_func=time_shift):
+    ds_augs = []
+    for i in range(augments):
+        ds_augs.append(ds.map(lambda x, y: (aug_func(x, training=True), y), 
+                num_parallel_calls=AUTOTUNE))        
     return ds_augs
 
 def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, augmented_data=None):

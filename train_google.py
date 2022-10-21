@@ -1,11 +1,11 @@
 import os
 import time
-import json
+time.sleep(3600*18)
 from pathlib import Path
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 import tensorflow_addons as tfa
+from functools import partial
 
 from hbdet.humpback_model_dir import front_end
 from hbdet.funcs import save_model_results
@@ -16,29 +16,30 @@ from evaluate_Gmodel import create_and_save_figure
 from hbdet.tfrec import get_dataset
 from hbdet.plot_utils import plot_sample_spectrograms
 
-from hbdet.augmentation import prepare, augment, make_spec_tensor
+import hbdet.augmentation as aug
 
 
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz/tfrecords_0s_shift'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/tfrecords_0s_shift'
 AUTOTUNE = tf.data.AUTOTUNE
 
 batch_size = 32
-epochs = 1
+epochs = 60
 
 load_weights = False
+load_g_weights = False
 steps_per_epoch = False
 rep = 1
 good_file_size = 370
 poor_file_size = 0
-num_of_shifts = 3
+num_of_shifts = 5
 data_description = '{}, {} x time shifts'
-init_lr = 3e-3
+init_lr = 1e-3
 final_lr = 1e-6
 pre_blocks = 9
 f_score_beta = 0.5
 f_score_thresh = 0.5
 
-unfreezes = ['no-TF']
+unfreezes = ['no-TF', 15, 5, 19]
 data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem, 
                                            num_of_shifts)
 
@@ -47,7 +48,7 @@ info_text = f"""Model run INFO:
 model: untrained model 
 dataset: {data_description}
 lr: new lr settings
-comments: first training on 2 kHz data, included fscore
+comments: 10 khz; time shift and first mixup implementation included
 
 VARS:
 data_path       = {TFRECORDS_DIR}
@@ -77,25 +78,43 @@ Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 seed = np.random.randint(100)
 
+noise_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/noise/*.tfrec")
+noise_data = get_dataset(noise_files, batch_size, AUTOTUNE = AUTOTUNE)
+noise_data = aug.make_spec_tensor(noise_data)
+mix_up = tf.keras.Sequential([aug.MixCallAndNoise(noise_data=noise_data)])
+
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
-train_data = make_spec_tensor(train_data)
-augmented_data = augment(train_data, augments = num_of_shifts, time_aug=True)
+train_data = aug.make_spec_tensor(train_data)
+time_aug_data = list(zip(aug.augment(train_data, augments = num_of_shifts, 
+                        aug_func=aug.time_shift),
+                         ['time_shift']*num_of_shifts ))
 
-plot_sample_spectrograms(train_data, dir = time_start, name = 'train', 
+mixup_aug_data = list(zip(aug.augment(train_data, augments = 1, 
+                        aug_func=mix_up),
+                          ['mix_up']*1 ))
+
+mixup_aug_data += list(zip(aug.augment(time_aug_data[0][0], augments = 1, 
+                        aug_func=mix_up),
+                           ['mix_up']*1 ))
+augmented_data = [*time_aug_data, *mixup_aug_data, (noise_data, 'noise')]
+
+plot_train_aug_spec = partial(plot_sample_spectrograms, ds_size = good_file_size)
+plot_train_aug_spec(train_data, dir = time_start, name = 'train', 
                          seed=seed)
-for i, augmentation in enumerate(augmented_data):
-    plot_sample_spectrograms(augmentation, dir = time_start, 
-                            name=f'augment_{i}', seed=seed)
-train_data = prepare(train_data, batch_size, shuffle=True, 
+for i, (augmentation, aug_name) in enumerate(augmented_data):
+    plot_train_aug_spec(augmentation, dir = time_start, 
+                            name=f'augment_{i}-{aug_name}', seed=seed)
+    
+train_data = aug.prepare(train_data, batch_size, shuffle=True, 
                      shuffle_buffer=dataset_size//2, 
-                     augmented_data=augmented_data)
+                     augmented_data=np.array(augmented_data)[:,0])
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
 test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
-test_data = make_spec_tensor(test_data)
+test_data = aug.make_spec_tensor(test_data)
 plot_sample_spectrograms(test_data, dir = time_start, name = 'test')
-test_data = prepare(test_data, batch_size)
+test_data = aug.prepare(test_data, batch_size)
 
 open(f'trainings/{time_start}/training_info.txt', 'w').write(info_text)
 lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
@@ -106,9 +125,9 @@ lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
 for ind, unfreeze in enumerate(unfreezes):
     
     if unfreeze == 'no-TF':
-        load_g_ckpt = True
-    else:
         load_g_ckpt = False
+    else:
+        load_g_ckpt = True
 
     model = GoogleMod(load_g_ckpt=load_g_ckpt).model
     model.compile(
@@ -123,18 +142,14 @@ for ind, unfreeze in enumerate(unfreezes):
                                             name='fbeta'),           
         ]
     )
-    
-    if load_weights:  
-        ckpt = tf.train.latest_checkpoint(load_weights)
-        model.load_weights(ckpt)
-    
+        
     if not unfreeze == 'no-TF':
         for layer in model.layers[pre_blocks:-unfreeze]:
             layer.trainable = False
             
     if load_weights:
         model.load_weights(
-            f'trainings/2022-09-16_10/unfreeze_{unfreeze}/cp-0032.ckpt')
+            f'trainings/2022-10-20_13/unfreeze_{unfreeze}/cp-last.ckpt')
 
     checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
                         "/cp-last.ckpt"
