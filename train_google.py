@@ -6,12 +6,9 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from functools import partial
 
-from hbdet.humpback_model_dir import front_end
 from hbdet.funcs import save_model_results
 from hbdet.google_funcs import GoogleMod
-from hbdet.plot_utils import plot_model_results
-from keras.utils.layer_utils import count_params
-from evaluate_Gmodel import create_and_save_figure
+from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import get_dataset
 from hbdet.plot_utils import plot_sample_spectrograms
 
@@ -72,18 +69,18 @@ preproc blocks  = {pre_blocks}
 #############################  RUN  #########################################
 #############################################################################
 
-time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
+time_start = '2022-10-24_09'#time.strftime('%Y-%m-%d_%H', time.gmtime())
 Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 seed = np.random.randint(100)
 
 noise_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/noise/*.tfrec")
-noise_data = get_dataset(noise_files, batch_size, AUTOTUNE = AUTOTUNE)
+noise_data = get_dataset(noise_files, AUTOTUNE = AUTOTUNE)
 noise_data = aug.make_spec_tensor(noise_data)
 mix_up = tf.keras.Sequential([aug.MixCallAndNoise(noise_data=noise_data)])
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
-train_data = get_dataset(train_files, batch_size, AUTOTUNE = AUTOTUNE)
+train_data = get_dataset(train_files, AUTOTUNE = AUTOTUNE)
 train_data = aug.make_spec_tensor(train_data)
 time_aug_data = list(zip(aug.augment(train_data, augments = num_of_shifts, 
                         aug_func=aug.time_shift),
@@ -110,7 +107,7 @@ train_data = aug.prepare(train_data, batch_size, shuffle=True,
                      augmented_data=np.array(augmented_data)[:,0])
 
 test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
-test_data = get_dataset(test_files, batch_size, AUTOTUNE = AUTOTUNE)
+test_data = get_dataset(test_files, AUTOTUNE = AUTOTUNE)
 test_data = aug.make_spec_tensor(test_data)
 plot_sample_spectrograms(test_data, dir = time_start, name = 'test')
 test_data = aug.prepare(test_data, batch_size)
@@ -122,7 +119,7 @@ lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 staircase = True)
 
 for ind, unfreeze in enumerate(unfreezes):
-    
+    continue
     if unfreeze == 'no-TF':
         load_g_ckpt = False
     else:
@@ -138,7 +135,11 @@ for ind, unfreeze in enumerate(unfreezes):
                     tfa.metrics.FBetaScore(num_classes=1,
                                             beta=f_score_beta,
                                             threshold=f_score_thresh,
-                                            name='fbeta'),           
+                                            name='fbeta'),                               
+                    tfa.metrics.FBetaScore(num_classes=1,
+                                            beta=1.,
+                                            threshold=f_score_thresh,
+                                            name='fbeta1'),       
         ]
     )
         
@@ -174,7 +175,7 @@ for ind, unfreeze in enumerate(unfreezes):
     result = hist.history
     save_model_results(checkpoint_dir, result)
 
-plot_model_results(time_start, data = data_description, lr_begin = init_lr,
-                    lr_end = final_lr)
-create_and_save_figure(TFRECORDS_DIR, batch_size, time_start,
-                        data = data_description)
+plot_model_results(time_start, data = data_description, init_lr = init_lr,
+                    final_lr = final_lr)
+create_and_save_figure(GoogleMod, TFRECORDS_DIR, batch_size, time_start,
+                        plot_cm=True, data = data_description)

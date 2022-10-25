@@ -14,9 +14,9 @@ n_freq_bins: 256
 freq_cmpr: 'linear'
 fmin:  50
 fmax:  1000
-sr : 2000
-cntxt_wn_sz: 7755
-fft_hop: 53
+sr : 10000
+cntxt_wn_sz: 39124
+fft_hop: 300
 
 # settings for creation of tfrecord dataset
 # train/test split
