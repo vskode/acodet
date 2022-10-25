@@ -1,6 +1,5 @@
 import os
 import time
-time.sleep(3600*18)
 from pathlib import Path
 import numpy as np
 import tensorflow as tf

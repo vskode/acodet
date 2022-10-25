@@ -1,51 +1,80 @@
-from webbrowser import get
 import json
-import pandas as pd
+import tensorflow as tf
 import numpy as np
-
-from pathlib import Path
 import librosa as lb
-import matplotlib.pyplot as plt
-from librosa.display import specshow
+from pathlib import Path
+import collections
+import yaml
+import pandas as pd
 
-def save_model_results(ckpt_dir, result):
-    result['fbeta'] = [float(n) for n in result['fbeta']]
-    result['val_fbeta'] = [float(n) for n in result['val_fbeta']]
-    with open(f"{ckpt_dir}/results.json", 'w') as f:
-        json.dump(result, f)
+############# Define Config #################################################
 
+with open('hbdet/hbdet/config.yml', 'r') as f:
+  config = yaml.safe_load(f)
+
+Config = collections.namedtuple("Config", [
+    "sr",
+    "downsample_sr",
+    "context_win",
+    "fmin",
+    "fmax",
+    "pred_win_lim",
+    "thresh"
+])
+Config.__new__.__defaults__ = (config['sr'],
+                               config['downsample_sr'],
+                               config['cntxt_wn_sz'],
+                               config['fmin'],
+                               config['fmax'],
+                               config['pred_win_lim'],
+                               config['thresh'])
+config = Config()
+
+############# TFRECORDS helpers #############################################
 def get_annots_for_file(annots, file):
     return annots[annots.filename == file].sort_values('start')
 
-def return_windowed_file(file, sr, cntxt_wn_sz):
-    audio, fs = lb.load(file, sr = 2000)
-    audio = lb.resample(audio, orig_sr = 2000, target_sr = sr)
-    audio = audio[:len(audio)//cntxt_wn_sz * cntxt_wn_sz]
-    audio_arr = audio.reshape([len(audio)//cntxt_wn_sz, cntxt_wn_sz])
+def load_audio(file, **kwargs):
+    try:
+        if config.sr == config.downsample_sr:
+            audio_flat, _ = lb.load(file, sr = config.downsample_sr, **kwargs)
+        else:
+            audio_flat, _ = lb.load(file, sr = config.downsample_sr, **kwargs)
+            audio_flat = lb.resample(audio_flat, orig_sr = config.downsample_sr, 
+                                    target_sr = config.sr)
+        if len(audio_flat) == 0: return
+        return audio_flat
+    except:
+        print("File is corrputed and can't be loaded.")
+        return
+
+def return_windowed_file(file):
+    audio = load_audio(file)    
+    audio = audio[:len(audio)//config.context_win * config.context_win]
+    audio_arr = audio.reshape([len(audio)//config.context_win, 
+                               config.context_win])
     
-    times = np.arange(0, audio_arr.shape[0]*cntxt_wn_sz/sr, cntxt_wn_sz/sr)
+    times = np.arange(0, audio_arr.shape[0]*config.context_win/config.sr, 
+                      config.context_win/config.sr)
     return audio_arr, times
 
-def cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
-                            sr, **kwargs):
-    audio, fs = lb.load(file, sr = 2000, 
-                    duration = annotations['start'].iloc[-1] +\
-                                cntxt_wn_sz/sr)
-    audio = lb.resample(audio, orig_sr = 2000, target_sr = sr)
+def cntxt_wndw_arr(annotations, file, **kwargs):
+    duration = annotations['start'].iloc[-1] + config.context_win/config.sr
+    audio = load_audio(file, duration=duration)
     
     seg_ar, times_c = list(), list()
     for index, row in annotations.iterrows():
-        beg = int((row.start)*sr)
-        end = int((row.start)*sr + cntxt_wn_sz)
+        beg = int((row.start)*config.sr)
+        end = int((row.start)*config.sr + config.context_win)
         
         
-        if len(audio[beg:end]) == cntxt_wn_sz:
+        if len(audio[beg:end]) == config.context_win:
             seg_ar.append(audio[beg:end])
             
             times_c.append(beg)
         else:
             end = len(audio)
-            beg = end - cntxt_wn_sz
+            beg = end - config.context_win
             seg_ar.append(audio[beg:end])
             
             times_c.append(beg)
@@ -54,195 +83,136 @@ def cntxt_wndw_arr(annotations, file, *, cntxt_wn_sz,
     seg_ar = np.array(seg_ar, dtype='float32')
             
     noise_ar, times_n = return_inbetween_noise_arrays(audio, annotations,
-                                                        sr, cntxt_wn_sz)
+                                                      config.sr, 
+                                                      config.context_win)
     return seg_ar, noise_ar, times_c, times_n
     
-def return_inbetween_noise_arrays(audio, annotations, sr, cntxt_wn_sz):
+def return_inbetween_noise_arrays(audio, annotations):
     num_wndws_btw_end_start = ( (
         annotations.start[1:].values-annotations.end[:-1].values
-        ) // (cntxt_wn_sz/sr) ).astype(int)
+        ) // (config.context_win/config.sr) ).astype(int)
     noise_ar, times = list(), list()
     for ind, num_wndws in enumerate(num_wndws_btw_end_start):
         if num_wndws < 1:
             continue
         for window_ind in range(num_wndws):
-            beg = int(annotations.end.iloc[ind]*sr) + cntxt_wn_sz * window_ind
-            end = beg + cntxt_wn_sz
+            beg = int(annotations.end.iloc[ind]*config.sr) \
+                  + config.context_win * window_ind
+            end = beg + config.context_win
             noise_ar.append(audio[beg:end])
             times.append(beg)
     
     return np.array(noise_ar, dtype='float32'), times
-            
 
-def return_noise_arrays(file, sr, annotations,
-                        nr_noise_samples, cntxt_wn_sz):
-    try:
-        noise, fs = lb.load(file, sr = sr, 
-                offset = annotations['end'].iloc[-1],
-                duration = nr_noise_samples * cntxt_wn_sz)
-        noise_ar = list()
-        for i in range(nr_noise_samples):
-            beg = i*cntxt_wn_sz
-            end = (i+1)*cntxt_wn_sz
-            if len(noise[beg:end]) == cntxt_wn_sz:
-                noise_ar.append(noise[beg:end])
-            else:
-                break
-    except:
-        noise_ar = list()
-        
-    return np.array(noise_ar, dtype='float32')
-
-def get_file_durations():
-    return pd.read_csv('Daten/file_durations.csv')
+################ Plotting helpers ###########################################
 
 def get_time(time):
     return f'{int(time/60)}:{np.mod(time, 60):.1f}s'
 
-def plot_ref_spec(signal, file_path, label, 
-                              fft_window_length, sr, cntxt_wn_sz,
-                              start, noise=False, **_):
-    S = np.abs(lb.stft(signal, win_length = fft_window_length))
-    fig, ax = plt.subplots(figsize = [6, 4])
-    # limit S first dimension from [10:256], thatway isolating frequencies
-    # (sr/2)/1025*10 = 48.78 to (sr/2)/1025*266 = 1297.56 for visualization
-    fmin = sr/2/S.shape[0]*10
-    fmax = sr/2/S.shape[0]*266
-    S_dB = lb.amplitude_to_db(S[10:266, :], ref=np.max)
-    img = specshow(S_dB, x_axis = 's', y_axis = 'linear', 
-                   sr = sr, win_length = fft_window_length, ax=ax, 
-                   x_coords = np.linspace(0, cntxt_wn_sz/sr, S_dB.shape[1]),
-                    y_coords = np.linspace(fmin, fmax, 2**8),
-                vmin = -40)
-    fig.colorbar(img, ax=ax, format='%+2.0f dB')
-    file_name = f'{Path(file_path).stem}_spec_w_label.png'
-    ax.set(title=f'spec. of random sample\n'\
-                f'file: {Path(file_path).stem}.wav | start = {get_time(start)}')
-    if noise:
-        dir_path = f'predictions/reference/spectrograms/noise/'
-        create_dirs(Path(dir_path))
-        file_name = dir_path + file_name[:-4] + '_noise.png'
+################ Model Training helpers #####################################    
+
+def save_model_results(ckpt_dir, result):
+    result['fbeta'] = [float(n) for n in result['fbeta']]
+    result['val_fbeta'] = [float(n) for n in result['val_fbeta']]
+    result['fbeta1'] = [float(n) for n in result['fbeta1']]
+    result['val_fbeta1'] = [float(n) for n in result['val_fbeta1']]
+    with open(f"{ckpt_dir}/results.json", 'w') as f:
+        json.dump(result, f)
+        
+def get_val_labels(val_data, num_of_samples):
+    return list(val_data.batch(num_of_samples))[0][1].numpy()
+
+############### Model Evaluation helpers ####################################
+
+def init_model(model_instance, checkpoint_dir, **kwargs):
+    mod_obj = model_instance(**kwargs)
+    mod_obj.load_ckpt(checkpoint_dir)
+    mod_obj.change_input_to_array()
+    return mod_obj.model
+
+def print_evaluation(val_data, model, batch_size):
+    return model.evaluate(val_data, batch_size = batch_size, verbose =2)
+    
+def predict_values(val_data, model):
+    return model.predict(x = val_data.batch(batch_size=32))
+
+def get_pr_arrays(labels, preds, metric):
+    threshs=np.linspace(0, 1, num=100)[:-1]
+    r = getattr(tf.keras.metrics, metric)(thresholds = list(threshs))
+    r.update_state(labels, preds.reshape(len(preds)))
+    result = r.result().numpy()    
+    return result
+
+def get_labels_and_preds(model_instance, training_path, val_data, **kwArgs):
+    model = init_model(model_instance, training_path, **kwArgs)
+    preds = predict_values(val_data, model)
+    labels = get_val_labels(val_data, len(preds))
+    return labels, preds
+
+############## Generate Model Annotations helpers ############################
+
+def get_files(search_str):
+    folder = Path('generated_annotations/src')
+    fold_glob = folder.glob(search_str)
+    return fold_glob
+
+def split_audio_into_sections(audio, pred_len_samps):
+    if len(audio) > pred_len_samps:
+        n = pred_len_samps
+        audio_secs = [audio[i:i+n] for i in range(0, len(audio), n)]
     else:
-        dir_path = f'predictions/reference/spectrograms/calls/'
-        create_dirs(Path(dir_path))
-        file_name = dir_path + file_name[:-4] + '_call.png'
+        audio_secs = [audio]
+    return audio_secs
+
+def compute_predictions(audio, model):
+    num = np.ceil(len(audio) / config.context_win)
+    # zero pad in case the end is reached
+    audio = [*audio, *np.zeros([int(num*config.context_win - len(audio))])]
+
+    wins = np.array(audio).reshape([int(num), config.context_win])
+
+    return model.predict(x = tf.convert_to_tensor(wins))
+
+def create_Raven_annotation_df(preds, ind, pred_len_samps):
+    df = pd.DataFrame(columns = ['Begin Time (s)', 'End Time (s)',
+                                 'High Freq (Hz)', 'Low Freq (Hz)'])
+
+    df['Begin Time (s)'] = (np.arange(0, len(preds)) 
+                                    * config.context_win) \
+                                    / config.sr
+    df['End Time (s)'] = df['Begin Time (s)'] + \
+                                config.context_win/config.sr
+                                
+    df['Begin Time (s)'] += (ind*pred_len_samps)/config.sr
+    df['End Time (s)'] += (ind*pred_len_samps)/config.sr
+    
+    df['High Freq (Hz)'] = config.fmax
+    df['Low Freq (Hz)'] = config.fmin
+    df['Prediction/Comments'] = preds
+    return df
+    
+def create_annotation_df(audio_secs, model, pred_len_samps):
+    annots = pd.DataFrame()
+    for ind, audio in enumerate(audio_secs):
+        preds = compute_predictions(audio, model)        
+        df = create_Raven_annotation_df(preds, ind, pred_len_samps)
+        df = df.iloc[preds.reshape([len(preds)]) > config.thresh]
+
+        annots = pd.concat([annots, df], ignore_index=True)
+    annots.index  = np.arange(1, len(annots)+1)
+    annots.index.name = 'Selection'
+    return annots
+
+def gen_raven_annotation(file, model, mod_label, time_start):
+    audio_flat = load_audio(file)
+    pred_len_samps = config.pred_win_lim * config.context_win
+    
+    audio_secs = split_audio_into_sections(audio_flat, pred_len_samps)
         
-    fig.savefig(file_name, 
-            facecolor = 'white', dpi = 300)
-    plt.close(fig)
-
-
-def plot_spec(spec_data, file_path, prediction, start,
-                              fft_window_length, sr, cntxt_wn_sz, fmin, fmax,
-                              mod_name, noise=False, **_):
-    fig, ax = plt.subplots(figsize = [6, 4])
-    img = specshow(spec_data, x_axis = 's', y_axis = 'linear', 
-                   sr = sr, win_length = fft_window_length, ax=ax, 
-                   x_coords = np.linspace(0, cntxt_wn_sz/sr, spec_data.shape[1]),
-                    y_coords = np.linspace(fmin, fmax, spec_data.shape[0]))
-    fig.colorbar(img, ax=ax, format='%+2.1f dB')
-    file_name = f'{Path(file_path).stem}_spec_w_label.png'
-    ax.set(title=f'spec. of random sample | prediction: {prediction:.4f}\n'\
-            f'file: {Path(file_path).stem}.wav | start = {get_time(start)}')
+    annotation_df = create_annotation_df(audio_secs, model, pred_len_samps)
     
-    if noise:
-        dir_path = f'predictions/{mod_name}/spectrograms/noise/'
-        create_dirs(Path(dir_path))
-        file_name = dir_path + file_name[:-4] + '_noise.png'
-    else:
-        dir_path = f'predictions/{mod_name}/spectrograms/calls/'
-        create_dirs(Path(dir_path))
-        file_name = dir_path + file_name[:-4] + '_call.png'
-        
-    fig.savefig(file_name, 
-            facecolor = 'white', dpi = 300)
-    plt.close(fig)
-    
-def generate_spectrograms(x_call, x_noise, y_call, y_noise, model, file,
-                        file_annots, mod_iter, **params):
-    num_c = np.random.randint(len(x_call))
-    num_n = np.random.randint(len(x_noise)) if len(x_noise)>0 else 0
-    
-    # num = np.argmax(abs(y_test - preds['call']))
-    model.spec(num_c)
-    if mod_iter == 0:
-        plot_ref_spec(x_call[num_c], file, y_call[num_c], 
-                    start = file_annots.start.iloc[num_c], **params)
-        
-    if len(y_noise) > 0:
-        # num = np.argmax(abs(y_noise - preds['noise']))
-        model.spec(num_n, noise = True)
-        if mod_iter == 0:
-            plot_ref_spec(x_noise[num_n], file, 
-                        y_noise[num_n], 
-                        start = file_annots.start.iloc[-1] +\
-                        num_n*params['cntxt_wn_sz']/params['sr'],
-                        noise = True, **params)
-    
-def create_dirs(path):
-    path.mkdir(parents = True, exist_ok=True)
+    save_path = Path(f'generated_annotations/{time_start}')
+    save_path.mkdir(exist_ok=True, parents=True)
 
-def return_labels(annotations, file):
-    return annotations.label.values
-
-def calc_mse(predictions, labels):
-    return sum((labels - predictions)**2) / len(labels)
-
-def calc_rmse(predictions, labels):
-    return np.sqrt(sum((labels - predictions)**2) / len(labels))
-
-def calc_mae(predictions, labels):
-    return sum(abs(labels - predictions)) / len(labels)
-
-def get_metrics(predictions, y_test):
-    if len(y_test) == 0:
-        return 0, 0, 0
-    mse = calc_mse(predictions, y_test)
-    rmse = calc_rmse(predictions, y_test)
-    mae = calc_mae(predictions, y_test)
-    return mse, rmse, mae
-
-def collect_all_metrics(mtrxs, preds, y_test, y_noise):
-    mtrxs['mse'], mtrxs['rmse'], mtrxs['mae'] = get_metrics(preds['call'], 
-                                                            y_test)
-    mtrxs['mse_n'], mtrxs['rmse_n'], mtrxs['mae_n'] = get_metrics(preds['noise'], 
-                                                                y_noise)
-    mtrxs['mse_t'], mtrxs['rmse_t'], mtrxs['mae_t'] = get_metrics(preds['thresh'], 
-                                                                y_test)
-    mtrxs['mse_t_n'], mtrxs['rmse_t_n'], mtrxs['mae_t_n'] = get_metrics(preds['thresh_noise'],
-                                                                        y_noise)
-    return mtrxs
-
-def get_quality_of_recording(file):
-    try:
-        path = 'Daten/Catherine_annotations/Detector_scanning_metadata.xlsx'
-        stanton_bank = pd.read_excel(path, sheet_name = 'SBank')
-        if Path(file).stem[0] == 'P':
-            file_date = pd.to_datetime(Path(file).stem, 
-                                format='PAM_%Y%m%d_%H%M%S_000')
-        elif Path(file).stem[0] == 'c':
-            file_date = pd.to_datetime(Path(file).stem.split('A_')[1],
-                                       format='%Y-%m-%d_%H-%M-%S')
-        else:
-            file_date = pd.to_datetime(Path(file).stem.split('.')[1], 
-                                       format='%y%m%d%H%M%S')
-        
-        condition_date = pd.Timestamp(file_date.date()) == stanton_bank.Date
-        hours = [elem.hour for elem in stanton_bank.hour]
-        condition_hour = pd.DataFrame(hours) == file_date.hour
-        quality = stanton_bank['quality'][
-            (condition_date.values & condition_hour.values.T)[0]
-            ].values[0]
-        return quality
-    except Exception as e:
-        print(e)
-        return 'unknown'
-    
-def get_dicts():
-    mtrxs = {'mse':0, 'rmse':0, 'mae':0}
-    mtrxs.update({f'{m}_t': 0 for m in mtrxs})
-    mtrxs.update({f'{m}_n': 0 for m in mtrxs})
-    mtrxs.update({'bin_cross_entr': 0, 'bin_cross_entr_n': 0})
-
-    preds = {'call':[], 'thresh': [], 'noise': [], 'thresh_noise': []}
-    return preds, mtrxs
+    annotation_df.to_csv(save_path.joinpath(f'{file.stem}_annot_{mod_label}.txt'),
+                sep='\t')

@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-import pandas as pd
 from . import funcs
 import random
 import yaml
@@ -135,15 +134,14 @@ def read_raw_file(file, annots, shift = 0):
     file_annots.start -= shift
 
     x_call, x_noise, times_c, times_n = funcs.cntxt_wndw_arr(file_annots,
-                                                            file, **config) 
+                                                            file) 
     y_call = np.ones(len(x_call), dtype = 'float32')
     y_noise = np.zeros(len(x_noise), dtype = 'float32')
     
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
 
 def write_tfrecs_for_mixup(file):
-    noise, t = funcs.return_windowed_file(file, config['sr'], 
-                                       config['cntxt_wn_sz'])
+    noise, t = funcs.return_windowed_file(file)
     noise_tups = list(zip(noise, [0]*len(t), [file]*len(t), t))
     random.shuffle(noise_tups)
     
@@ -283,10 +281,19 @@ def compare_random_spectrogram(filenames, dataset_size = FILE_ARRAY_LIMIT):
 def prepare_sample(features):
     return features["audio"], features["label"]
 
-def get_dataset(filenames, batch_size, AUTOTUNE):
+def get_dataset(filenames, AUTOTUNE=None):
     dataset = (
         tf.data.TFRecordDataset(filenames, num_parallel_reads=AUTOTUNE)
         .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
         .map(prepare_sample, num_parallel_calls=AUTOTUNE)
     )
     return dataset
+
+def get_val_data(tfrec_path, batch_size, debug=False):
+    test_files = tf.io.gfile.glob(f"{tfrec_path}/val/*.tfrec")
+    test_data = get_dataset(test_files, batch_size)
+    
+    if debug:
+        return test_data.take(100)
+    else:
+        return test_data

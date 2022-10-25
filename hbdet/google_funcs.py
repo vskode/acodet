@@ -1,9 +1,11 @@
 import tensorflow as tf
 import yaml
+from pathlib import Path
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
 from .humpback_model_dir import humpback_model
+from .humpback_model_dir import front_end
 
 class GoogleMod():
     def __init__(self, **params) -> None:
@@ -89,3 +91,37 @@ class GoogleMod():
         # generate new model
         self.model = tf.keras.Sequential(
             layers=[layer for layer in model_list])
+        
+    def load_ckpt(self, ckpt_path, ckpt_name='last'):
+        try:
+            file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
+            if not file_path.exists():
+                ckpts = list(ckpt_path.glob('cp-*.index'))
+                ckpts.sort()
+                ckpt = ckpts[-1]
+            else:
+                ckpt = file_path
+            self.model.load_weights(
+                str(ckpt).replace('.index', '')
+                ).expect_partial()
+        except Exception as e:
+            print('Checkpoint not found.', e)
+
+    def change_input_to_array(self):
+        """
+        change input layers of model after loading checkpoint so that a file
+        can be predicted based on arrays rather than spectrograms, i.e.
+        reintegrate the spectrogram creation into the model. 
+
+        Args:
+            model (tf.keras.Sequential): keras model
+
+        Returns:
+            tf.keras.Sequential: model with new arrays as inputs
+        """
+        model_list = self.model.layers
+        model_list.insert(0, tf.keras.layers.Input([config['cntxt_wn_sz']]))
+        model_list.insert(1, tf.keras.layers.Lambda(
+                            lambda t: tf.expand_dims(t, -1)))
+        model_list.insert(2, front_end.MelSpectrogram())
+        self.model = tf.keras.Sequential(layers=[layer for layer in model_list])

@@ -5,6 +5,9 @@ from pathlib import Path
 import json
 import librosa as lb
 import yaml
+from . import funcs
+from . import tfrec
+import tensorflow as tf
 
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
@@ -118,3 +121,80 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
         return fig_new, ax
     else:
         return ax
+    
+def plot_conf_matr(labels, preds, ax):
+    heat = tf.math.confusion_matrix(labels, preds).numpy()
+    ax.imshow(heat, cmap='Greys')
+    value_string = '{}\n{:.0f}%'
+    for row in range(2):
+        for col in range(2):
+            ax.text(row, col, 
+                     value_string.format(heat[row, col], 
+                                         heat[row, col]/np.sum(heat)*100), 
+                     ha='center', va='center', color='orange')
+    ax.set_xticks([0, 1], labels=['TP', 'TN'])
+    ax.set_yticks([0, 1], labels=['pred. P', 'pred. N'])
+    return ax
+
+def plot_pr_curve(labels, preds, ax, training_path, **kwArgs):
+    pr = dict()
+    for met in ('Recall', 'Precision'):
+        pr.update({met: funcs.get_pr_arrays(labels, preds, met)})
+    
+    if 'load_untrained_model' in kwArgs:
+        ax.plot(pr['Recall'], pr['Precision'], label='untrained_model')
+    else:
+        ax.plot(pr['Recall'], pr['Precision'], label=f'{training_path.stem}')
+        
+    ax.set_ylabel('precision')
+    ax.set_xlabel('recall')
+    ax.legend()
+    ax.grid(True)
+    return ax
+    
+def plot_evaluation_metric(model_instance, training_runs, ax, val_data, 
+                           plot_pr=True, plot_cm=False, plot_untrained=False, 
+                           **kwargs):
+    for i, run in enumerate(training_runs):
+        labels, preds = funcs.get_labels_and_preds(model_instance, run, 
+                                                   val_data, **kwargs)
+        if plot_pr and not plot_cm:
+            ax = plot_pr_curve(labels, preds, ax, run, **kwargs)
+            if plot_untrained:
+                ax = plot_pr_curve(labels, preds, ax, run,
+                                load_untrained_model=True, **kwargs)
+        if plot_cm and not plot_pr:
+            ax = plot_conf_matr(labels, preds, ax)
+        if plot_pr and plot_cm:
+            if plot_untrained:
+                ax[0] = plot_pr_curve(labels, preds, ax[0], run,
+                                load_untrained_model=True, **kwargs)
+            ax[0] = plot_pr_curve(labels, preds, ax[0], run, **kwargs)
+            ax[1] = plot_conf_matr(labels, preds, ax[1])
+            
+        print('creating pr curve for ', run.stem)
+    return ax
+    
+def create_and_save_figure(model_instance, tfrec_path, batch_size, train_date,
+                            debug=False, plot_pr=True, plot_cm=False, 
+                            **kwargs):
+    
+    training_runs = list(Path(f'trainings/{train_date}').glob('unfreeze*'))
+    val_data = tfrec.get_val_data(tfrec_path, batch_size, debug=debug)
+    
+    fig, ax = plt.subplots(nrows=plot_pr+plot_cm)
+
+    info_string = ''
+    for key, val in kwargs.items():
+        info_string += f' | {key}: {val}'
+    
+    if sum([plot_pr, plot_cm]) > 1:
+        ax[0].set_title(f'Precision and Recall Curve{info_string}')
+    else:
+        ax.set_title(f'Precision and Recall Curve{info_string}')
+    
+    ax = plot_evaluation_metric(model_instance, training_runs, ax, val_data, 
+                                plot_pr=plot_pr, plot_cm=plot_cm, **kwargs)
+    
+    fig.tight_layout()
+    fig.savefig(f'{training_runs[0].parent}/eval_metrics.png')
