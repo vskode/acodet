@@ -119,7 +119,7 @@ lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
                                 staircase = True)
 
 for ind, unfreeze in enumerate(unfreezes):
-    continue
+    # continue
     if unfreeze == 'no-TF':
         load_g_ckpt = False
     else:

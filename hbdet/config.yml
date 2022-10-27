@@ -15,10 +15,12 @@ freq_cmpr: 'linear'
 fmin:  50
 fmax:  1000
 sr : 10000
-cntxt_wn_sz: 39124
+context_win: 39124
 fft_hop: 300
 
 # settings for creation of tfrecord dataset
+# limit of context windows in a tfrecords file
+tfrecs_lim: 600
 # train/test split
 train_ratio: 0.7
 # test/val split

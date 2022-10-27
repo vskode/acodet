@@ -2,15 +2,12 @@ import numpy as np
 import tensorflow as tf
 from . import funcs
 import random
-import yaml
 import matplotlib.pyplot as plt
 from pathlib import Path
+import json
 
-with open('hbdet/hbdet/config.yml', 'r') as f:
-    config = yaml.safe_load(f)
-
-FILE_ARRAY_LIMIT = 600
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v3/'
+config = funcs.load_config()
 
 ########################################################
 #################  WRITING   ###########################
@@ -118,7 +115,7 @@ def create_example(audio, label, file, time):
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
-def read_raw_file(file, annots, shift = 0):
+def read_raw_file(file, annots):
     """
     Load annotations for file, correct annotation starting times to make sure
     that the signal is in the window center.
@@ -131,7 +128,6 @@ def read_raw_file(file, annots, shift = 0):
     """
         
     file_annots = funcs.get_annots_for_file(annots, file)
-    file_annots.start -= shift
 
     x_call, x_noise, times_c, times_n = funcs.cntxt_wndw_arr(file_annots,
                                                             file) 
@@ -145,13 +141,12 @@ def write_tfrecs_for_mixup(file):
     noise_tups = list(zip(noise, [0]*len(t), [file]*len(t), t))
     random.shuffle(noise_tups)
     
-    writer = get_tfrecords_writer(1, 'noise', 
-                                shift = 0)
+    writer = get_tfrecords_writer(1, 'noise')
     for audio, label, file, time in noise_tups:
         examples = create_example(audio, label, file, time)
         writer.write(examples.SerializeToString())
                 
-def write_tfrecords(annots, shift = 0, **kwArgs):
+def write_tfrecords(annots, **kwArgs):
     """
     Write tfrecords files from wav files. 
     First the files are imported and the noise files are generated. After that 
@@ -166,11 +161,15 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
     files = np.unique(annots.filename)
     
     random.shuffle(files)
+    
+    split_mode = 'within_file'
+    dataset_size = 0
+    dataset_dict = dict({'data_split': split_mode})
 
-    train_file_index = int(len(files)*config['train_ratio'])
+    train_file_index = int(len(files)*config.train_ratio)
     test_file_index = int(len(files)
-                      *(1-config['train_ratio'])
-                      *config['test_val_ratio'])
+                          *(1-config.train_ratio)
+                          *config.test_val_ratio)
     tfrec_num = 0
     for i, file in enumerate(files):
         print('writing tf records files, progress:'
@@ -183,24 +182,39 @@ def write_tfrecords(annots, shift = 0, **kwArgs):
         else:
             folder = 'val'
 
-        call_tup, noise_tup = read_raw_file(file, annots, shift = shift)
+        call_tup, noise_tup = read_raw_file(file, annots)
         
         calls = randomize_arrays(call_tup, file)
         noise = randomize_arrays(noise_tup, file)
         samples = [*calls, *noise]
         random.shuffle(samples)
+        end_tr, end_te = map(lambda x: int(x*len(samples)),
+                             (config.train_ratio, (1-config.train_ratio)
+                                                *config.test_val_ratio
+                                                +config.train_ratio) )
         
-        split_by_max_length = [samples[j*FILE_ARRAY_LIMIT:(j+1) * FILE_ARRAY_LIMIT] \
-                                for j in range(samples//FILE_ARRAY_LIMIT + 1)]
-        for samps in split_by_max_length:
-            tfrec_num += 1
-            writer = get_tfrecords_writer(tfrec_num, folder, 
-                                        shift = shift, **kwArgs)
-            
-            for audio, label, file, time in samps:
-                examples = create_example(audio, label, file, time)
-                writer.write(examples.SerializeToString())
-
+        train = samples[:end_tr]
+        test = samples[end_tr:end_te]
+        val = samples[end_tr:-1]
+        
+        
+        for samples, folder in zip((train, test, val), ('train', 'test', 'val')):
+            split_by_max_length = [samples[j*config.tfrecs_lim:(j+1) * config.tfrecs_lim] \
+                                    for j in range(len(samples)//config.tfrecs_lim + 1)]
+            for samps in split_by_max_length:
+                tfrec_num += 1
+                writer = get_tfrecords_writer(tfrec_num, folder, **kwArgs)
+                dataset_dict.update({"file_%.2i_size" % tfrec_num: len(samps)})
+                dataset_size += len(samps)
+                
+                for audio, label, file, time in samps:
+                    examples = create_example(audio, label, file, time)
+                    writer.write(examples.SerializeToString())
+                    
+    dataset_dict.update({'dataset_size': dataset_size})
+    with open(TFRECORDS_DIR + 'dataset_meta.json', 'w') as f:
+        json.dump(dataset_dict, f)
+    
 def randomize_arrays(tup, file):
     x, y, times = tup
     
@@ -210,7 +224,7 @@ def randomize_arrays(tup, file):
     return zip(x[rand], y[rand], [file]*len(x), np.array(times)[rand])
     
 
-def get_tfrecords_writer(num, fold, shift = 0, alt_subdir = ''):
+def get_tfrecords_writer(num, fold, alt_subdir = ''):
     """
     Return TFRecordWriter object to write file.
 
@@ -220,8 +234,7 @@ def get_tfrecords_writer(num, fold, shift = 0, alt_subdir = ''):
     Returns:
         TFRecordWriter object: file handle
     """
-    path = TFRECORDS_DIR + alt_subdir + \
-            f"_{str(shift).replace('.','-')}s_shift"
+    path = TFRECORDS_DIR + alt_subdir
     Path(path + f'/{fold}').mkdir(parents = True, exist_ok = True)
     return tf.io.TFRecordWriter(path + f"/{fold}/"
                                 "file_%.2i.tfrec" % num)
@@ -242,7 +255,7 @@ def parse_tfrecord_fn(example):
         tf.io object: tensorflow object containg the data
     """
     feature_description = {
-        "audio": tf.io.FixedLenFeature([config['cntxt_wn_sz']], tf.float32),
+        "audio": tf.io.FixedLenFeature([config.cntxt_wn_sz], tf.float32),
         "label": tf.io.FixedLenFeature([], tf.int64),
         "file" : tf.io.FixedLenFeature([], tf.string),
         "time" : tf.io.FixedLenFeature([], tf.int64)
@@ -250,7 +263,7 @@ def parse_tfrecord_fn(example):
     return tf.io.parse_single_example(example, feature_description)
     
 
-def compare_random_spectrogram(filenames, dataset_size = FILE_ARRAY_LIMIT):
+def compare_random_spectrogram(filenames, dataset_size = config.tfrecs_lim):
     r = np.random.randint(dataset_size)
     dataset = (
         tf.data.TFRecordDataset(filenames)
