@@ -1,28 +1,14 @@
-#%% imports
 import pandas as pd
 import glob
-
 from ketos.data_handling import selection_table as sl
-from ketos.data_handling.parsing import load_audio_representation
-
 from pathlib import Path
 import os
+from . import funcs
 
-#%% load files
-if not 'models' in os.listdir():
-    os.chdir('../..')
-    
-# model = hub.load('google_humpback_model')
-annotation_files = Path().glob('Daten/Catherine_annotations/**/*.txt')
+config = funcs.load_config()
+annotation_files = Path(config.annotations_root_dir).glob('/**/*.txt')
 
-#%%
-def get_corresponding_sound_file(file):
-    # hard_drive_path = '/media/vincent/Seagate Backup Plus Drive'
-    hard_drive_path = '/mnt/d/VINCENT_RawData'
-    file_path = glob.glob(f'{hard_drive_path}/**/{file.stem.split("Table")[0]}wav',
-                      recursive = True)
-
-    
+def compensate_for_naming_inconsistencies(hard_drive_path):
     if not file_path:
         new_file = file.stem.split("Table")[0] + 'wav'
         file_tolsta = '336097327.'+new_file[6:].replace('_000', '').replace('_', '')
@@ -35,7 +21,15 @@ def get_corresponding_sound_file(file):
                         recursive = True)
             if not file_path :
                 return f'{file.stem.split("Table")[0]}wav'
+    return file_path
+
+def get_corresponding_sound_file(file):
+    hard_drive_path = config.files_root_dir
+    file_path = glob.glob(f'{hard_drive_path}/**/{file.stem.split("Table")[0]}wav',
+                      recursive = True)
     
+    file_path = compensate_for_naming_inconsistencies(hard_drive_path)
+        
     if len(file_path) > 1:
         for path in file_path:
             if file.parent.parent.stem in path:
@@ -46,8 +40,7 @@ def get_corresponding_sound_file(file):
     return file_path
     
 def standardize_annotations(file):
-    ann = pd.read_csv(file,
-                    sep = '\t')
+    ann = pd.read_csv(file, sep = '\t')
 
     ann['filename'] = get_corresponding_sound_file(file)
     ann['label']    = 1

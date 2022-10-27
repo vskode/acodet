@@ -1,13 +1,7 @@
 # Configuration file
 
-# Preprocessing settings
 
-# relevant for model!
-
-## dictated by frequency interval relevant for humpback vocalizations
-downsample_sr : 2000
-
-## Model and preprocessing parameters
+## Preprocessing Parameters
 fft_window_length : 2048
 nr_noise_samples: 100
 n_freq_bins: 256
@@ -18,7 +12,10 @@ sr : 10000
 context_win: 39124
 fft_hop: 300
 
-# settings for creation of tfrecord dataset
+# downsample every audio file to this frame rate to ensure comparability
+downsample_sr : 2000
+
+## Settings for Creation of Tfrecord Dataset
 # limit of context windows in a tfrecords file
 tfrecs_lim: 600
 # train/test split
@@ -26,9 +23,14 @@ train_ratio: 0.7
 # test/val split
 test_val_ratio: 0.7
 
+## Model Parameters
 # default lr if not specified otherwise
 lr: 0.001
 # threshold for predictions
 thresh: 0.5
 # prediction window limit
 pred_win_lim: 20
+
+## Paths
+annotation_root_dir: 'Daten/Catherine_annotations'
+files_root_dir: '/mnt/d/VINCENT_RawData'
