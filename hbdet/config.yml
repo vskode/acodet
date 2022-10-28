@@ -2,15 +2,12 @@
 
 
 ## Preprocessing Parameters
-fft_window_length : 2048
-nr_noise_samples: 100
-n_freq_bins: 256
-freq_cmpr: 'linear'
+stft_frame_len: 1024
+n_freq_bins: 128
 fmin:  50
 fmax:  1000
 sr : 10000
 context_win: 39124
-fft_hop: 300
 
 # downsample every audio file to this frame rate to ensure comparability
 downsample_sr : 2000
@@ -24,8 +21,6 @@ train_ratio: 0.7
 test_val_ratio: 0.7
 
 ## Model Parameters
-# default lr if not specified otherwise
-lr: 0.001
 # threshold for predictions
 thresh: 0.5
 # prediction window limit

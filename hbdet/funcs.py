@@ -19,6 +19,10 @@ def load_config() -> collections.namedtuple:
     """
     with open('hbdet/hbdet/config.yml', 'r') as f:
         config = yaml.safe_load(f)
+    
+    fft_hop = (config['context_win'] - config['stft_frame_len']) \
+                // (config['n_freq_bins'] - 1)
+    config.update({'fft_hop': fft_hop})
     Config = collections.namedtuple("Config", list(config.keys()))
     Config.__new__.__defaults__ = (tuple(config.values()))
     return Config()
@@ -405,7 +409,7 @@ def get_labels_and_preds(model_instance: type,
 
 ############## Generate Model Annotations helpers ############################
 
-def get_files(location: str='generated_annotations/src', 
+def get_files(*, location: str='generated_annotations/src', 
               search_str: str='*.wav') -> generator:
     """
     Find all files corresponding to given search string within a specified 
@@ -461,6 +465,28 @@ def compute_predictions(audio: np.ndarray,
 def create_Raven_annotation_df(preds: np.ndarray, 
                                ind: int, 
                                pred_len_samps: int) -> pd.DataFrame:
+    """
+    Create a DataFrame with column names according to the Raven annotation
+    format. The DataFrame is then filled with the corresponding values. 
+    Beginning and end times for each context window, high and low frequency
+    (from config), and the prediction values. 
+
+    Parameters
+    ----------
+    preds : np.ndarray
+        predictions
+    ind : int
+        batch of current predictions (in case predictions are more than 
+        the specified limitation for predictions)
+    pred_len_samps : int
+        indices of the context window with predictions higher than 
+        the threshold specified in the config file 
+
+    Returns
+    -------
+    pd.DataFrame
+        annotation dataframe for current batch
+    """
     df = pd.DataFrame(columns = ['Begin Time (s)', 'End Time (s)',
                                  'High Freq (Hz)', 'Low Freq (Hz)'])
 
@@ -499,8 +525,9 @@ def gen_raven_annotation(file, model: tf.keras.Sequential,
     if len(audio_flat) < pred_len_samps:
         audio_secs = [audio_flat]
     else:
-        audio_secs = audio_flat.reshape([len(audio_flat)//pred_len_samps, 
-                                        pred_len_samps])
+        n = pred_len_samps
+        audio_secs = [audio_flat[i:i+n] for i in \
+                    range(0, len(audio_flat), pred_len_samps)]
         
     annotation_df = create_annotation_df(audio_secs, model, pred_len_samps)
     

@@ -62,7 +62,7 @@ class GoogleMod():
         else:
             # add MelSpectrogram layer
             model_list.append(tf.keras.layers.Input(
-                [config['cntxt_wn_sz']]))
+                [config['context_win']]))
             model_list.append(tf.keras.layers.Lambda(
                 lambda t: tf.expand_dims(t, -1)))
             model_list.append(self.model.layers[0])
@@ -120,7 +120,7 @@ class GoogleMod():
             tf.keras.Sequential: model with new arrays as inputs
         """
         model_list = self.model.layers
-        model_list.insert(0, tf.keras.layers.Input([config['cntxt_wn_sz']]))
+        model_list.insert(0, tf.keras.layers.Input([config['context_win']]))
         model_list.insert(1, tf.keras.layers.Lambda(
                             lambda t: tf.expand_dims(t, -1)))
         model_list.insert(2, front_end.MelSpectrogram())
