@@ -1,8 +1,7 @@
 import yaml
 import time
-from pathlib import Path
 from hbdet.google_funcs import GoogleMod
-from hbdet.funcs import get_files, init_model, gen_annotations
+from hbdet.funcs import get_files, gen_annotations
 
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
