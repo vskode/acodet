@@ -22,7 +22,10 @@ def load_config() -> collections.namedtuple:
     
     fft_hop = (config['context_win'] - config['stft_frame_len']) \
                 // (config['n_freq_bins'] - 1)
+
+    pred_batch_size = config['pred_win_lim'] * config['context_win']                
     config.update({'fft_hop': fft_hop})
+    config.update({'pred_batch_size': pred_batch_size})
     Config = collections.namedtuple("Config", list(config.keys()))
     Config.__new__.__defaults__ = (tuple(config.values()))
     return Config()
@@ -333,25 +336,6 @@ def print_evaluation(val_data: tf.data.Dataset,
         batch size
     """
     model.evaluate(val_data, batch_size = batch_size, verbose =2)
-    
-def predict_values(val_data: tf.data.Dataset,
-                   model: tf.keras.Sequential) -> np.ndarray:
-    """
-    Use model to predict labels of validation dataset.
-
-    Parameters
-    ----------
-    val_data : tf.data.Dataset
-        validation dataset
-    model : tf.keras.Sequential
-        keras model
-
-    Returns
-    -------
-    np.ndarray
-        model predictions
-    """
-    return model.predict(x = val_data.batch(batch_size=32))
 
 def get_pr_arrays(labels: np.ndarray, preds: np.ndarray, 
                   metric: str) -> np.ndarray:
@@ -403,7 +387,7 @@ def get_labels_and_preds(model_instance: type,
         predictions
     """
     model = init_model(model_instance, training_path, **kwArgs)
-    preds = predict_values(val_data, model)
+    preds = model.predict(x = val_data.batch(batch_size=32))
     labels = get_val_labels(val_data, len(preds))
     return labels, preds
 
@@ -432,44 +416,40 @@ def get_files(*, location: str='generated_annotations/src',
     folder = Path(location)
     return folder.glob(search_str)
 
-def compute_predictions(audio: np.ndarray, 
-                        model: tf.keras.Sequential) -> np.ndarray:
+def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
     """
     Compute predictions based on spectrograms. First the number of context
-    windows that fit into the audio array are calculated. The array is then
-    zero padded to fit a integer multiple of the context window. After
-    reshaping the audio array, the model is used to predict labels based
-    on the spectrograms. 
+    windows that fit into the audio array are calculated. The result is an 
+    integer unless the last section is reached, in that case the audio is
+    zero padded to fit the length of a multiple of the context window length. 
+    The array is then zero padded to fit a integer multiple of the context 
+    window.
 
     Parameters
     ----------
     audio : np.ndarray
         1D audio array
-    model : tf.keras.Sequential
-        keras model
 
     Returns
     -------
-    np.ndarray
-        generated predictions
+    tf.Tensor
+        2D audio tensor with shape [context window length, number of windows]
     """
     num = np.ceil(len(audio) / config.context_win)
     # zero pad in case the end is reached
     audio = [*audio, *np.zeros([int(num*config.context_win - len(audio))])]
+    wins = np.array(audio).reshape([int(num), config.context_win])
+    
+    return tf.convert_to_tensor(wins)
 
-    # TODO: überprüfen ob ich hier nicht einfach das selbe wie oben nehmen kann
-    wins = np.array(audio).reshape([int(num), config.context_win]) 
-
-    return model.predict(x = tf.convert_to_tensor(wins))
-
-def create_Raven_annotation_df(preds: np.ndarray, 
-                               ind: int, 
-                               pred_len_samps: int) -> pd.DataFrame:
+def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     """
     Create a DataFrame with column names according to the Raven annotation
     format. The DataFrame is then filled with the corresponding values. 
     Beginning and end times for each context window, high and low frequency
-    (from config), and the prediction values. 
+    (from config), and the prediction values. Based on the predicted values,
+    the sections with predicted labels of less than the threshold are 
+    discarded.
 
     Parameters
     ----------
@@ -478,14 +458,11 @@ def create_Raven_annotation_df(preds: np.ndarray,
     ind : int
         batch of current predictions (in case predictions are more than 
         the specified limitation for predictions)
-    pred_len_samps : int
-        indices of the context window with predictions higher than 
-        the threshold specified in the config file 
 
     Returns
     -------
     pd.DataFrame
-        annotation dataframe for current batch
+        annotation dataframe for current batch, filtered by threshold
     """
     df = pd.DataFrame(columns = ['Begin Time (s)', 'End Time (s)',
                                  'High Freq (Hz)', 'Low Freq (Hz)'])
@@ -495,41 +472,98 @@ def create_Raven_annotation_df(preds: np.ndarray,
     df['End Time (s)'] = df['Begin Time (s)'] \
                             + config.context_win/config.sr
                                 
-    df['Begin Time (s)'] += (ind*pred_len_samps)/config.sr
-    df['End Time (s)'] += (ind*pred_len_samps)/config.sr
+    df['Begin Time (s)'] += (ind*config.pred_batch_size)/config.sr
+    df['End Time (s)'] += (ind*config.pred_batch_size)/config.sr
     
     df['High Freq (Hz)'] = config.fmax
     df['Low Freq (Hz)'] = config.fmin
     df['Prediction/Comments'] = preds
-    return df
-    
-def create_annotation_df(audio_secs: np.ndarray, 
-                         model: tf.keras.Sequential, 
-                         pred_len_samps: int) -> pd.DataFrame:
-    annots = pd.DataFrame()
-    for ind, audio in enumerate(audio_secs):
-        preds = compute_predictions(audio, model)        
-        df = create_Raven_annotation_df(preds, ind, pred_len_samps)
-        df = df.iloc[preds.reshape([len(preds)]) > config.thresh]
 
+    return df.iloc[preds.reshape([len(preds)]) > config.thresh]
+    
+def create_annotation_df(audio_batches: np.ndarray, 
+                         model: tf.keras.Sequential) -> pd.DataFrame:
+    """
+    Create a annotation dataframe containing all necessary information to
+    be imported into a annotation program. The loaded audio batches are 
+    iterated over and used to predict labels. All information is then used
+    to fill a DataFrame. After having gone through all batches, the index
+    column is set to a increasing integers named 'Selection' (convention). 
+
+    Parameters
+    ----------
+    audio_batches : np.ndarray
+        audio batches
+    model : tf.keras.Sequential
+        model instance to predict values
+
+    Returns
+    -------
+    pd.DataFrame
+        annotation dataframe
+    """
+    annots = pd.DataFrame()
+    for ind, audio in enumerate(audio_batches):
+        preds = model.predict(window_data_for_prediction(audio))
+        df = create_Raven_annotation_df(preds, ind)
         annots = pd.concat([annots, df], ignore_index=True)
+        
     annots.index  = np.arange(1, len(annots)+1)
     annots.index.name = 'Selection'
     return annots
 
-def gen_raven_annotation(file, model: tf.keras.Sequential, 
-                         mod_label: str, time_start: str):
-    audio_flat = load_audio(file)
-    pred_len_samps = config.pred_win_lim * config.context_win
-    
-    if len(audio_flat) < pred_len_samps:
-        audio_secs = [audio_flat]
+def batch_audio(audio_flat: np.ndarray) -> np.ndarray:
+    """
+    Divide 1D audio array into batches depending on the config parameter
+    pred_batch_size (predictions batch size) i.e. the number of windows
+    that are being simultaneously predicted. 
+
+    Parameters
+    ----------
+    audio_flat : np.ndarray
+        1D audio array
+
+    Returns
+    -------
+    np.ndarray
+        batched audio array
+    """
+    if len(audio_flat) < config.pred_batch_size:
+        audio_batches = [audio_flat]
     else:
-        n = pred_len_samps
-        audio_secs = [audio_flat[i:i+n] for i in \
-                    range(0, len(audio_flat), pred_len_samps)]
-        
-    annotation_df = create_annotation_df(audio_secs, model, pred_len_samps)
+        n = config.pred_batch_size
+        audio_batches = [audio_flat[i:i+n] for i in \
+                    range(0, len(audio_flat), config.pred_batch_size)]
+    return audio_batches
+
+def gen_annotations(file, model_instance: type, training_path: str, 
+                         mod_label: str, time_start: str, **kwargs):
+    """
+    Load audio file, instantiate model, use it to predict labels, fill a 
+    dataframe with the predicted labels as well as necessary information to
+    import the annotations in a annotation program (like Raven). Finally the 
+    annotations are saved as a single text file in directories corresponding
+    to the model checkpoint name within the generated annotations directory. 
+
+    Parameters
+    ----------
+    file : str or pathlib.Path object
+        file path
+    model_instance : type
+        callable class to retrieve model
+    training_path : str
+        path to model checkpoint
+    mod_label : str
+        label to clarify which model was used
+    time_start : str
+        date time string corresponding to the time the annotations were 
+        computed
+    """
+    audio_batches = batch_audio(load_audio(file))
+            
+    model = init_model(model_instance, 
+                       f'{training_path}/{mod_label}/unfreeze_no-TF', **kwargs)
+    annotation_df = create_annotation_df(audio_batches, model)
     
     save_path = Path(f'generated_annotations/{time_start}')
     save_path.mkdir(exist_ok=True, parents=True)
