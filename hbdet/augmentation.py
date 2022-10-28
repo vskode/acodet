@@ -71,14 +71,19 @@ class MixCallAndNoise(BaseImageAugmentationLayer):
 ##############################################################################
 ##############################################################################
 
-time_shift = tf.keras.Sequential([CropAndFill(64, 128)])
+def time_shift():
+    return tf.keras.Sequential([CropAndFill(64, 128)])
+
+def spec():
+    return tf.keras.Sequential([
+        tf.keras.layers.Input([config['context_win']]),
+        tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
+        front_end.MelSpectrogram()])
 
 
-spec = tf.keras.Sequential([
-    tf.keras.layers.Input([config['cntxt_wn_sz']]),
-    tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
-    front_end.MelSpectrogram()
-])
+def mix_up(noise_data):
+    return tf.keras.Sequential([MixCallAndNoise(noise_data=noise_data)])
+
 
 def augment(ds, augments=1, aug_func=time_shift):
     ds_augs = []
@@ -99,5 +104,5 @@ def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, augmented_data=No
 
 def make_spec_tensor(ds):
     ds = ds.batch(1)
-    ds = ds.map(lambda x, y: (spec(x), y), num_parallel_calls=AUTOTUNE)
+    ds = ds.map(lambda x, y: (spec()(x), y), num_parallel_calls=AUTOTUNE)
     return ds.unbatch()

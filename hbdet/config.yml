@@ -6,8 +6,8 @@ stft_frame_len: 1024
 n_freq_bins: 128
 fmin:  50
 fmax:  1000
-sr : 10000
-context_win: 39124
+sr : 2000
+context_win: 7755
 
 # downsample every audio file to this frame rate to ensure comparability
 downsample_sr : 2000

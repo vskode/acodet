@@ -15,10 +15,10 @@ from hbdet.plot_utils import plot_sample_spectrograms
 import hbdet.augmentation as aug
 
 
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1/tfrecords_0s_shift'
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v3_2khz'
 AUTOTUNE = tf.data.AUTOTUNE
 
-batch_size = 32
+batch_size = 128
 epochs = 60
 
 load_weights = False
@@ -35,7 +35,7 @@ pre_blocks = 9
 f_score_beta = 0.5
 f_score_thresh = 0.5
 
-unfreezes = ['no-TF', 15, 5, 19]
+unfreezes = ['no-TF']
 data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem, 
                                            num_of_shifts)
 
@@ -44,7 +44,7 @@ info_text = f"""Model run INFO:
 model: untrained model 
 dataset: {data_description}
 lr: new lr settings
-comments: 10 khz; time shift and first mixup implementation included
+comments: 2 khz; new data split - within file
 
 VARS:
 data_path       = {TFRECORDS_DIR}
@@ -69,47 +69,53 @@ preproc blocks  = {pre_blocks}
 #############################  RUN  #########################################
 #############################################################################
 
-time_start = '2022-10-24_09'#time.strftime('%Y-%m-%d_%H', time.gmtime())
+time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
 Path(f'trainings/{time_start}').mkdir(exist_ok=True)
+# TODO einbauen dass nach einer json gesucht wird wo die groesse drinsteht
 dataset_size = (good_file_size + poor_file_size)*num_of_shifts
 seed = np.random.randint(100)
-
-noise_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/noise/*.tfrec")
-noise_data = get_dataset(noise_files, AUTOTUNE = AUTOTUNE)
-noise_data = aug.make_spec_tensor(noise_data)
-mix_up = tf.keras.Sequential([aug.MixCallAndNoise(noise_data=noise_data)])
 
 train_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/train/*.tfrec")
 train_data = get_dataset(train_files, AUTOTUNE = AUTOTUNE)
 train_data = aug.make_spec_tensor(train_data)
+
+noise_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/noise/*.tfrec")
+noise_data = get_dataset(noise_files, AUTOTUNE = AUTOTUNE)
+noise_data = aug.make_spec_tensor(noise_data)
+
+test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
+test_data = get_dataset(test_files, AUTOTUNE = AUTOTUNE)
+test_data = aug.make_spec_tensor(test_data)
+
+# TODO, das alles in funktionen outsourcen, damit das nicht so voll ist
 time_aug_data = list(zip(aug.augment(train_data, augments = num_of_shifts, 
-                        aug_func=aug.time_shift),
+                        aug_func=aug.time_shift()),
                          ['time_shift']*num_of_shifts ))
 
 mixup_aug_data = list(zip(aug.augment(train_data, augments = 1, 
-                        aug_func=mix_up),
+                        aug_func=aug.mix_up(noise_data)),
                           ['mix_up']*1 ))
 
 mixup_aug_data += list(zip(aug.augment(time_aug_data[0][0], augments = 1, 
-                        aug_func=mix_up),
+                        aug_func=aug.mix_up(noise_data)),
                            ['mix_up']*1 ))
+
 augmented_data = [*time_aug_data, *mixup_aug_data, (noise_data, 'noise')]
 
-plot_train_aug_spec = partial(plot_sample_spectrograms, ds_size = good_file_size)
+plot_train_aug_spec = partial(plot_sample_spectrograms, ds_size = good_file_size,
+                              random=False)
 plot_train_aug_spec(train_data, dir = time_start, name = 'train', 
                          seed=seed)
 for i, (augmentation, aug_name) in enumerate(augmented_data):
     plot_train_aug_spec(augmentation, dir = time_start, 
                             name=f'augment_{i}-{aug_name}', seed=seed)
+plot_sample_spectrograms(test_data, dir = time_start, name = 'test')
     
+
 train_data = aug.prepare(train_data, batch_size, shuffle=True, 
-                     shuffle_buffer=dataset_size//2, 
+                     shuffle_buffer=dataset_size*3, 
                      augmented_data=np.array(augmented_data)[:,0])
 
-test_files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/test/*.tfrec")
-test_data = get_dataset(test_files, AUTOTUNE = AUTOTUNE)
-test_data = aug.make_spec_tensor(test_data)
-plot_sample_spectrograms(test_data, dir = time_start, name = 'test')
 test_data = aug.prepare(test_data, batch_size)
 
 open(f'trainings/{time_start}/training_info.txt', 'w').write(info_text)

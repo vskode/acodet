@@ -255,7 +255,7 @@ def parse_tfrecord_fn(example):
         tf.io object: tensorflow object containg the data
     """
     feature_description = {
-        "audio": tf.io.FixedLenFeature([config.cntxt_wn_sz], tf.float32),
+        "audio": tf.io.FixedLenFeature([config.context_win], tf.float32),
         "label": tf.io.FixedLenFeature([], tf.int64),
         "file" : tf.io.FixedLenFeature([], tf.string),
         "time" : tf.io.FixedLenFeature([], tf.int64)
