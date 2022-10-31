@@ -2,7 +2,6 @@ import tensorflow as tf
 from keras_cv.layers import BaseImageAugmentationLayer
 import numpy as np
 import yaml
-from hbdet.humpback_model_dir import front_end
 
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
@@ -52,19 +51,32 @@ class CropAndFill(BaseImageAugmentationLayer):
         return tf.concat([audio[beg:], audio[:beg]], 0)
     
 class MixCallAndNoise(BaseImageAugmentationLayer):
-    def __init__(self, noise_data: tf.data.Dataset, seed: int=None, 
-                 alpha: float=0.3, **kwargs) -> None:
+    def __init__(self, noise_data: tf.data.Dataset, 
+                 train_set_size: int, 
+                 seed: int=None, 
+                 alpha: float=0.3, 
+                 batch_size: int=32, 
+                 **kwargs) -> None:
         super().__init__()
         self.seed = seed
         self.alpha = alpha
         self.noise_ds = noise_data
-        self.len = 370 - 1
+        self.len = train_set_size - 1 
+        
+        np.random.seed(self.seed)
+        
+        self.noise_audio = []
+        for _ in range(batch_size//2):
+            r = np.random.randint(self.len)
+            self.noise_audio.append(next(iter(self.noise_ds
+                                        .skip(r)
+                                        .take(1)))[0])
         
     def call(self, train_sample: tf.Tensor):
         np.random.seed(self.seed)
-        r = np.random.randint(self.len)
-        self.noise_audio, _ = next(iter(self.noise_ds.take(1)))
-        return train_sample*(1-self.alpha) + self.noise_audio*self.alpha
+        r = np.random.randint(len(self.noise_audio))
+        noise_mixup = self.noise_audio[r]
+        return train_sample*(1-self.alpha) + noise_mixup*self.alpha
     
     
 ##############################################################################
@@ -74,35 +86,34 @@ class MixCallAndNoise(BaseImageAugmentationLayer):
 def time_shift():
     return tf.keras.Sequential([CropAndFill(64, 128)])
 
-def spec():
-    return tf.keras.Sequential([
-        tf.keras.layers.Input([config['context_win']]),
-        tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
-        front_end.MelSpectrogram()])
-
-
-def mix_up(noise_data):
-    return tf.keras.Sequential([MixCallAndNoise(noise_data=noise_data)])
-
+def mix_up(train_set_size, noise_data):
+    return tf.keras.Sequential([MixCallAndNoise(train_set_size=train_set_size,
+                                                noise_data=noise_data)])
 
 def augment(ds, augments=1, aug_func=time_shift):
     ds_augs = []
-    for i in range(augments):
+    for _ in range(augments):
         ds_augs.append(ds.map(lambda x, y: (aug_func(x, training=True), y), 
                 num_parallel_calls=AUTOTUNE))        
     return ds_augs
 
-def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, augmented_data=None):
-    if not augmented_data is None:
-        for ds_aug in augmented_data:
-            ds = ds.concatenate(ds_aug)
-    if shuffle:
-        ds = ds.shuffle(shuffle_buffer)    
-    ds = ds.batch(batch_size)
-    # create specs from audio arrays
-    return ds.prefetch(buffer_size=AUTOTUNE)
+def run_augment_pipeline(train_data, noise_data, train_set_size, 
+                         n_time_augs, n_mixup_augs,
+                         seed = None):
+    time_aug_data = list(zip(augment(train_data, augments = n_time_augs, 
+                            aug_func=time_shift()),
+                            ['time_shift']*n_time_augs ))
 
-def make_spec_tensor(ds):
-    ds = ds.batch(1)
-    ds = ds.map(lambda x, y: (spec()(x), y), num_parallel_calls=AUTOTUNE)
-    return ds.unbatch()
+    mixup_aug_data = list(zip(augment(train_data, augments = n_mixup_augs, 
+                            aug_func=mix_up(train_set_size, noise_data)),
+                            ['mix_up']*n_mixup_augs ))
+
+    np.random.seed(seed)
+    r = np.random.randint(len(time_aug_data))
+    mixup_aug_data += list(zip(augment(time_aug_data[r][0], 
+                                       augments = n_mixup_augs, 
+                            aug_func=mix_up(train_set_size, noise_data)),
+                            ['mix_up']*n_mixup_augs ))
+
+    return [*time_aug_data, *mixup_aug_data, (noise_data, 'noise')]
+

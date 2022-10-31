@@ -209,3 +209,42 @@ def create_and_save_figure(model_instance, tfrec_path, batch_size, train_date,
     fig.suptitle(f'Evaluation Metrics{info_string}')
     
     fig.savefig(f'{training_runs[0].parent}/eval_metrics.png')
+    
+def plot_pre_training_spectrograms(train_data, test_data, 
+                                   augmented_data, 
+                                   time_start, seed):
+    
+    plot_sample_spectrograms(train_data, dir = time_start, name = 'train', 
+                            seed=seed)
+    for i, (augmentation, aug_name) in enumerate(augmented_data):
+        plot_sample_spectrograms(augmentation, dir = time_start, 
+                                name=f'augment_{i}-{aug_name}', seed=seed)
+    plot_sample_spectrograms(test_data, dir = time_start, name = 'test')
+    
+    
+def compare_random_spectrogram(filenames, dataset_size = config['tfrecs_lim']):
+    r = np.random.randint(dataset_size)
+    dataset = (
+        tf.data.TFRecordDataset(filenames)
+        .map(tfrec.parse_tfrecord_fn)
+        .skip(r)
+        .take(1)
+    )
+
+    sample = next(iter(dataset))
+    aud, file, lab, time = (sample[k].numpy() for k in list(sample.keys()))
+    file = file.decode()
+
+    fig, ax = plt.subplots(ncols = 2, figsize = [12, 8])
+    ax[0] = funcs.simple_spec(aud, fft_window_length = 512, sr = 10000, 
+                                ax = ax[0], colorbar = False)
+    _, ax[1] = funcs.plot_spec_from_file(file, ax = ax[1], start = time, 
+                                        fft_window_length = 512, sr = 10000, 
+                                        fig = fig)
+    ax[0].set_title(f'Spec of audio sample from \ntfrecords array nr. {r}'
+                    f' | label: {lab}')
+    ax[1].set_title(f'Spec of audio sample from file: \n{Path(file).stem}'
+                    f' | time in file: {funcs.get_time(time/10000)}')
+
+    fig.suptitle('Comparison between tfrecord audio and file audio')
+    fig.savefig(f'{tfrec.TFRECORDS_DIR}_check_imgs/comp_{Path(file).stem}.png')

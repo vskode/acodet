@@ -2,12 +2,12 @@ import numpy as np
 import tensorflow as tf
 from . import funcs
 import random
-import matplotlib.pyplot as plt
+from hbdet.humpback_model_dir import front_end
 from pathlib import Path
 import json
 
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v3/'
 config = funcs.load_config()
+TFRECORDS_DIR = config.data_dir
 
 ########################################################
 #################  WRITING   ###########################
@@ -163,8 +163,9 @@ def write_tfrecords(annots, **kwArgs):
     random.shuffle(files)
     
     split_mode = 'within_file'
-    dataset_size = 0
-    dataset_dict = dict({'data_split': split_mode})
+    dataset = {k: {k1: 0 for k1 in ['train', 'test', 'val']} 
+               for k in ['size', 'noise', 'calls']}
+    data_meta_dict = dict({'data_split': split_mode})
 
     train_file_index = int(len(files)*config.train_ratio)
     test_file_index = int(len(files)
@@ -204,16 +205,17 @@ def write_tfrecords(annots, **kwArgs):
             for samps in split_by_max_length:
                 tfrec_num += 1
                 writer = get_tfrecords_writer(tfrec_num, folder, **kwArgs)
-                dataset_dict.update({"file_%.2i_size" % tfrec_num: len(samps)})
-                dataset_size += len(samps)
+                data_meta_dict, dataset = update_dict(samps, data_meta_dict,
+                                                      dataset, folder, tfrec_num)
                 
                 for audio, label, file, time in samps:
                     examples = create_example(audio, label, file, time)
                     writer.write(examples.SerializeToString())
                     
-    dataset_dict.update({'dataset_size': dataset_size})
-    with open(TFRECORDS_DIR + 'dataset_meta.json', 'w') as f:
-        json.dump(dataset_dict, f)
+    # TODO automatisch die noise sachen miterstellen
+    data_meta_dict.update({'dataset': dataset})
+    with open(Path(TFRECORDS_DIR).joinpath('dataset_meta.json'), 'w') as f:
+        json.dump(data_meta_dict, f)
     
 def randomize_arrays(tup, file):
     x, y, times = tup
@@ -223,6 +225,15 @@ def randomize_arrays(tup, file):
     
     return zip(x[rand], y[rand], [file]*len(x), np.array(times)[rand])
     
+def update_dict(samples, d, dataset_dict, folder, tfrec_num):
+    calls = sum(1 for i in samples if i[1] == 1)
+    noise = sum(1 for i in samples if i[1] == 0)
+    size = noise+calls
+    d.update({f"file_%.2i_{k}" % tfrec_num: 
+                        k for k in [size, noise, calls]})
+    for l, k in zip(('size', 'calls', 'noise'), (size, calls, noise)):
+        dataset_dict[l][folder] += k
+    return d, dataset_dict
 
 def get_tfrecords_writer(num, fold, alt_subdir = ''):
     """
@@ -262,35 +273,6 @@ def parse_tfrecord_fn(example):
     }
     return tf.io.parse_single_example(example, feature_description)
     
-
-def compare_random_spectrogram(filenames, dataset_size = config.tfrecs_lim):
-    r = np.random.randint(dataset_size)
-    dataset = (
-        tf.data.TFRecordDataset(filenames)
-        .map(parse_tfrecord_fn)
-        .skip(r)
-        .take(1)
-    )
-
-    sample = next(iter(dataset))
-    aud, file, lab, time = (sample[k].numpy() for k in list(sample.keys()))
-    file = file.decode()
-
-    fig, ax = plt.subplots(ncols = 2, figsize = [12, 8])
-    ax[0] = funcs.simple_spec(aud, fft_window_length = 512, sr = 10000, 
-                                ax = ax[0], colorbar = False)
-    _, ax[1] = funcs.plot_spec_from_file(file, ax = ax[1], start = time, 
-                                        fft_window_length = 512, sr = 10000, 
-                                        fig = fig)
-    ax[0].set_title(f'Spec of audio sample from \ntfrecords array nr. {r}'
-                    f' | label: {lab}')
-    ax[1].set_title(f'Spec of audio sample from file: \n{Path(file).stem}'
-                    f' | time in file: {funcs.get_time(time/10000)}')
-
-    fig.suptitle('Comparison between tfrecord audio and file audio')
-    fig.savefig(f'{TFRECORDS_DIR}_check_imgs/comp_{Path(file).stem}.png')
-
-
 def prepare_sample(features):
     return features["audio"], features["label"]
 
@@ -302,6 +284,11 @@ def get_dataset(filenames, AUTOTUNE=None):
     )
     return dataset
 
+def run_data_pipeline(data_dir, AUTOTUNE):
+    files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/{data_dir}/*.tfrec")
+    dataset = get_dataset(files, AUTOTUNE = AUTOTUNE)
+    return make_spec_tensor(dataset)
+
 def get_val_data(tfrec_path, batch_size, debug=False):
     test_files = tf.io.gfile.glob(f"{tfrec_path}/val/*.tfrec")
     test_data = get_dataset(test_files, batch_size)
@@ -310,3 +297,24 @@ def get_val_data(tfrec_path, batch_size, debug=False):
         return test_data.take(100)
     else:
         return test_data
+
+def spec():
+    return tf.keras.Sequential([
+        tf.keras.layers.Input([config.context_win]),
+        tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
+        front_end.MelSpectrogram()])
+
+def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, 
+            augmented_data=None, AUTOTUNE=None):
+    if not augmented_data is None:
+        for ds_aug in augmented_data:
+            ds = ds.concatenate(ds_aug)
+    if shuffle:
+        ds = ds.shuffle(shuffle_buffer)    
+    ds = ds.batch(batch_size)    
+    return ds.prefetch(buffer_size=AUTOTUNE)
+
+def make_spec_tensor(ds, AUTOTUNE=None):
+    ds = ds.batch(1)
+    ds = ds.map(lambda x, y: (spec()(x), y), num_parallel_calls=AUTOTUNE)
+    return ds.unbatch()
