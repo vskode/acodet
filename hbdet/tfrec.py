@@ -1,3 +1,4 @@
+from tokenize import Intnumber
 import numpy as np
 import tensorflow as tf
 from . import funcs
@@ -115,7 +116,7 @@ def create_example(audio, label, file, time):
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
-def read_raw_file(file, annots):
+def read_raw_file(file, annots, **kwargs):
     """
     Load annotations for file, correct annotation starting times to make sure
     that the signal is in the window center.
@@ -130,7 +131,7 @@ def read_raw_file(file, annots):
     file_annots = funcs.get_annots_for_file(annots, file)
 
     x_call, x_noise, times_c, times_n = funcs.cntxt_wndw_arr(file_annots,
-                                                            file) 
+                                                            file, **kwargs)
     y_call = np.ones(len(x_call), dtype = 'float32')
     y_noise = np.zeros(len(x_noise), dtype = 'float32')
     
@@ -146,7 +147,7 @@ def write_tfrecs_for_mixup(file):
         examples = create_example(audio, label, file, time)
         writer.write(examples.SerializeToString())
                 
-def write_tfrecords(annots, **kwArgs):
+def write_tfrecords(annots, all_noise=False, inbetween_noise=True, **kwargs):
     """
     Write tfrecords files from wav files. 
     First the files are imported and the noise files are generated. After that 
@@ -163,50 +164,65 @@ def write_tfrecords(annots, **kwArgs):
     random.shuffle(files)
     
     split_mode = 'within_file'
-    dataset = {k: {k1: 0 for k1 in ['train', 'test', 'val']} 
-               for k in ['size', 'noise', 'calls']}
+    specs = ['size', 'noise', 'calls']
+    if all_noise:
+        folders = ['noise']
+    else:
+        folders = ['train', 'test', 'val']
+        train_file_index = int(len(files)*config.train_ratio)
+        test_file_index = int(len(files)
+                            *(1-config.train_ratio)
+                            *config.test_val_ratio)
+        
+    dataset = {k: {k1: 0 for k1 in folders} 
+               for k in specs}
     data_meta_dict = dict({'data_split': split_mode})
-
-    train_file_index = int(len(files)*config.train_ratio)
-    test_file_index = int(len(files)
-                          *(1-config.train_ratio)
-                          *config.test_val_ratio)
+    files_dict = {}
     tfrec_num = 0
     for i, file in enumerate(files):
         print('writing tf records files, progress:'
               f'{i/len(files)*100:.0f} %')
         
-        if i < train_file_index:
-            folder = 'train'
-        elif i < train_file_index + test_file_index:
-            folder = 'test'
+        if all_noise:
+            folder = folders[0]
         else:
-            folder = 'val'
+            if i < train_file_index:
+                folder = folders[0]
+            elif i < train_file_index + test_file_index:
+                folder = folders[1]
+            else:
+                folder = folders[2]
 
-        call_tup, noise_tup = read_raw_file(file, annots)
+        call_tup, noise_tup = read_raw_file(file, annots, 
+                                            inbetween_noise=inbetween_noise, 
+                                            **kwargs)
         
         calls = randomize_arrays(call_tup, file)
         noise = randomize_arrays(noise_tup, file)
         samples = [*calls, *noise]
         random.shuffle(samples)
-        end_tr, end_te = map(lambda x: int(x*len(samples)),
-                             (config.train_ratio, (1-config.train_ratio)
-                                                *config.test_val_ratio
-                                                +config.train_ratio) )
+        data = dict()
+        if all_noise:
+            data['noise'] = samples
+        else:
+            end_tr, end_te = map(lambda x: int(x*len(samples)),
+                                (config.train_ratio, (1-config.train_ratio)
+                                                    *config.test_val_ratio
+                                                    +config.train_ratio) )
+            
+            data['train'] = samples[:end_tr]
+            data['test'] = samples[end_tr:end_te]
+            data['val'] = samples[end_tr:-1]
         
-        train = samples[:end_tr]
-        test = samples[end_tr:end_te]
-        val = samples[end_tr:-1]
         
-        
-        for samples, folder in zip((train, test, val), ('train', 'test', 'val')):
+        for folder, samples in data.items():
             split_by_max_length = [samples[j*config.tfrecs_lim:(j+1) * config.tfrecs_lim] \
                                     for j in range(len(samples)//config.tfrecs_lim + 1)]
             for samps in split_by_max_length:
                 tfrec_num += 1
-                writer = get_tfrecords_writer(tfrec_num, folder, **kwArgs)
-                data_meta_dict, dataset = update_dict(samps, data_meta_dict,
-                                                      dataset, folder, tfrec_num)
+                writer = get_tfrecords_writer(tfrec_num, folder, **kwargs)
+                files_dict, dataset = update_dict(samps, files_dict,
+                                                  dataset, folder, tfrec_num)
                 
                 for audio, label, file, time in samps:
                     examples = create_example(audio, label, file, time)
@@ -214,6 +230,7 @@ def write_tfrecords(annots, **kwArgs):
                     
     # TODO automatisch die noise sachen miterstellen
     data_meta_dict.update({'dataset': dataset})
+    data_meta_dict.update({'files': files_dict})
     with open(Path(TFRECORDS_DIR).joinpath('dataset_meta.json'), 'w') as f:
         json.dump(data_meta_dict, f)
     
@@ -229,7 +246,7 @@ def update_dict(samples, d, dataset_dict, folder, tfrec_num):
     calls = sum(1 for i in samples if i[1] == 1)
     noise = sum(1 for i in samples if i[1] == 0)
     size = noise+calls
-    d.update({f"file_%.2i_{k}" % tfrec_num: 
+    d.update({f"file_%.2i_{folder}" % tfrec_num: 
                         k for k in [size, noise, calls]})
     for l, k in zip(('size', 'calls', 'noise'), (size, calls, noise)):
         dataset_dict[l][folder] += k
@@ -284,19 +301,17 @@ def get_dataset(filenames, AUTOTUNE=None):
     )
     return dataset
 
-def run_data_pipeline(data_dir, AUTOTUNE):
-    files = tf.io.gfile.glob(f"{TFRECORDS_DIR}/{data_dir}/*.tfrec")
+def run_data_pipeline(root_dir, data_dir, AUTOTUNE=None, return_spec=True):
+    if not isinstance(root_dir, list):
+        root_dir = [root_dir]
+    files = []
+    for root in root_dir:
+        files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
     dataset = get_dataset(files, AUTOTUNE = AUTOTUNE)
-    return make_spec_tensor(dataset)
-
-def get_val_data(tfrec_path, batch_size, debug=False):
-    test_files = tf.io.gfile.glob(f"{tfrec_path}/val/*.tfrec")
-    test_data = get_dataset(test_files, batch_size)
-    
-    if debug:
-        return test_data.take(100)
+    if return_spec:
+        return make_spec_tensor(dataset)
     else:
-        return test_data
+        return dataset
 
 def spec():
     return tf.keras.Sequential([

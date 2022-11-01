@@ -115,6 +115,7 @@ def return_windowed_file(file) -> tuple([np.ndarray, np.ndarray]):
     return audio_arr, times
 
 def cntxt_wndw_arr(annotations: pd.DataFrame, file, 
+                   inbetween_noise: bool=True,
                    **kwargs) -> tuple:
     """
     Load an audio file, with the duration given by the time difference
@@ -129,8 +130,8 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
     by the sample rate. The times list contains the beginning time of each
     context window in samples. 
 
-    Finally the nosie arrays in between the calls are collected and all
-    4 arrays are returned.
+    Finally if the argument 'inbetween_noise' is False, the nosie arrays in between 
+    the calls are collected and all 4 arrays are returned.
 
     Parameters
     ----------
@@ -138,6 +139,10 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
         annotations of vocalizations in file
     file : str or pathlib.Path
         file path
+    inbetween_noise : bool, defaults to True
+        decide if in between noise should be collected as well or, in case
+        the argument is True, all the annotations are already all noise, in
+        which case no in between noise is returned
 
     Returns
     -------
@@ -169,7 +174,10 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
             break
         
     seg_ar = np.array(seg_ar, dtype='float32')
-    noise_ar, times_n = return_inbetween_noise_arrays(audio, annotations)
+    if inbetween_noise:
+        noise_ar, times_n = return_inbetween_noise_arrays(audio, annotations)
+    else:
+        noise_ar, times_n = np.array([]), np.array([])
     
     return seg_ar, noise_ar, times_c, times_n
     
@@ -233,6 +241,23 @@ def return_inbetween_noise_arrays(audio: np.ndarray,
             times.append(beg)
     
     return np.array(noise_ar, dtype='float32'), times
+
+def get_train_set_size(TFRECORDS_DIR):
+    if not isinstance(TFRECORDS_DIR, list):
+        TFRECORDS_DIR = [TFRECORDS_DIR]
+    train_set_size, noise_set_size = 0, 0
+    for dataset_dir in TFRECORDS_DIR:
+        try:
+            data_dict = json.load(open(dataset_dir+'/dataset_meta.json'))
+            if 'train' in data_dict['dataset']['size']:
+                train_set_size += data_dict['dataset']['size']['train']
+            elif 'noise' in data_dict['dataset']['size']:
+                noise_set_size += data_dict['dataset']['size']['noise']
+        except:
+            print('No dataset dictionary found, estimating dataset size.'
+                'WARNING: This might lead to incorrect learning rates!')
+            train_set_size += 5000
+    return train_set_size, noise_set_size
 
 ################ Plotting helpers ###########################################
 

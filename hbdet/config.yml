@@ -1,7 +1,7 @@
 # Configuration file
 
 ## DATA DIRECTORY
-data_dir: 'Daten/Datasets/ScotWest_v3_2khz'
+data_dir: 'Daten/Datasets/ScotWest_v5_2khz'
 
 ## Preprocessing Parameters
 stft_frame_len: 1024
@@ -30,4 +30,5 @@ pred_win_lim: 20
 
 ## Paths
 annotation_root_dir: 'Daten/Catherine_annotations'
-files_root_dir: '/mnt/d/VINCENT_RawData'
+# files_root_dir: '/mnt/d/VINCENT_RawData'
+files_root_dir: 'generated_annotations'

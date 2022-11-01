@@ -195,7 +195,7 @@ def create_and_save_figure(model_instance, tfrec_path, batch_size, train_date,
                             **kwargs):
     
     training_runs = list(Path(f'trainings/{train_date}').glob('unfreeze*'))
-    val_data = tfrec.get_val_data(tfrec_path, batch_size, debug=debug)
+    val_data = tfrec.run_data_pipeline(tfrec_path, 'val', return_spec=False)
     
     fig = plt.figure(constrained_layout=True)
 

@@ -3,32 +3,38 @@ import glob
 from ketos.data_handling import selection_table as sl
 from pathlib import Path
 import os
-from . import funcs
+from hbdet import funcs
 
 config = funcs.load_config()
-annotation_files = Path(config.annotations_root_dir).glob('/**/*.txt')
+# annotation_files = Path(config.annotations_root_dir).glob('/**/*.txt')
+annotation_files = Path(r'generated_annotations/2022-10-31_17/').glob('*allnoise.txt')
 
 def compensate_for_naming_inconsistencies(hard_drive_path):
-    if not file_path:
-        new_file = file.stem.split("Table")[0] + 'wav'
-        file_tolsta = '336097327.'+new_file[6:].replace('_000', '').replace('_', '')
+    
+    new_file = file.stem.split("Table")[0] + 'wav'
+    file_tolsta = '336097327.'+new_file[6:].replace('_000', '').replace('_', '')
+    file_path = glob.glob(f'{hard_drive_path}/**/{file_tolsta}',
+                recursive = True)
+    
+    if not file_path :
+        file_tolsta = '335564853.'+new_file[6:].replace('5_000', '4').replace('_', '')
         file_path = glob.glob(f'{hard_drive_path}/**/{file_tolsta}',
                     recursive = True)
         
+    if not file_path :
+        file_new_annot = new_file.split('_annot')[0]
+        file_path = glob.glob(f'{hard_drive_path}/**/{file_new_annot}.*',
+                    recursive = True)
         if not file_path :
-            file_tolsta = '335564853.'+new_file[6:].replace('5_000', '4').replace('_', '')
-            file_path = glob.glob(f'{hard_drive_path}/**/{file_tolsta}',
-                        recursive = True)
-            if not file_path :
-                return f'{file.stem.split("Table")[0]}wav'
+            return f'{file.stem.split("Table")[0]}wav'
     return file_path
 
 def get_corresponding_sound_file(file):
     hard_drive_path = config.files_root_dir
     file_path = glob.glob(f'{hard_drive_path}/**/{file.stem.split("Table")[0]}wav',
                       recursive = True)
-    
-    file_path = compensate_for_naming_inconsistencies(hard_drive_path)
+    if not file_path:
+        file_path = compensate_for_naming_inconsistencies(hard_drive_path)
         
     if len(file_path) > 1:
         for path in file_path:
@@ -43,7 +49,7 @@ def standardize_annotations(file):
     ann = pd.read_csv(file, sep = '\t')
 
     ann['filename'] = get_corresponding_sound_file(file)
-    ann['label']    = 1
+    ann['label']    = 0
     map_to_ketos_annot_std = {'Begin Time (s)': 'start', 
                               'End Time (s)': 'end',
                               'Low Freq (Hz)' : 'freq_min', 
@@ -65,5 +71,5 @@ if __name__ == '__main__':
         
         df = df.append(standardize_annotations(file))
         
-    df.to_csv('Daten/ket_annot.csv')
+    df.to_csv('Daten/2022-10-31_17_annot.csv')
     save_ket_annot_only_existing_paths(df)
