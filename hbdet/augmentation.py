@@ -111,12 +111,13 @@ def run_augment_pipeline(train_data, noise_data, noise_set_size,
                             aug_func=mix_up(noise_set_size, noise_data)),
                             ['mix_up']*n_mixup_augs ))
 
-    np.random.seed(seed)
-    r = np.random.randint(len(time_aug_data))
-    mixup_aug_data += list(zip(augment(time_aug_data[r][0], 
-                                       augments = n_mixup_augs, 
-                            aug_func=mix_up(noise_set_size, noise_data)),
-                            ['mix_up']*n_mixup_augs ))
+    if n_time_augs > 0:
+        np.random.seed(seed)
+        r = np.random.randint(len(time_aug_data))
+        mixup_aug_data += list(zip(augment(time_aug_data[r][0], 
+                                        augments = n_mixup_augs, 
+                                aug_func=mix_up(noise_set_size, noise_data)),
+                                ['mix_up']*n_mixup_augs ))
 
     return [*time_aug_data, *mixup_aug_data, (noise_data, 'noise')]
 
