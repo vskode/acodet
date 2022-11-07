@@ -29,6 +29,7 @@ class CropAndFill(BaseImageAugmentationLayer):
         self.height = height
         self.width = width
         self.seed = seed
+        tf.random.set_seed(self.seed)
     
     def call(self, audio: tf.Tensor):
         """
@@ -41,14 +42,18 @@ class CropAndFill(BaseImageAugmentationLayer):
         Returns:
             tf.Tensor: reordered image
         """
-        np.random.seed(self.seed)
-        beg = np.random.randint(self.width//2) + self.width//2
+        # np.random.seed(self.seed)
+        # beg = np.random.randint(self.width//2)# + self.width//2
+        beg = tf.random.uniform(shape = [], maxval=self.width//2,
+                                dtype=tf.int32)# + self.width//2
+        tf.print('moin ', beg)
         
         # for debugging purposes
         if not isinstance(audio, tf.Tensor):
             audio = audio[0][0]
             
-        return tf.concat([audio[beg:], audio[:beg]], 0)
+        # return tf.concat([audio[beg:], audio[:beg]], 0)
+        return tf.roll(audio, shift=[beg], axis=[0])
     
 class MixCallAndNoise(BaseImageAugmentationLayer):
     def __init__(self, noise_data: tf.data.Dataset, 
@@ -103,15 +108,15 @@ def augment(ds, augments=1, aug_func=time_shift):
 def run_augment_pipeline(train_data, noise_data, noise_set_size, 
                          n_time_augs, n_mixup_augs,
                          seed = None):
-    time_aug_data = list(zip(augment(train_data, augments = n_time_augs, 
-                            aug_func=time_shift()),
-                            ['time_shift']*n_time_augs ))
+    time_aug_data = augment(train_data, augments = n_time_augs, 
+                            aug_func=time_shift())#,
+                            # ['time_shift']*n_time_augs )
 
     mixup_aug_data = list(zip(augment(train_data, augments = n_mixup_augs, 
                             aug_func=mix_up(noise_set_size, noise_data)),
                             ['mix_up']*n_mixup_augs ))
 
-    if n_time_augs > 0:
+    if False:#n_time_augs > 0:
         np.random.seed(seed)
         r = np.random.randint(len(time_aug_data))
         mixup_aug_data += list(zip(augment(time_aug_data[r][0], 
@@ -119,5 +124,5 @@ def run_augment_pipeline(train_data, noise_data, noise_set_size,
                                 aug_func=mix_up(noise_set_size, noise_data)),
                                 ['mix_up']*n_mixup_augs ))
 
-    return [*time_aug_data, *mixup_aug_data, (noise_data, 'noise')]
+    return [time_aug_data]#, *mixup_aug_data, (noise_data, 'noise')]
 

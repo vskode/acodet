@@ -257,6 +257,7 @@ def get_train_set_size(TFRECORDS_DIR):
             print('No dataset dictionary found, estimating dataset size.'
                 'WARNING: This might lead to incorrect learning rates!')
             train_set_size += 5000
+            noise_set_size += 100
     return train_set_size, noise_set_size
 
 ################ Plotting helpers ###########################################

@@ -10,12 +10,13 @@ from hbdet.google_funcs import GoogleMod
 from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import TFRECORDS_DIR, run_data_pipeline, prepare
 from hbdet.plot_utils import plot_pre_training_spectrograms
-from hbdet.augmentation import run_augment_pipeline
+from hbdet.augmentation import run_augment_pipeline, time_shift
 
 NUMBER_OF_TRAININGS = 4
 config = load_config()
-TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v5_2khz', 
-                 'Daten/Datasets/ScotWest_v4_2khz']
+TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz'
+# TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v5_2khz', 
+                #  'Daten/Datasets/ScotWest_v4_2khz']
 AUTOTUNE = tf.data.AUTOTUNE
 
 batch_size = 32
@@ -24,7 +25,7 @@ epochs = 25
 load_weights = False
 load_g_weights = False
 steps_per_epoch = False
-n_time_augs = [0, 0, 3, 0]
+n_time_augs = [1, 0, 3, 0]
 n_mixup_augs = [0, 3, 0, 0]
 data_description = TFRECORDS_DIR
 init_lr = [1e-3, 1e-3, 1e-3, 1e-6]
@@ -110,12 +111,21 @@ def run_training(config=config,
                                         n_mixup_augs,
                                         seed)
 
-    plot_pre_training_spectrograms(train_data, test_data, augmented_data,
-                                time_start, seed)
+    a_data = train_data.map(lambda x, y: (time_shift()(x), y))
+    b_data = train_data.map(lambda x, y: (x, y))
+    
+    # plot_pre_training_spectrograms(train_data, test_data, [],#augmented_data,
+    #                             time_start, seed)
+    
+    train_data = b_data.concatenate(a_data)
+    train_data = train_data.take(1)    
+    train_data = train_data.batch(batch_size)    
+    train_data = train_data.prefetch(buffer_size=AUTOTUNE)
 
-    train_data = prepare(train_data, batch_size, shuffle=True, 
-                        shuffle_buffer=n_train_set//2, 
-                        augmented_data=np.array(augmented_data)[:,0])
+    # train_data = prepare(train_data, batch_size, shuffle=True, 
+    #                     shuffle_buffer=n_train_set//2, 
+    #                     augmented_data=np.array(augmented_data)[:,0])
+    
 
     test_data = prepare(test_data, batch_size)
 
@@ -173,7 +183,6 @@ def run_training(config=config,
             save_freq='epoch')
 
         model.save_weights(checkpoint_path)
-
         hist = model.fit(train_data, 
                 epochs = epochs, 
                 validation_data = test_data,
