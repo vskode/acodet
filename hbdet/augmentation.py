@@ -42,17 +42,13 @@ class CropAndFill(BaseImageAugmentationLayer):
         Returns:
             tf.Tensor: reordered image
         """
-        # np.random.seed(self.seed)
-        # beg = np.random.randint(self.width//2)# + self.width//2
-        beg = tf.random.uniform(shape = [], maxval=self.width//2,
-                                dtype=tf.int32)# + self.width//2
-        tf.print('moin ', beg)
+        beg = tf.random.uniform(shape = [], maxval=self.width//2, 
+                                dtype=tf.int32)
         
         # for debugging purposes
-        if not isinstance(audio, tf.Tensor):
-            audio = audio[0][0]
+        if False:
+            tf.print('time shift augmentation computed, val: ', beg)
             
-        # return tf.concat([audio[beg:], audio[:beg]], 0)
         return tf.roll(audio, shift=[beg], axis=[0])
     
 class MixCallAndNoise(BaseImageAugmentationLayer):
@@ -60,30 +56,38 @@ class MixCallAndNoise(BaseImageAugmentationLayer):
                  noise_set_size: int, 
                  seed: int=None, 
                  alpha: float=0.2, 
-                 batch_size: int=32, 
+                 epochs: int=32, 
                  **kwargs) -> None:
         super().__init__()
         self.seed = seed
         self.alpha = alpha
         self.noise_ds = noise_data
         self.len = noise_set_size - 1 
+        self.epochs = epochs
         
         np.random.seed(self.seed)
         
-        self.noise_audio = []
-        for _ in range(batch_size//2):
-            r = np.random.randint(self.len)
-            self.noise_audio.append(next(iter(self.noise_ds
-                                        .skip(r)
-                                        .take(1)))[0])
+        self.noise_ds = self.noise_ds.shuffle(self.len)
+        self.noise_ds = self.noise_ds.take(self.epochs)
+        
+        # self.noise_list = list(self.noise_ds)
+        # self.noise_audio = []
+        # for _ in range(epochs):
+        #     self.noise_audio.append(next(iter(self.noise_ds
+        #                                 .take(1)))[0])
+        self.noise_mixup = next(iter(self.noise_ds))[0]
         
     def call(self, train_sample: tf.Tensor):
-        np.random.seed(self.seed)
-        r = np.random.randint(len(self.noise_audio))
-        noise_mixup = self.noise_audio[r]
-        noise_alpha = self.alpha / np.max(noise_mixup.numpy())
+        # r = tf.random.uniform(shape = [], maxval=len(self.noise_list), 
+        #                         dtype=tf.int32)
+        # noise_mixup = next(iter(self.noise_ds))[0]
+        # tf.print(dir(r))
+        # noise_mixup = self.noise_list[self.index][0]
+        # self.index += 1
+        noise_mixup = self.noise_mixup
+        noise_alpha = self.alpha / tf.math.reduce_max(noise_mixup)
         train_alpha = (1-self.alpha) / tf.math.reduce_max(train_sample) 
-        print(noise_alpha, train_alpha)
+        tf.print(noise_mixup.shape, train_sample.shape)
         return train_sample*train_alpha + noise_mixup*noise_alpha
     
     
@@ -94,35 +98,44 @@ class MixCallAndNoise(BaseImageAugmentationLayer):
 def time_shift():
     return tf.keras.Sequential([CropAndFill(64, 128)])
 
-def mix_up(noise_set_size, noise_data):
+def mix_up(noise_data, noise_set_size):
     return tf.keras.Sequential([MixCallAndNoise(noise_set_size=noise_set_size,
                                                 noise_data=noise_data)])
 
-def augment(ds, augments=1, aug_func=time_shift):
-    ds_augs = []
-    for _ in range(augments):
-        ds_augs.append(ds.map(lambda x, y: (aug_func(x, training=True), y), 
-                num_parallel_calls=AUTOTUNE))        
-    return ds_augs
+def augment(ds, aug_func=time_shift):
+    return ds.map(lambda x, y: (aug_func(x, training=True), y), 
+                num_parallel_calls=AUTOTUNE)  
+    
+def m_test(ds1, ds2, alpha=0.2):
+    call, lab = ds1
+    noise, l = ds2
+    noise_alpha = alpha / tf.math.reduce_max(call)
+    train_alpha = (1-alpha) / tf.math.reduce_max(noise) 
+    # tf.print(noise_mixup.shape, train_sample.shape)
+    # tf.print('moin')
+    return (call*train_alpha + noise*noise_alpha, lab)
 
-def run_augment_pipeline(train_data, noise_data, noise_set_size, 
-                         n_time_augs, n_mixup_augs,
+def run_augment_pipeline(ds, noise_data, noise_set_size,
+                         train_set_size, time_augs, mixup_augs,
                          seed = None):
-    time_aug_data = augment(train_data, augments = n_time_augs, 
-                            aug_func=time_shift())#,
-                            # ['time_shift']*n_time_augs )
-
-    mixup_aug_data = list(zip(augment(train_data, augments = n_mixup_augs, 
-                            aug_func=mix_up(noise_set_size, noise_data)),
-                            ['mix_up']*n_mixup_augs ))
-
-    if False:#n_time_augs > 0:
-        np.random.seed(seed)
-        r = np.random.randint(len(time_aug_data))
-        mixup_aug_data += list(zip(augment(time_aug_data[r][0], 
-                                        augments = n_mixup_augs, 
-                                aug_func=mix_up(noise_set_size, noise_data)),
-                                ['mix_up']*n_mixup_augs ))
-
-    return [time_aug_data]#, *mixup_aug_data, (noise_data, 'noise')]
+    T = time_shift()
+    # M = mix_up(noise_data, noise_set_size)
+    
+    if mixup_augs:
+        # ds = ds.map(lambda x, y: (M(x, training=True), y), 
+        #             num_parallel_calls=AUTOTUNE) 
+        ds_n = (noise_data
+                .repeat(train_set_size//noise_set_size + 1)
+                .shuffle(train_set_size//noise_set_size + 1))
+        dss = tf.data.Dataset.zip((ds, ds_n))
+        ds_mu = dss.map(lambda x, y: m_test(x, y), 
+                    num_parallel_calls=AUTOTUNE) 
+        ds_mu_n = ds_mu.concatenate(noise_data)
+        ds = ds.concatenate(ds_mu_n)
+        
+    if time_augs:
+        ds_t = ds.map(lambda x, y: (T(x, training=True), y), 
+                    num_parallel_calls=AUTOTUNE) 
+        ds = ds.concatenate(ds_t)
+    return ds
 

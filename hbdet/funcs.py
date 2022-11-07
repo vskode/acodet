@@ -251,7 +251,7 @@ def get_train_set_size(TFRECORDS_DIR):
             data_dict = json.load(open(dataset_dir+'/dataset_meta.json'))
             if 'train' in data_dict['dataset']['size']:
                 train_set_size += data_dict['dataset']['size']['train']
-            elif 'noise' in data_dict['dataset']['size']:
+            if 'noise' in data_dict['dataset']['size']:
                 noise_set_size += data_dict['dataset']['size']['noise']
         except:
             print('No dataset dictionary found, estimating dataset size.'

@@ -327,7 +327,7 @@ def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750,
             # ds = tf.data.Dataset.zip((ds, ds_aug))
     if shuffle:
         ds = ds.shuffle(shuffle_buffer)    
-    ds = ds.take(1)
+    # ds = ds.take(128)
     ds = ds.batch(batch_size)    
     return ds.prefetch(buffer_size=AUTOTUNE)
 

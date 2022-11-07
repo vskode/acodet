@@ -20,14 +20,14 @@ TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v5_2khz',
 AUTOTUNE = tf.data.AUTOTUNE
 
 # TODO mal batch size variieren
-batch_size = 32
-epochs = 70
+epochs = 120
 
-n_time_augs = [4] *4
-n_mixup_augs = [3] *4
-init_lr = [5e-4, 1e-3] *2
-final_lr = [5e-6, 1e-9] *2
-weight_clip = [0.7, 0.7, 0.8, 0.8]
+batch_size = [64, 32, 64, 32, 32, 64, 32, 64]
+time_augs = [False, True, True, True]*2
+mixup_augs = [True, False, True, True]*2
+init_lr = [1e-4, 1e-3] *4
+final_lr = [5e-6, 1e-6] *4
+weight_clip = [1]*4 + [0.8] *4
 
 load_weights = False
 load_g_weights = False
@@ -49,8 +49,8 @@ def run_training(config=config,
                  load_weights=load_weights, 
                  load_g_weights=load_g_weights, 
                  steps_per_epoch=steps_per_epoch, 
-                 n_time_augs=n_time_augs, 
-                 n_mixup_augs=n_mixup_augs, 
+                 time_augs=time_augs, 
+                 mixup_augs=mixup_augs, 
                  data_description=data_description, 
                  init_lr=init_lr, 
                  final_lr=final_lr, 
@@ -64,8 +64,7 @@ def run_training(config=config,
 
     model: untrained model 
     dataset: {data_description}
-    lr: new lr settings
-    comments: 2 khz; iterating through different augmentations to see effect on overfit, clipvalue=0.8
+    comments: implemented proper on-the-fly augmentation
 
     VARS:
     data_path       = {TFRECORDS_DIR}
@@ -75,8 +74,8 @@ def run_training(config=config,
     steps_per_epoch = {steps_per_epoch}
     f_score_beta    = {f_score_beta}
     f_score_thresh  = {f_score_thresh}
-    num_of_shifts   = {n_time_augs}
-    num_of_MixUps   = {n_mixup_augs}
+    bool_time_shift = {time_augs}
+    bool_MixUps     = {mixup_augs}
     weight_clipping = {weight_clip}
     init_lr         = {init_lr}
     final_lr        = {final_lr}
@@ -95,7 +94,7 @@ def run_training(config=config,
     Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 
     n_train, n_noise = get_train_set_size(TFRECORDS_DIR)
-    n_train_set = (n_train*(1+n_time_augs+2*n_mixup_augs) + n_noise) // batch_size
+    n_train_set = n_train*(1+time_augs + mixup_augs) // batch_size
     print('Train set size = {}. Epoch should correspond to this amount of steps.'
         .format(n_train_set), '\n')
 
@@ -111,25 +110,24 @@ def run_training(config=config,
     noise_data = run_data_pipeline(TFRECORDS_DIR, data_dir='noise', 
                                 AUTOTUNE=AUTOTUNE)
 
-    augmented_data = run_augment_pipeline(train_data, noise_data,
-                                        n_noise, n_time_augs, 
-                                        n_mixup_augs,
+    train_data = run_augment_pipeline(train_data, noise_data,
+                                        n_noise, n_train, time_augs, 
+                                        mixup_augs,
                                         seed)
 
-    a_data = train_data.map(lambda x, y: (time_shift()(x), y))
-    b_data = train_data.map(lambda x, y: (x, y))
+    # a_data = train_data.map(lambda x, y: (time_shift()(x), y))
+    # b_data = train_data.map(lambda x, y: (x, y))
     
-    # plot_pre_training_spectrograms(train_data, test_data, [],#augmented_data,
-    #                             time_start, seed)
+    plot_pre_training_spectrograms(train_data, test_data, [],#augmented_data,
+                                time_start, seed)
     
-    train_data = b_data.concatenate(a_data)
-    train_data = train_data.take(1)    
-    train_data = train_data.batch(batch_size)    
-    train_data = train_data.prefetch(buffer_size=AUTOTUNE)
+    # train_data = b_data.concatenate(a_data)
+    # train_data = train_data.take(1)    
+    # train_data = train_data.batch(batch_size)    
+    # train_data = train_data.prefetch(buffer_size=AUTOTUNE)
 
-    # train_data = prepare(train_data, batch_size, shuffle=True, 
-    #                     shuffle_buffer=n_train_set//2, 
-    #                     augmented_data=np.array(augmented_data)[:,0])
+    train_data = prepare(train_data, batch_size, shuffle=True, 
+                        shuffle_buffer=n_train_set)
     
 
     test_data = prepare(test_data, batch_size)
@@ -205,9 +203,10 @@ def run_training(config=config,
                             plot_cm=True, data = data_description)
 
 if __name__ == '__main__':
-    for i in range(len(n_time_augs)):
-        run_training(n_time_augs=n_time_augs[i], 
-                     n_mixup_augs=n_mixup_augs[i], 
+    for i in range(len(time_augs)):
+        run_training(batch_size=batch_size[i],
+                    time_augs=time_augs[i], 
+                     mixup_augs=mixup_augs[i], 
                      init_lr=init_lr[i], 
                      final_lr=final_lr[i],
                      weight_clip=weight_clip[i])
