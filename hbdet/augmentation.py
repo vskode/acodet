@@ -43,7 +43,7 @@ class CropAndFill(BaseImageAugmentationLayer):
         """
         np.random.seed(self.seed)
         beg = np.random.randint(self.width//2) + self.width//2
-        
+        # TODO irgendwie das fuer wirklich jeden call randomizen
         # for debugging purposes
         if not isinstance(audio, tf.Tensor):
             audio = audio[0][0]
