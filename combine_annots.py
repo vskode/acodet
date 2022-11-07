@@ -7,7 +7,7 @@ from hbdet import funcs
 
 config = funcs.load_config()
 # annotation_files = Path(config.annotations_root_dir).glob('/**/*.txt')
-annotation_files = Path(r'generated_annotations/2022-10-31_17/').glob('*allnoise.txt')
+annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
 
 def compensate_for_naming_inconsistencies(hard_drive_path):
     
@@ -71,5 +71,6 @@ if __name__ == '__main__':
         
         df = df.append(standardize_annotations(file))
         
-    df.to_csv('Daten/2022-10-31_17_annot.csv')
+    # TODO include date in path by default
+    df.to_csv('Daten/2022-11-04_12_annot.csv')
     save_ket_annot_only_existing_paths(df)

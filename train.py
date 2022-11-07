@@ -12,24 +12,27 @@ from hbdet.tfrec import TFRECORDS_DIR, run_data_pipeline, prepare
 from hbdet.plot_utils import plot_pre_training_spectrograms
 from hbdet.augmentation import run_augment_pipeline, time_shift
 
-NUMBER_OF_TRAININGS = 4
 config = load_config()
-TFRECORDS_DIR = 'Daten/Datasets/ScotWest_v1_2khz'
-# TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v5_2khz', 
-                #  'Daten/Datasets/ScotWest_v4_2khz']
+TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v5_2khz', 
+                 'Daten/Datasets/ScotWest_v4_2khz',
+                 'Daten/Datasets/ScotWest_v6_2khz',
+                 'Daten/Datasets/ScotWest_v7_2khz']
 AUTOTUNE = tf.data.AUTOTUNE
 
+# TODO mal batch size variieren
 batch_size = 32
-epochs = 25
+epochs = 70
+
+n_time_augs = [4] *4
+n_mixup_augs = [3] *4
+init_lr = [5e-4, 1e-3] *2
+final_lr = [5e-6, 1e-9] *2
+weight_clip = [0.7, 0.7, 0.8, 0.8]
 
 load_weights = False
 load_g_weights = False
 steps_per_epoch = False
-n_time_augs = [1, 0, 3, 0]
-n_mixup_augs = [0, 3, 0, 0]
 data_description = TFRECORDS_DIR
-init_lr = [1e-3, 1e-3, 1e-3, 1e-6]
-final_lr = [1e-6, 1e-6, 1e-6, 1e-9]
 pre_blocks = 9
 f_score_beta = 0.5
 f_score_thresh = 0.5
@@ -54,14 +57,15 @@ def run_training(config=config,
                  pre_blocks=pre_blocks, 
                  f_score_beta=f_score_beta, 
                  f_score_thresh=f_score_thresh, 
-                 unfreezes=unfreezes):
+                 unfreezes=unfreezes,
+                 weight_clip=weight_clip):
     
     info_text = f"""Model run INFO:
 
     model: untrained model 
     dataset: {data_description}
     lr: new lr settings
-    comments: 2 khz; iterating through different augmentations to see effect on overfit
+    comments: 2 khz; iterating through different augmentations to see effect on overfit, clipvalue=0.8
 
     VARS:
     data_path       = {TFRECORDS_DIR}
@@ -73,6 +77,7 @@ def run_training(config=config,
     f_score_thresh  = {f_score_thresh}
     num_of_shifts   = {n_time_augs}
     num_of_MixUps   = {n_mixup_augs}
+    weight_clipping = {weight_clip}
     init_lr         = {init_lr}
     final_lr        = {final_lr}
     unfreezes       = {unfreezes}
@@ -147,7 +152,8 @@ def run_training(config=config,
 
         model = GoogleMod(load_g_ckpt=load_g_ckpt).model
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
+            optimizer=tf.keras.optimizers.Adam(learning_rate = lr,
+                                               clipvalue = weight_clip),
             loss=tf.keras.losses.BinaryCrossentropy(),
             metrics = [tf.keras.metrics.BinaryAccuracy(),
                         tf.keras.metrics.Precision(),
@@ -199,8 +205,9 @@ def run_training(config=config,
                             plot_cm=True, data = data_description)
 
 if __name__ == '__main__':
-    for i in range(NUMBER_OF_TRAININGS):
+    for i in range(len(n_time_augs)):
         run_training(n_time_augs=n_time_augs[i], 
                      n_mixup_augs=n_mixup_augs[i], 
                      init_lr=init_lr[i], 
-                     final_lr=final_lr[i])
+                     final_lr=final_lr[i],
+                     weight_clip=weight_clip[i])

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt 
+import matplotlib.colors as mcolors
 from matplotlib.gridspec import GridSpec
 import time
 from pathlib import Path
@@ -13,12 +14,24 @@ import tensorflow as tf
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
 
-def plot_model_results(datetime, **kwargs):
+def plot_model_results(datetimes, labels=None, fig=None, **kwargs):
+    if fig == None:
+        fig = plt.figure(figsize=(15, 8))
+        savefig = True
+    else:
+        savefig = False
+        
+    
+    if not isinstance(datetimes, list):
+        datetimes = [datetimes]
+        
+    checkpoint_paths = []
+    for datetime in datetimes:
+        checkpoint_paths += list(Path(f"trainings/{datetime}")
+                                 .glob('unfreeze_*'))
+        
     r, c = 2, 4
-    fig, ax = None, None
-
-    checkpoint_paths = Path(f"trainings/{datetime}").glob('unfreeze_*')
-    for i, checkpoint_path in enumerate(checkpoint_paths):
+    for j, checkpoint_path in enumerate(checkpoint_paths):
         unfreeze = checkpoint_path.stem.split('_')[-1]
 
         if not Path(f"{checkpoint_path}/results.json").exists():
@@ -26,14 +39,21 @@ def plot_model_results(datetime, **kwargs):
         with open(f"{checkpoint_path}/results.json", 'r') as f:
             results = json.load(f)
         
-        if i == 0:
+        if j == 0:
             c = len(list(results.keys()))//2
-            fig, ax = plt.subplots(ncols = c, nrows = r, figsize = [15, 8])
+            ax = fig.subplots(ncols = c, nrows = r)
+            
+        if not labels is None:
+            label = labels[j]
+        else:
+            label = f'{checkpoint_path.parent.stem}_{unfreeze}'
         
         for i, key in enumerate(results.keys()):
+                
             ax[i//c, i%c].plot(results[key], 
-                            label = f'{unfreeze}')
-            ax[i//c, i%c].set_ylim([.5, 1])
+                        label = label)
+            if not i%c == 0:
+                ax[i//c, i%c].set_ylim([.5, 1.05])
             
             # axis handling depending on subplot index
             if i//c == 1 and i%c == 0:
@@ -42,9 +62,11 @@ def plot_model_results(datetime, **kwargs):
                 ax[i//c, i%c].set_title(f'{key}')
             if i//c == i%c == 0:
                 ax[i//c, i%c].set_ylabel('training')
-                ax[i//c, i%c].legend()
             elif i//c == 1 and i%c == 0:
                 ax[i//c, i%c].set_ylabel('val')
+            if i//c == 0 and i%c == c-1:
+                ax[i//c, i%c].legend(loc='center left', 
+                                     bbox_to_anchor=(1, 0.5))
 
     info_string = ''
     for key, val in kwargs.items():
@@ -55,8 +77,11 @@ def plot_model_results(datetime, **kwargs):
                 '\n'
                 f'{today}')
     ref_time = time.strftime('%Y%m%d', time.gmtime())
-    fig.tight_layout()
-    fig.savefig(f'trainings/{datetime}/model_results_{ref_time}.png')
+    if savefig:
+        fig.tight_layout()
+        fig.savefig(f'trainings/{datetime}/model_results_{ref_time}.png')
+    else:
+        return fig
 
 
 def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
@@ -129,7 +154,7 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
     else:
         return ax
     
-def plot_conf_matr(labels, preds, ax, training_run):
+def plot_conf_matr(labels, preds, ax, training_run, iteration, **kwargs):
     heat = tf.math.confusion_matrix(labels, preds).numpy()
     ax.imshow(heat, cmap='Greys')
     value_string = '{}\n{:.0f}%'
@@ -141,18 +166,25 @@ def plot_conf_matr(labels, preds, ax, training_run):
                      ha='center', va='center', color='orange')
     ax.set_xticks([0, 1], labels=['TP', 'TN'])
     ax.set_yticks([0, 1], labels=['pred. P', 'pred. N'])
-    ax.set_title(Path(training_run).stem)
+    color = list(mcolors.TABLEAU_COLORS.keys())[iteration]
+    ax.set_title(Path(training_run).parent.stem 
+                 + Path(training_run).stem.split('_')[-1], color=color)
     return ax
 
-def plot_pr_curve(labels, preds, ax, training_path, **kwArgs):
+def plot_pr_curve(labels, preds, ax, training_path, **kwargs):
     pr = dict()
     for met in ('Recall', 'Precision'):
         pr.update({met: funcs.get_pr_arrays(labels, preds, met)})
     
-    if 'load_untrained_model' in kwArgs:
-        ax.plot(pr['Recall'], pr['Precision'], label='untrained_model')
+    if 'label' in kwargs:
+        label = kwargs['label']
+    elif 'load_untrained_model' in kwargs:
+        label='untrained_model'
     else:
-        ax.plot(pr['Recall'], pr['Precision'], label=f'{training_path.stem}')
+        label = str(training_path.parent.stem
+                    + training_path.stem.split('_')[-1])
+        
+    ax.plot(pr['Recall'], pr['Precision'], label=label)
         
     ax.set_ylabel('precision')
     ax.set_xlabel('recall')
@@ -177,7 +209,8 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
         labels, preds = funcs.get_labels_and_preds(model_instance, run, 
                                                    val_data, **kwargs)            
         if not plot_pr:
-            plot_conf_matr(labels, preds, fig.add_subplot(gs[-1, i]), run)
+            plot_conf_matr(labels, preds, fig.add_subplot(gs[-1, i]), 
+                           run, iteration=i)
         else:
             ax_pr = plot_pr_curve(labels, preds, 
                                   ax_pr, run, **kwargs)
@@ -185,7 +218,8 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
                 ax_pr = plot_pr_curve(labels, preds, ax_pr, run,
                                 load_untrained_model=True, **kwargs)
             if plot_cm:
-                plot_conf_matr(labels, preds, fig.add_subplot(gs[-1, i]), run)
+                plot_conf_matr(labels, preds, fig.add_subplot(gs[-1, i]), 
+                               run, iteration=i)
             
         print('creating pr curve for ', run.stem)
     return fig
