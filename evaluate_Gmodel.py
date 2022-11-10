@@ -18,25 +18,33 @@ tfrec_path = ['Daten/Datasets/ScotWest_v5_2khz',
               'Daten/Datasets/ScotWest_v6_2khz',
               'Daten/Datasets/ScotWest_v7_2khz']
 
-train_dates = ['2022-11-04_13',
-              '2022-11-05_01',
-              '2022-11-05_14',
-              '2022-11-06_03']
+train_dates = ['2022-11-07_13',
+              '2022-11-07_16',
+              '2022-11-07_21',
+              '2022-11-08_03',
+              '2022-11-08_11',
+              '2022-11-08_16',
+              '2022-11-08_19',
+              '2022-11-09_03']
 
-n_time_augs = [4] *4
-n_mixup_augs = [3] *4
-init_lr = [5e-4, 1e-3] *2
-final_lr = [5e-6, 1e-9] *2
-clip_value = [0.7, 0.7, 0.8, 0.8]
+batch_size = [64, 32, 64, 32, 32, 64, 32, 64]
+time_augs = [False, True, True, True]*2
+mixup_augs = [True, False, True, True]*2
+init_lr = [1e-4, 1e-3] *4
+final_lr = [5e-6, 1e-6] *4
+weight_clip = [1]*4 + [0.8] *4
 
-string = str('num. of time shift augment:{}\n'
-          'num. of mix up augment:{}\n'
-          'starting lr:{}\n'
-          'final lr:{}\n'
-          'clip val:{}')
+string = str('batch:{}; ' 't_aug:{}; ' 'mixup:{}; ' 'lr_0:{}; ' 'lr_1:{}; ' 'clip:{}')
+# string = str('batch size:{}\n'
+#           'time shift augment:{}\n'
+#           'mix up augment:{}\n'
+#           'starting lr:{}\n'
+#           'final lr:{}\n'
+#           'clip val:{}')
 
-labels = [string.format(n_time_augs[i], n_mixup_augs[i], init_lr[i], final_lr[i], clip_value[i])
-          for i in range(len(n_time_augs))]
+labels = [string.format(batch_size[i], time_augs[i], mixup_augs[i], 
+                        init_lr[i], final_lr[i], weight_clip[i])
+          for i in range(len(time_augs))]
 
 # batch_size = 32
 # info_dict = get_info(train_date, ['epochs', 'final_lr', 'num_of_shifts'])
@@ -52,7 +60,7 @@ val_data = tfrec.run_data_pipeline(tfrec_path, 'val', return_spec=False)
 fig = plt.figure(constrained_layout=True, figsize=(15, 15))
 subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
 
-plot_model_results(train_dates, labels, fig=subfigs[0])#, **info_dict)
+plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
 plot_evaluation_metric(GoogleMod, training_runs, val_data, plot_labels=labels,
                         fig = subfigs[1], plot_pr=True, plot_cm=True, 
                         train_dates=train_dates, label=None)
