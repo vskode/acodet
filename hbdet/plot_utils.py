@@ -4,6 +4,7 @@ import matplotlib.colors as mcolors
 from matplotlib.gridspec import GridSpec
 import time
 from pathlib import Path
+import seaborn as sns
 import json
 import librosa as lb
 import yaml
@@ -158,16 +159,21 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
 def plot_conf_matr(labels, preds, ax, training_run, iteration, **kwargs):
     bin_preds = list(map(lambda x: 1 if x >= config['thresh'] else 0, preds))
     heat = tf.math.confusion_matrix(labels, bin_preds).numpy()
-    ax.imshow(heat)
+    rearrange = lambda x:  np.array([[x[1, 1], x[1, 0]], 
+                                [x[0, 1], x[0, 0]]])
+    rearranged_head = rearrange(heat)
     value_string = '{}\n{:.0f}%'
+    heat_annot = [[[], []], [[], []]]
     for row in range(2):
         for col in range(2):
-            ax.text(col, row, 
-                     value_string.format(heat[row, col], 
-                                         heat[row, col]/np.sum(heat[row])*100), 
-                     ha='center', va='center', color='w')
-    ax.set_xticks([0, 1], labels=['TP', 'TN'])
-    ax.set_yticks([0, 1], labels=['pred. P', 'pred. N'])
+            heat_annot[row][col] = value_string.format(heat[row, col], 
+                                         heat[row, col]/np.sum(heat[row])*100)
+    rearranged_annot = rearrange(np.array(heat_annot))
+    
+    ax = sns.heatmap(rearranged_head, annot=rearranged_annot, fmt='', 
+                     cbar=False, ax=ax, xticklabels=False, yticklabels=False)
+    ax.set_yticks([0.5, 1.5], labels=['TP', 'TN'])
+    ax.set_xticks([1.5, 0.5], labels=['pred. N', 'pred.P'])
     color = list(mcolors.TABLEAU_COLORS.keys())[iteration]
     ax.set_title(Path(training_run).parent.stem 
                  + Path(training_run).stem.split('_')[-1], color=color)
