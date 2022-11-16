@@ -1,7 +1,9 @@
 import tensorflow as tf
 from keras_cv.layers import BaseImageAugmentationLayer
+from hbdet.plot_utils import plot_sample_spectrograms
 import numpy as np
 import yaml
+import tensorflow_io as tfio
 
 with open('hbdet/hbdet/config.yml', 'r') as f:
     config = yaml.safe_load(f)
@@ -87,7 +89,7 @@ class MixCallAndNoise(BaseImageAugmentationLayer):
         noise_mixup = self.noise_mixup
         noise_alpha = self.alpha / tf.math.reduce_max(noise_mixup)
         train_alpha = (1-self.alpha) / tf.math.reduce_max(train_sample) 
-        tf.print(noise_mixup.shape, train_sample.shape)
+        # tf.print(noise_mixup.shape, train_sample.shape)
         return train_sample*train_alpha + noise_mixup*noise_alpha
     
     
@@ -106,36 +108,66 @@ def augment(ds, aug_func=time_shift):
     return ds.map(lambda x, y: (aug_func(x, training=True), y), 
                 num_parallel_calls=AUTOTUNE)  
     
-def m_test(ds1, ds2, alpha=0.2):
+def m_test(ds1, ds2, alpha=0.4):
     call, lab = ds1
     noise, l = ds2
-    noise_alpha = alpha / tf.math.reduce_max(call)
-    train_alpha = (1-alpha) / tf.math.reduce_max(noise) 
-    # tf.print(noise_mixup.shape, train_sample.shape)
-    # tf.print('moin')
+    noise_alpha = alpha * tf.math.reduce_max(noise)
+    train_alpha = (1-alpha) * tf.math.reduce_max(call) 
+    tf.print(noise.shape, call.shape)
     return (call*train_alpha + noise*noise_alpha, lab)
 
 def run_augment_pipeline(ds, noise_data, noise_set_size,
                          train_set_size, time_augs, mixup_augs,
-                         seed = None):
+                         seed=None, plot=False, time_start=None, 
+                         spec_aug=False, spec_param=10, **kwargs):
     T = time_shift()
-    # M = mix_up(noise_data, noise_set_size)
-    
+    if plot:
+        plot_sample_spectrograms(ds, dir = time_start, name = 'train', 
+                            seed=seed, ds_size=train_set_size, **kwargs)
     if mixup_augs:
-        # ds = ds.map(lambda x, y: (M(x, training=True), y), 
-        #             num_parallel_calls=AUTOTUNE) 
         ds_n = (noise_data
-                .repeat(train_set_size//noise_set_size + 1)
-                .shuffle(train_set_size//noise_set_size + 1))
+                .repeat(train_set_size//noise_set_size + 1))
+        if plot:
+            plot_sample_spectrograms(ds_n, dir = time_start,
+                                name=f'noise', seed=seed, 
+                                ds_size=train_set_size, **kwargs)
+            
+        if plot:
+            dss = tf.data.Dataset.zip((ds, ds_n))
+            ds_mu = dss.map(lambda x, y: m_test(x, y),
+                            num_parallel_calls=AUTOTUNE)
+            ds_mu_n = ds_mu.concatenate(noise_data)
+            plot_sample_spectrograms(ds_mu, dir = time_start,
+                                name=f'augment_0-MixUp', seed=seed, 
+                                ds_size=train_set_size, **kwargs)
+            
+        ds_n = ds_n.shuffle(train_set_size//noise_set_size + 1)
         dss = tf.data.Dataset.zip((ds, ds_n))
-        ds_mu = dss.map(lambda x, y: m_test(x, y), 
-                    num_parallel_calls=AUTOTUNE) 
+        ds_mu = dss.map(lambda x, y: m_test(x, y),
+                        num_parallel_calls=AUTOTUNE)
         ds_mu_n = ds_mu.concatenate(noise_data)
         ds = ds.concatenate(ds_mu_n)
         
     if time_augs:
         ds_t = ds.map(lambda x, y: (T(x, training=True), y), 
                     num_parallel_calls=AUTOTUNE) 
+        if plot:
+            plot_sample_spectrograms(ds_t, dir = time_start,
+                                name=f'augment_0-TimeShift', seed=seed, 
+                                ds_size=train_set_size, **kwargs)
         ds = ds.concatenate(ds_t)
+        
+    if spec_aug:
+        ds_tm = ds.map(lambda x, y: (tfio.audio.time_mask(x, param=spec_param), y))
+        plot_sample_spectrograms(ds_tm, dir = time_start,
+                            name=f'augment_0-TimeMask', seed=seed, 
+                            ds_size=train_set_size, **kwargs)
+        ds_fm = ds.map(lambda x, y: (tfio.audio.freq_mask(x, param=spec_param), y))
+        plot_sample_spectrograms(ds_fm, dir = time_start,
+                            name=f'augment_0-TFreqMask', seed=seed, 
+                            ds_size=train_set_size, **kwargs)
+        ds = ds.concatenate(ds_tm)
+        ds = ds.concatenate(ds_fm)
+        
     return ds
 

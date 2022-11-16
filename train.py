@@ -13,23 +13,25 @@ from hbdet.plot_utils import plot_pre_training_spectrograms
 from hbdet.augmentation import run_augment_pipeline, time_shift
 
 config = load_config()
-TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v5_2khz', 
+TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v4_2khz', 
                  'Daten/Datasets/ScotWest_v4_2khz',
-                 'Daten/Datasets/ScotWest_v6_2khz',
-                 'Daten/Datasets/ScotWest_v7_2khz']
+                 'Daten/Datasets/Mixed_v1_2khz',
+                 'Daten/Datasets/Mixed_v2_2khz',
+                 'Daten/Datasets/Benoit_v1_2khz',
+                ]
 AUTOTUNE = tf.data.AUTOTUNE
 
-# TODO mal batch size variieren
-epochs = 120
+epochs = 6
 
-batch_size = [64, 32, 64, 32, 32, 64, 32, 64]
-time_augs = [False, True, True, True]*2
-mixup_augs = [True, False, True, True]*2
-init_lr = [1e-4, 1e-3] *4
-final_lr = [5e-6, 1e-6] *4
-weight_clip = [1]*4 + [0.8] *4
+batch_size = [32]
+time_augs = [False]
+mixup_augs = [False]
+spec_aug = [True]
+init_lr = [3e-5] 
+final_lr = [5e-6] 
+weight_clip = [1]
 
-load_weights = False
+load_weights = True
 load_g_weights = False
 steps_per_epoch = False
 data_description = TFRECORDS_DIR
@@ -51,6 +53,7 @@ def run_training(config=config,
                  steps_per_epoch=steps_per_epoch, 
                  time_augs=time_augs, 
                  mixup_augs=mixup_augs, 
+                 spec_aug=spec_aug, 
                  data_description=data_description, 
                  init_lr=init_lr, 
                  final_lr=final_lr, 
@@ -76,6 +79,7 @@ def run_training(config=config,
     f_score_thresh  = {f_score_thresh}
     bool_time_shift = {time_augs}
     bool_MixUps     = {mixup_augs}
+    bool_SpecAug    = {spec_aug}
     weight_clipping = {weight_clip}
     init_lr         = {init_lr}
     final_lr        = {final_lr}
@@ -94,7 +98,7 @@ def run_training(config=config,
     Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 
     n_train, n_noise = get_train_set_size(TFRECORDS_DIR)
-    n_train_set = n_train*(1+time_augs + mixup_augs) // batch_size
+    n_train_set = n_train*(1+time_augs + mixup_augs+spec_aug*2) // batch_size
     print('Train set size = {}. Epoch should correspond to this amount of steps.'
         .format(n_train_set), '\n')
 
@@ -112,20 +116,21 @@ def run_training(config=config,
 
     train_data = run_augment_pipeline(train_data, noise_data,
                                         n_noise, n_train, time_augs, 
-                                        mixup_augs,
-                                        seed)
+                                        mixup_augs, seed, spec_aug=spec_aug,
+                                        time_start=time_start, plot=True,
+                                        random=True)
 
     # a_data = train_data.map(lambda x, y: (time_shift()(x), y))
     # b_data = train_data.map(lambda x, y: (x, y))
     
-    plot_pre_training_spectrograms(train_data, test_data, [],#augmented_data,
-                                time_start, seed)
+    # plot_pre_training_spectrograms(train_data, test_data, [],#augmented_data,
+    #                             time_start, seed)
     
     # train_data = b_data.concatenate(a_data)
     # train_data = train_data.take(1)    
     # train_data = train_data.batch(batch_size)    
     # train_data = train_data.prefetch(buffer_size=AUTOTUNE)
-
+    # return
     train_data = prepare(train_data, batch_size, shuffle=True, 
                         shuffle_buffer=n_train_set)
     
@@ -149,6 +154,15 @@ def run_training(config=config,
             load_g_ckpt = True
 
         model = GoogleMod(load_g_ckpt=load_g_ckpt).model
+        # model = tf.keras.applications.EfficientNetB5(
+        #         include_top=True,
+        #         weights=None,
+        #         input_tensor=None,
+        #         input_shape=[128, 64, 1],
+        #         pooling=None,
+        #         classes=1,
+        #         classifier_activation="sigmoid"
+        #     )
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate = lr,
                                                clipvalue = weight_clip),
@@ -166,14 +180,14 @@ def run_training(config=config,
                                                 name='fbeta1'),       
             ]
         )
-            
+        # continue
         if not unfreeze == 'no-TF':
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
                 
         if load_weights:
             model.load_weights(
-                f'trainings/2022-10-20_13/unfreeze_{unfreeze}/cp-last.ckpt')
+                f'trainings/2022-11-14_16/unfreeze_{unfreeze}/cp-last.ckpt')
 
         checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
                             "/cp-last.ckpt"
@@ -207,6 +221,7 @@ if __name__ == '__main__':
         run_training(batch_size=batch_size[i],
                     time_augs=time_augs[i], 
                      mixup_augs=mixup_augs[i], 
+                     spec_aug=spec_aug[i],
                      init_lr=init_lr[i], 
                      final_lr=final_lr[i],
                      weight_clip=weight_clip[i])

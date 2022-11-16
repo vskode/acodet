@@ -321,13 +321,8 @@ def spec():
 
 def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, 
             augmented_data=None, AUTOTUNE=None):
-    if not augmented_data is None:
-        for ds_aug in augmented_data:
-            ds = ds.concatenate(ds_aug)
-            # ds = tf.data.Dataset.zip((ds, ds_aug))
     if shuffle:
         ds = ds.shuffle(shuffle_buffer)    
-    # ds = ds.take(128)
     ds = ds.batch(batch_size)    
     return ds.prefetch(buffer_size=AUTOTUNE)
 

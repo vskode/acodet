@@ -31,11 +31,13 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
         checkpoint_paths += list(Path(f"trainings/{datetime}")
                                  .glob('unfreeze_*'))
         
-    r, c = 2, 4
+    r, c = 2, 6
     for j, checkpoint_path in enumerate(checkpoint_paths):
         unfreeze = checkpoint_path.stem.split('_')[-1]
 
         if not Path(f"{checkpoint_path}/results.json").exists():
+            if j == 0:
+                ax = fig.subplots(ncols = c, nrows = r)
             continue
         with open(f"{checkpoint_path}/results.json", 'r') as f:
             results = json.load(f)
@@ -50,24 +52,31 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
             label = f'{checkpoint_path.parent.stem}_{unfreeze}'
         
         for i, key in enumerate(results.keys()):
+            if 'val_' in key: 
+                row = 1
+            else:
+                row = 0
+            if 'loss' in key:
+                col = 0
+            else:
+                col += 1
                 
-            ax[i//c, i%c].plot(results[key], 
-                        label = label)
-            if not i%c == 0:
-                ax[i//c, i%c].set_ylim([.75, 1.01])
+            ax[row, col].plot(results[key], label = label)
+            if not col == 0:
+                ax[row, col].set_ylim([.5, 1.01])
             
             # axis handling depending on subplot index
-            if i//c == 1 and i%c == 0:
-                ax[i//c, i%c].set_ylim([0, 1.5])
-            if i//c == 0:
-                ax[i//c, i%c].set_title(f'{key}')
-            if i//c == i%c == 0:
-                ax[i//c, i%c].set_ylim([0, .3])
-                ax[i//c, i%c].set_ylabel('training')
-            elif i//c == 1 and i%c == 0:
-                ax[i//c, i%c].set_ylabel('val')
-            if legend and i//c == 1 and i%c == c-1:
-                ax[i//c, i%c].legend(loc='center left', 
+            if row == 1 and col == 0:
+                ax[row, col].set_ylim([0, 1.5])
+            if row == 0:
+                ax[row, col].set_title(f'{key}')
+            if row == col == 0:
+                ax[row, col].set_ylim([0, .5])
+                ax[row, col].set_ylabel('training')
+            elif row == 1 and col == 0:
+                ax[row, col].set_ylabel('val')
+            if legend and row == 1 and col == c-1:
+                ax[row, col].legend(loc='center left', 
                                      bbox_to_anchor=(1, 0.5))
 
     info_string = ''
@@ -93,7 +102,7 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
 
 def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
                           random=True, seed=None, sr=config['sr'], 
-                          rows=4, cols=4):
+                          rows=4, cols=4, **kwargs):
     r, c = rows, cols 
     if random:
         if ds_size is None: ds_size = sum(1 for _ in dataset)
@@ -262,7 +271,7 @@ def plot_pre_training_spectrograms(train_data, test_data,
                                    augmented_data, 
                                    time_start, seed):
     
-    plot_sample_spectrograms(train_data, dir = time_start, name = 'train', 
+    plot_sample_spectrograms(train_data, dir = time_start, name = 'train_all', 
                             seed=seed)
     for i, (augmentation, aug_name) in enumerate(augmented_data):
         plot_sample_spectrograms(augmentation, dir = time_start, 

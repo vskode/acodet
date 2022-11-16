@@ -1,7 +1,7 @@
 # Configuration file
 
 ## DATA DIRECTORY
-data_dir: 'Daten/Datasets/ScotWest_v7_2khz'
+data_dir: 'Daten/Datasets/Benoit_v1_2khz'
 
 ## Preprocessing Parameters
 stft_frame_len: 1024
@@ -29,7 +29,7 @@ thresh: 0.5
 pred_win_lim: 20
 
 ## Paths
-annotation_root_dir: 'Daten/Catherine_annotations'
+# annotation_root_dir: 'Daten/Catherine_annotations'
 # files_root_dir: '/mnt/d/VINCENT_RawData'
 # files_root_dir: 'generated_annotations'
-files_root_dir: 'Daten/for_manual_annotation/src/resampled_2kHz/Bundle3'
+files_root_dir: '/mnt/f/Daten/20221019-Benoit'
