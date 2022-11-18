@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from . import funcs
 import random
-from hbdet.humpback_model_dir import front_end
+from .humpback_model_dir import front_end
 from pathlib import Path
 import json
 

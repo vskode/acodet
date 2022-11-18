@@ -113,7 +113,7 @@ def m_test(ds1, ds2, alpha=0.4):
     noise, l = ds2
     noise_alpha = alpha * tf.math.reduce_max(noise)
     train_alpha = (1-alpha) * tf.math.reduce_max(call) 
-    tf.print(noise.shape, call.shape)
+    # tf.print(noise.shape, call.shape)
     return (call*train_alpha + noise*noise_alpha, lab)
 
 def run_augment_pipeline(ds, noise_data, noise_set_size,
@@ -125,8 +125,7 @@ def run_augment_pipeline(ds, noise_data, noise_set_size,
         plot_sample_spectrograms(ds, dir = time_start, name = 'train', 
                             seed=seed, ds_size=train_set_size, **kwargs)
     if mixup_augs:
-        ds_n = (noise_data
-                .repeat(train_set_size//noise_set_size + 1))
+        ds_n = (noise_data.repeat(train_set_size//noise_set_size + 1))
         if plot:
             plot_sample_spectrograms(ds_n, dir = time_start,
                                 name=f'noise', seed=seed, 
@@ -146,7 +145,7 @@ def run_augment_pipeline(ds, noise_data, noise_set_size,
         ds_mu = dss.map(lambda x, y: m_test(x, y),
                         num_parallel_calls=AUTOTUNE)
         ds_mu_n = ds_mu.concatenate(noise_data)
-        ds = ds.concatenate(ds_mu_n)
+        # ds = ds.concatenate(ds_mu_n)
         
     if time_augs:
         ds_t = ds.map(lambda x, y: (T(x, training=True), y), 
@@ -155,17 +154,24 @@ def run_augment_pipeline(ds, noise_data, noise_set_size,
             plot_sample_spectrograms(ds_t, dir = time_start,
                                 name=f'augment_0-TimeShift', seed=seed, 
                                 ds_size=train_set_size, **kwargs)
-        ds = ds.concatenate(ds_t)
+        # ds = ds.concatenate(ds_t)
         
     if spec_aug:
         ds_tm = ds.map(lambda x, y: (tfio.audio.time_mask(x, param=spec_param), y))
-        plot_sample_spectrograms(ds_tm, dir = time_start,
-                            name=f'augment_0-TimeMask', seed=seed, 
-                            ds_size=train_set_size, **kwargs)
+        if plot:
+            plot_sample_spectrograms(ds_tm, dir = time_start,
+                                name=f'augment_0-TimeMask', seed=seed, 
+                                ds_size=train_set_size, **kwargs)
         ds_fm = ds.map(lambda x, y: (tfio.audio.freq_mask(x, param=spec_param), y))
-        plot_sample_spectrograms(ds_fm, dir = time_start,
-                            name=f'augment_0-TFreqMask', seed=seed, 
-                            ds_size=train_set_size, **kwargs)
+        if plot:
+            plot_sample_spectrograms(ds_fm, dir = time_start,
+                                name=f'augment_0-TFreqMask', seed=seed, 
+                                ds_size=train_set_size, **kwargs)
+    if mixup_augs:
+        ds = ds.concatenate(ds_mu_n)
+    if time_augs:
+        ds = ds.concatenate(ds_t)
+    if spec_aug:
         ds = ds.concatenate(ds_tm)
         ds = ds.concatenate(ds_fm)
         

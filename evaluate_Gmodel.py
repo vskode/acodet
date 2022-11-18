@@ -11,25 +11,25 @@ from hbdet.humpback_model_dir import front_end
 config = load_config()
 
 tfrec_path =[
-    # 'Daten/Datasets/ScotWest_v5_2khz', 
-    # 'Daten/Datasets/ScotWest_v4_2khz',
-    # 'Daten/Datasets/Mixed_v1_2khz',
-    # 'Daten/Datasets/Mixed_v2_2khz',
+    'Daten/Datasets/ScotWest_v5_2khz', 
+    'Daten/Datasets/ScotWest_v4_2khz',
+    'Daten/Datasets/Mixed_v1_2khz',
+    'Daten/Datasets/Mixed_v2_2khz',
     'Daten/Datasets/Benoit_v1_2khz',
     ]
 
 train_dates = [
+    # '2022-11-10_18',
     # '2022-05-00_00',
     # '2022-11-07_16',
     # '2022-11-07_21',
     # '2022-11-08_03',
-    # '2022-11-08_11',
-    # '2022-11-08_16',
-    # '2022-11-08_19',
     # '2022-11-09_03',
-    # '2022-11-14_16',
     # '2022-11-10_18',
-    '2022-11-16_09'
+    # '2022-11-14_16',
+    # '2022-11-16_18',
+    # '2022-11-17_09',
+    '2022-11-18_10'
               ]
 
 display_keys = [
