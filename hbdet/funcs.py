@@ -440,7 +440,7 @@ def get_files(*, location: str='generated_annotations/src',
         the pattern
     """
     folder = Path(location)
-    return folder.glob(search_str)
+    return list(folder.glob(search_str))
 
 def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
     """
@@ -591,8 +591,10 @@ def gen_annotations(file, model_instance: type, training_path: str,
                        f'{training_path}/{mod_label}/unfreeze_no-TF', **kwargs)
     annotation_df = create_annotation_df(audio_batches, model)
     
-    save_path = Path(f'generated_annotations/{time_start}')
+    save_path = (Path(f'generated_annotations/{time_start}')
+                 .joinpath(file.parent.stem))
     save_path.mkdir(exist_ok=True, parents=True)
 
-    annotation_df.to_csv(save_path.joinpath(f'{file.stem}_annot_{mod_label}.txt'),
+    annotation_df.to_csv(save_path
+                         .joinpath(f'{file.stem}_annot_{mod_label}.txt'),
                 sep='\t')

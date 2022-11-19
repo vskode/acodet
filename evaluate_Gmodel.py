@@ -1,11 +1,14 @@
-from hbdet.plot_utils import plot_evaluation_metric, plot_model_results, create_and_save_figure
+from hbdet.plot_utils import (plot_evaluation_metric, 
+                              plot_model_results, 
+                              plot_sample_spectrograms)
 from hbdet.google_funcs import GoogleMod
-from hbdet.funcs import load_config
-from hbdet import tfrec
+from hbdet.funcs import load_config, get_labels_and_preds
+from hbdet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
 from pathlib import Path
 import pandas as pd
 import time
+import numpy as np
 from hbdet.humpback_model_dir import front_end
 
 config = load_config()
@@ -29,7 +32,7 @@ train_dates = [
     # '2022-11-14_16',
     # '2022-11-16_18',
     # '2022-11-17_09',
-    '2022-11-18_10'
+    '2022-11-19_09'
               ]
 
 display_keys = [
@@ -84,7 +87,7 @@ def create_overview_plot(train_dates, val_set, display_keys):
         training_runs += list(Path(f'trainings/{train}').glob('unfreeze*'))
         for _ in range(len(list(Path(f'trainings/{train}').glob('unfreeze*')))):
             labels += labels[i]
-    val_data = tfrec.run_data_pipeline(val_set, 'val', return_spec=False)
+    val_data = run_data_pipeline(val_set, 'val', return_spec=False)
 
 
     time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
@@ -98,73 +101,35 @@ def create_overview_plot(train_dates, val_set, display_keys):
 
     fig.savefig(f'trainings/{train_dates[-1]}/{time_start}_results_combo.png')
 
-
-
-create_overview_plot(train_dates, tfrec_path, display_keys)
-
-
-
-    # except Exception as e:
-    #     print(train, ' failed', e)
-    #     continue
-
-# import tensorflow as tf
-# class EffNet:
-#     def __init__(self, **kwargs) -> None:
-#         self.model = tf.keras.applications.EfficientNetB5(
-#             include_top=True,
-#             weights=None,
-#             input_tensor=None,
-#             input_shape=[128, 64, 1],
-#             pooling=None,
-#             classes=1,
-#             classifier_activation="sigmoid"
-#         )
-    
-#     def load_ckpt(self, ckpt_path, ckpt_name='last'):
-#         try:
-#             file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
-#             if not file_path.exists():
-#                 ckpts = list(ckpt_path.glob('cp-*.index'))
-#                 ckpts.sort()
-#                 ckpt = ckpts[-1]
-#             else:
-#                 ckpt = file_path
-#             self.model.load_weights(
-#                 str(ckpt).replace('.index', '')
-#                 ).expect_partial()
-#         except Exception as e:
-#             print('Checkpoint not found.', e)
+def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwargs):
+    training_run = Path(f'trainings/{train_date}').glob('unfreeze*')
+    val_data = run_data_pipeline(val_data_path, 'val', return_spec=False)
+    labels, preds = get_labels_and_preds(model_instance, training_run, 
+                                         val_data, **kwargs)
+    preds = preds.reshape([len(preds)])
+    bin_preds = list(map(lambda x: 1 if x >= config.thresh else 0, preds))
+    false_pos, false_neg = [], []
+    for i in range(len(preds)):
+        if bin_preds[i] == 0 and labels[i] == 1:
+            false_neg.append(i)
+        if bin_preds[i] == 1 and labels[i] == 0:
+            false_pos.append(i)
             
-#     def change_input_to_array(self):
-#         """
-#         change input layers of model after loading checkpoint so that a file
-#         can be predicted based on arrays rather than spectrograms, i.e.
-#         reintegrate the spectrogram creation into the model. 
+    offset = min([false_neg[0], false_pos[0]])
+    val_data = run_data_pipeline(val_data_path, 'val', return_spec=False, 
+                                 return_meta=True)
+    val_data = val_data.batch(1)
+    val_data = val_data.map(lambda x, y, z, w: (spec()(x), y, z, w))
+    val_data = val_data.unbatch()
+    data = list(val_data.skip(offset))
+    fp = [data[i-offset] for i in false_pos]
+    fn = [data[i-offset] for i in false_neg]
+    plot_sample_spectrograms(fn, dir = train_date,
+                    name=f'False_Negative', plot_meta=True, **kwargs)
+    plot_sample_spectrograms(fp, dir = train_date,
+                    name=f'False_Positive', plot_meta=True, **kwargs)
+   
+    
 
-#         Args:
-#             model (tf.keras.Sequential): keras model
-
-#         Returns:
-#             tf.keras.Sequential: model with new arrays as inputs
-#         """
-#         model_list = self.model.layers
-#         model_list.insert(0, tf.keras.layers.Input([7755]))
-#         model_list.insert(1, tf.keras.layers.Lambda(
-#                             lambda t: tf.expand_dims(t, -1)))
-#         model_list.insert(2, front_end.MelSpectrogram())
-#         self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
-
-# fig = plt.figure(constrained_layout=True, figsize=(15, 15))
-# subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
-
-# plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
-# plot_evaluation_metric(EffNet, training_runs, val_data, plot_labels=labels,
-#                         fig = subfigs[1], plot_pr=True, plot_cm=True, 
-#                         train_dates=train_dates, label=None,
-#                 )
-
-# fig.savefig(f'trainings/{train_dates[-1]}/model_results_combo.png')
-    # except Exception as e:
-    #     print(train, ' failed', e)
-    #     continue
+# create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
+create_overview_plot(train_dates, tfrec_path, display_keys)

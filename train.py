@@ -21,18 +21,18 @@ TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v4_2khz',
                 ]
 AUTOTUNE = tf.data.AUTOTUNE
 
-epochs = 10
+epochs = 200
 
-batch_size = [32]
-time_augs = [True]
-mixup_augs = [True]
-spec_aug = [True]
-init_lr = [7e-3] 
-final_lr = [5e-6] 
-weight_clip = [1]
-Gmod = [False]
+batch_size = [32]*2
+time_augs = [True]*2
+mixup_augs = [True]*2
+spec_aug = [False, True]
+init_lr = [1e-5] *2
+final_lr = [1e-6]*2
+weight_clip = [1]*2
+Gmod = [True]*2
 
-load_weights = False
+load_weights = ['2022-11-17_17']*2
 load_g_weights = False
 steps_per_epoch = 2000
 data_description = TFRECORDS_DIR
@@ -74,6 +74,7 @@ def run_training(config=config,
     VARS:
     data_path       = {TFRECORDS_DIR}
     batch_size      = {batch_size}
+    Gmod            = {Gmod}
     epochs          = {epochs}
     load_weights    = {load_weights}
     steps_per_epoch = {steps_per_epoch}
@@ -119,7 +120,7 @@ def run_training(config=config,
     train_data = run_augment_pipeline(train_data, noise_data,
                                         n_noise, n_train, time_augs, 
                                         mixup_augs, seed, spec_aug=spec_aug,
-                                        time_start=time_start, plot=False,
+                                        time_start=time_start, plot=True,
                                         random=True)
 
     # a_data = train_data.map(lambda x, y: (time_shift()(x), y))
@@ -176,7 +177,7 @@ def run_training(config=config,
                     [1 for _ in range(3)] + [3])),
                 effNet
             ])
-        # else:
+        
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate = lr,
                                                clipvalue = weight_clip),
@@ -201,7 +202,7 @@ def run_training(config=config,
                 
         if load_weights:
             model.load_weights(
-                f'trainings/2022-11-17_18/unfreeze_{unfreeze}/cp-last.ckpt')
+                f'trainings/{load_weights}/unfreeze_{unfreeze}/cp-last.ckpt')
 
         checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
                             "/cp-last.ckpt"
@@ -240,4 +241,5 @@ if __name__ == '__main__':
                      init_lr=init_lr[i], 
                      final_lr=final_lr[i],
                      weight_clip=weight_clip[i],
-                     Gmod=Gmod[i])
+                     Gmod=Gmod[i],
+                     load_weights=load_weights[i])

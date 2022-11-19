@@ -102,15 +102,18 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
 
 def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
                           random=True, seed=None, sr=config['sr'], 
-                          rows=4, cols=4, **kwargs):
+                          rows=4, cols=4, plot_meta=False, **kwargs):
     r, c = rows, cols 
-    if random:
-        if ds_size is None: ds_size = sum(1 for _ in dataset)
-        np.random.seed(seed)
-        rand_skip = np.random.randint(ds_size)
-        sample = dataset.skip(rand_skip).take(r*c)
-    else:
-        sample = dataset.take(r*c)
+    if isinstance(dataset, tf.data.Dataset):
+        if random:
+            if ds_size is None: ds_size = sum(1 for _ in dataset)
+            np.random.seed(seed)
+            rand_skip = np.random.randint(ds_size)
+            sample = dataset.skip(rand_skip).take(r*c)
+        else:
+            sample = dataset.take(r*c)
+    elif isinstance(dataset, list):
+        sample = dataset
     
     max_freq_bin = 128//(config['sr']//2000)
     
@@ -118,11 +121,18 @@ def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
     fmax = sr/2/next(iter(sample))[0].numpy().shape[0]*max_freq_bin
     fig, axes = plt.subplots(nrows = r, ncols = c, figsize=[12, 10])
     
-    for i, (aud, lab) in enumerate(sample):
+    for i, (aud, *lab) in enumerate(sample):
+        if i == r*c:
+            break
         ar = aud.numpy()[:,1:max_freq_bin].T
         axes[i//r][i%c].imshow(ar, origin='lower', interpolation='nearest',
                                 aspect='auto')
-        axes[i//r][i%c].set_title(f'label: {lab}')
+        if len(lab) == 1:
+            axes[i//r][i%c].set_title(f'label: {lab[0]}')
+        elif len(lab) == 3:
+            label, file, t = (v.numpy() for v in lab)
+            axes[i//r][i%c].set_title(f'label: {label}; t in f: {funcs.get_time(t)}\n'
+                                      f'file: {Path(file.decode()).stem}')
         if i//r == r-1 and i%c == 0:
             axes[i//r][i%c].set_xticks(np.linspace(0, ar.shape[1], 5))
             xlabs = np.linspace(0, 3.9, 5).astype(str)

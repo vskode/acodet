@@ -1,4 +1,5 @@
 from tokenize import Intnumber
+from functools import partial
 import numpy as np
 import tensorflow as tf
 from . import funcs
@@ -290,24 +291,27 @@ def parse_tfrecord_fn(example):
     }
     return tf.io.parse_single_example(example, feature_description)
     
-def prepare_sample(features):
-    return features["audio"], features["label"]
+def prepare_sample(features, return_meta=False, **kwargs):
+    if not return_meta:
+        return features["audio"], features["label"]
+    else:
+        return features["audio"], features["label"], features["file"], features["time"]
 
-def get_dataset(filenames, AUTOTUNE=None):
+def get_dataset(filenames, AUTOTUNE=None, **kwargs):
     dataset = (
         tf.data.TFRecordDataset(filenames, num_parallel_reads=AUTOTUNE)
         .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
-        .map(prepare_sample, num_parallel_calls=AUTOTUNE)
+        .map(partial(prepare_sample, **kwargs), num_parallel_calls=AUTOTUNE)
     )
     return dataset
 
-def run_data_pipeline(root_dir, data_dir, AUTOTUNE=None, return_spec=True):
+def run_data_pipeline(root_dir, data_dir, AUTOTUNE=None, return_spec=True, **kwargs):
     if not isinstance(root_dir, list):
         root_dir = [root_dir]
     files = []
     for root in root_dir:
         files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
-    dataset = get_dataset(files, AUTOTUNE = AUTOTUNE)
+    dataset = get_dataset(files, AUTOTUNE = AUTOTUNE, **kwargs)
     if return_spec:
         return make_spec_tensor(dataset)
     else:
