@@ -3,11 +3,11 @@ import glob
 from ketos.data_handling import selection_table as sl
 from pathlib import Path
 import os
-from hbdet import funcs
+from hbdet.funcs import load_config
 
-config = funcs.load_config()
-# annotation_files = Path(config.annotations_root_dir).glob('/**/*.txt')
-annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
+config = load_config()
+annotation_files = Path(config.annotation_root_dir).glob('**/*.txt')
+# annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
 # annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
 
 def compensate_for_naming_inconsistencies(hard_drive_path, file):
@@ -59,16 +59,40 @@ def get_corresponding_sound_file(file):
         file_path = file_path[0]
 
     return file_path
+
+annotation_column = 'Prediction/Comments'
+def differentiate_label_flags(df):
+    df.loc[df[annotation_column]=='c', 'label'] = 1
+    df.loc[df[annotation_column]=='n', 'label'] = 0
+    df = df.drop(df.loc[df[annotation_column]=='u'].index)
+    return df
+
+def get_labels(file, df, active_learning=False):
+    if not active_learning:
+        df['label'] = 1
+    else:
+        noise_flag, annotated_flag, calls_flag = ['_allnoise', '_annotated', '_allcalls']
+        df = df.iloc[df.Selection.drop_duplicates().index]
+        if calls_flag in file.stem:
+            df['label'] = 1
+            df = differentiate_label_flags(df)
+        elif noise_flag in file.stem:
+            df['label'] = 0
+            df = differentiate_label_flags(df)
+        elif annotated_flag in file.stem:
+            df = differentiate_label_flags(df)
+    return df
+            
+        
     
-def standardize_annotations(file, all_noise=False):
+def standardize_annotations(file, all_noise=False, **kwargs):
     ann = pd.read_csv(file, sep = '\t')
 
-    try:
-        ann['filename'] = get_corresponding_sound_file(file)
-    except:
-        print(f'corresponding sound file for annotations file: {file} not found')
+    ann['filename'] = get_corresponding_sound_file(file)
+    # if not ann['filename']:
+    #     print(f'corresponding sound file for annotations file: {file} not found')
         
-    ann['label']    = 0 if all_noise else 1
+    ann = get_labels(file, ann, **kwargs)
     map_to_ketos_annot_std = {'Begin Time (s)': 'start', 
                               'End Time (s)': 'end',
                               'Low Freq (Hz)' : 'freq_min', 
@@ -87,16 +111,31 @@ def save_ket_annot_only_existing_paths(df):
 def leading_underscore_in_parent_dirs(file):
     return '_' in [f.stem[0] for f in list(file.parents)[:-1]]
 
-if __name__ == '__main__':
+def get_active_learning_files(files):
+    cases = ['_allnoise', '_annotated', '_allcalls']
+    cleaned_files = [f for f in files if [True for c in cases if c in f.stem]]
+    drop_cases = ['_tobechecked']
+    final_cleanup = [f for f in cleaned_files if not \
+                                    [True for d in drop_cases if d in f.stem]]
+    return final_cleanup
+
+def main(annotation_files, active_learning=False):
     df = pd.DataFrame()
     files = list(annotation_files)
+    if active_learning:
+        files = get_active_learning_files(files)
     for i, file in enumerate(files):
         if leading_underscore_in_parent_dirs(file):
             print(file, ' skipped due to leading underscore in parent dir.')
             continue
-        df = pd.concat([df, standardize_annotations(file, all_noise=False)])
+        df_append = standardize_annotations(file, all_noise=False, 
+                                            active_learning=active_learning)
+        df = pd.concat([df, df_append])
         print(f'Completed file {i}/{len(files)}.', end='\r')
         
     # TODO include date in path by default
-    df.to_csv('Daten/Benoit_annots.csv')
+    df.to_csv('Daten/annot_session.csv')
     save_ket_annot_only_existing_paths(df)
+    
+if __name__ == '__main__':
+    main(annotation_files, active_learning=True)

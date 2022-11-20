@@ -1,7 +1,7 @@
 # Configuration file
 
 ## DATA DIRECTORY
-data_dir: 'Daten/Datasets/Benoit_v1_2khz'
+data_dir: 'Daten/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
 
 ## Preprocessing Parameters
 stft_frame_len: 1024
@@ -31,5 +31,5 @@ pred_win_lim: 20
 ## Paths
 # annotation_root_dir: 'Daten/Catherine_annotations'
 # files_root_dir: '/mnt/d/VINCENT_RawData'
-# files_root_dir: 'generated_annotations'
-files_root_dir: '/mnt/f/Daten/20221019-Benoit'
+annotation_root_dir: 'generated_annotations/2022-11-19_22'
+files_root_dir: 'Daten/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
