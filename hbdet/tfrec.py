@@ -9,7 +9,6 @@ from pathlib import Path
 import json
 
 config = funcs.load_config()
-TFRECORDS_DIR = config.data_dir
 
 ########################################################
 #################  WRITING   ###########################
@@ -138,17 +137,19 @@ def read_raw_file(file, annots, **kwargs):
     
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
 
-def write_tfrecs_for_mixup(file):
-    noise, t = funcs.return_windowed_file(file)
-    noise_tups = list(zip(noise, [0]*len(t), [file]*len(t), t))
-    random.shuffle(noise_tups)
+# def write_tfrecs_for_mixup(file):
+#     noise, t = funcs.return_windowed_file(file)
+#     noise_tups = list(zip(noise, [0]*len(t), [file]*len(t), t))
+#     random.shuffle(noise_tups)
     
-    writer = get_tfrecords_writer(1, 'noise')
-    for audio, label, file, time in noise_tups:
-        examples = create_example(audio, label, file, time)
-        writer.write(examples.SerializeToString())
+#     writer = get_tfrecords_writer(1, 'noise', save_dir)
+#     for audio, label, file, time in noise_tups:
+#         examples = create_example(audio, label, file, time)
+#         writer.write(examples.SerializeToString())
                 
-def write_tfrecords(annots, all_noise=False, inbetween_noise=True, **kwargs):
+def write_tfrecords(annots, save_dir, 
+                    all_noise=False, inbetween_noise=True, 
+                    **kwargs):
     """
     Write tfrecords files from wav files. 
     First the files are imported and the noise files are generated. After that 
@@ -161,6 +162,9 @@ def write_tfrecords(annots, all_noise=False, inbetween_noise=True, **kwargs):
         files (list): list of file paths to the audio files
     """
     files = np.unique(annots.filename)
+    
+    if len(files) == 0:
+        return
     
     random.shuffle(files)
     
@@ -221,7 +225,8 @@ def write_tfrecords(annots, all_noise=False, inbetween_noise=True, **kwargs):
                                     for j in range(len(samples)//config.tfrecs_lim + 1)]
             for samps in split_by_max_length:
                 tfrec_num += 1
-                writer = get_tfrecords_writer(tfrec_num, folder, **kwargs)
+                writer = get_tfrecords_writer(tfrec_num, folder, save_dir, 
+                                              **kwargs)
                 files_dict, dataset = update_dict(samps, files_dict,
                                                   dataset, folder, tfrec_num)
                 
@@ -232,7 +237,8 @@ def write_tfrecords(annots, all_noise=False, inbetween_noise=True, **kwargs):
     # TODO automatisch die noise sachen miterstellen
     data_meta_dict.update({'dataset': dataset})
     data_meta_dict.update({'files': files_dict})
-    with open(Path(TFRECORDS_DIR).joinpath('dataset_meta.json'), 'w') as f:
+    with open(Path(save_dir)
+              .joinpath(f'dataset_meta_{folders[0]}.json'), 'w') as f:
         json.dump(data_meta_dict, f)
     
 def randomize_arrays(tup, file):
@@ -253,7 +259,7 @@ def update_dict(samples, d, dataset_dict, folder, tfrec_num):
         dataset_dict[l][folder] += k
     return d, dataset_dict
 
-def get_tfrecords_writer(num, fold, alt_subdir = ''):
+def get_tfrecords_writer(num, fold, save_dir, alt_subdir = ''):
     """
     Return TFRecordWriter object to write file.
 
@@ -263,10 +269,10 @@ def get_tfrecords_writer(num, fold, alt_subdir = ''):
     Returns:
         TFRecordWriter object: file handle
     """
-    path = TFRECORDS_DIR + alt_subdir
-    Path(path + f'/{fold}').mkdir(parents = True, exist_ok = True)
-    return tf.io.TFRecordWriter(path + f"/{fold}/"
-                                "file_%.2i.tfrec" % num)
+    path = save_dir.joinpath(alt_subdir)
+    Path(path.joinpath(fold)).mkdir(parents = True, exist_ok = True)
+    return tf.io.TFRecordWriter(str(path.joinpath(fold).joinpath(
+                                "file_%.2i.tfrec" % num)))
 
 
 ########################################################

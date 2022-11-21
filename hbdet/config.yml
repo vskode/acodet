@@ -1,7 +1,7 @@
 # Configuration file
 
 ## DATA DIRECTORY
-data_dir: 'Daten/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
+tfrec_destination: 'Daten/Datasets'
 
 ## Preprocessing Parameters
 stft_frame_len: 1024
@@ -31,5 +31,6 @@ pred_win_lim: 20
 ## Paths
 # annotation_root_dir: 'Daten/Catherine_annotations'
 # files_root_dir: '/mnt/d/VINCENT_RawData'
-annotation_root_dir: 'generated_annotations/2022-11-19_22'
-files_root_dir: 'Daten/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
+annotation_destination: 'Daten/combined_annotations'
+annotation_source: 'generated_annotations/2022-11-19_22'
+sound_files_source: 'Daten/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
