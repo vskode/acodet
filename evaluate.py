@@ -2,7 +2,7 @@ from hbdet.plot_utils import (plot_evaluation_metric,
                               plot_model_results, 
                               plot_sample_spectrograms)
 from hbdet.models import GoogleMod
-from hbdet.funcs import load_config, get_labels_and_preds
+from hbdet.funcs import get_labels_and_preds
 from hbdet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -10,8 +10,7 @@ import pandas as pd
 import time
 import numpy as np
 from hbdet.humpback_model_dir import front_end
-
-config = load_config()
+import hbdet.global_config as conf
 
 tfrec_path =[
     # 'Daten/Datasets/ScotWest_v4_2khz',
@@ -87,8 +86,8 @@ def create_overview_plot(train_dates, val_set, display_keys, model_class):
         'lr_end:{}; ' 
         # 'clip:{} ; '
         f'val: all')
-    if config.thresh != 0.5:
-        string += f' thr: {config.thresh}'
+    if conf.THRESH != 0.5:
+        string += f' thr: {conf.THRESH}'
 
 
     labels = [string.format(*[d[k] for k in display_keys]) for d in info_dicts]
@@ -118,7 +117,7 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
     labels, preds = get_labels_and_preds(model_instance, training_run, 
                                          val_data, **kwargs)
     preds = preds.reshape([len(preds)])
-    bin_preds = list(map(lambda x: 1 if x >= config.thresh else 0, preds))
+    bin_preds = list(map(lambda x: 1 if x >= conf.THRESH else 0, preds))
     false_pos, false_neg = [], []
     for i in range(len(preds)):
         if bin_preds[i] == 0 and labels[i] == 1:

@@ -3,11 +3,10 @@ import glob
 from ketos.data_handling import selection_table as sl
 from pathlib import Path
 import os
-from hbdet.funcs import load_config
 import numpy as np
+import hbdet.global_config as conf
 
-config = load_config()
-annotation_files = Path(config.annotation_source).glob('**/*.txt')
+annotation_files = Path(conf.ANNOTATION_SOURCE).glob('**/*.txt')
 # annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
 # annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
 
@@ -46,7 +45,7 @@ def compensate_for_naming_inconsistencies(hard_drive_path, file):
     return file_path
 
 def get_corresponding_sound_file(file):
-    hard_drive_path = config.sound_files_source
+    hard_drive_path = conf.SOUND_FILES_SOURCE
     file_path = glob.glob(f'{hard_drive_path}/**/{file.stem}*wav',
                       recursive = True)
     if not file_path:
@@ -56,7 +55,7 @@ def get_corresponding_sound_file(file):
         return 'empty'
         
     if len(file_path) > 1:
-        p_dir = list(file.relative_to(config.annotation_source).parents)[-2]
+        p_dir = list(file.relative_to(conf.ANNOTATION_SOURCE).parents)[-2]
         p_dir_main = str(p_dir).split('_')[0]
         for path in file_path:
             if p_dir_main in path:
@@ -162,7 +161,7 @@ def main(annotation_files, active_learning=False):
     files = list(annotation_files)
     if active_learning:
         files = get_active_learning_files(files)
-    folders, counts = np.unique([list(f.relative_to(config.annotation_source)
+    folders, counts = np.unique([list(f.relative_to(conf.ANNOTATION_SOURCE)
                                 .parents)[-2] for f in files],
                         return_counts=True)
     files.sort()
@@ -181,7 +180,7 @@ def main(annotation_files, active_learning=False):
             ind += 1
         
     # TODO include date in path by default
-        save_dir = Path(config.annotation_destination).joinpath(folder)
+        save_dir = Path(conf.ANNOTATION_DESTINATION).joinpath(folder)
         save_dir.mkdir(exist_ok=True, parents=True)
         df_t.to_csv(save_dir.joinpath('combined_annotations.csv'))
         df_n.to_csv(save_dir.joinpath('explicit_noise.csv'))

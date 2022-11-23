@@ -7,8 +7,7 @@ import random
 from .humpback_model_dir import front_end
 from pathlib import Path
 import json
-
-config = funcs.load_config()
+import global_config as conf
 
 ########################################################
 #################  WRITING   ###########################
@@ -174,10 +173,10 @@ def write_tfrecords(annots, save_dir,
         folders = ['noise']
     else:
         folders = ['train', 'test', 'val']
-        train_file_index = int(len(files)*config.train_ratio)
+        train_file_index = int(len(files)*conf.TRAIN_RATIO)
         test_file_index = int(len(files)
-                            *(1-config.train_ratio)
-                            *config.test_val_ratio)
+                            *(1-conf.TRAIN_RATIO)
+                            *conf.TEST_VAL_RATIO)
         
     dataset = {k: {k1: 0 for k1 in folders} 
                for k in specs}
@@ -211,9 +210,9 @@ def write_tfrecords(annots, save_dir,
             data['noise'] = samples
         else:
             end_tr, end_te = map(lambda x: int(x*len(samples)),
-                                (config.train_ratio, (1-config.train_ratio)
-                                                    *config.test_val_ratio
-                                                    +config.train_ratio) )
+                                (conf.TRAIN_RATIO, (1-conf.TRAIN_RATIO)
+                                                    *conf.TEST_VAL_RATIO
+                                                    +conf.TRAIN_RATIO) )
             
             data['train'] = samples[:end_tr]
             data['test'] = samples[end_tr:end_te]
@@ -221,8 +220,8 @@ def write_tfrecords(annots, save_dir,
         
         
         for folder, samples in data.items():
-            split_by_max_length = [samples[j*config.tfrecs_lim:(j+1) * config.tfrecs_lim] \
-                                    for j in range(len(samples)//config.tfrecs_lim + 1)]
+            split_by_max_length = [samples[j*conf.TFRECS_LIM:(j+1) * conf.TFRECS_LIM] \
+                                    for j in range(len(samples)//conf.TFRECS_LIM + 1)]
             for samps in split_by_max_length:
                 tfrec_num += 1
                 writer = get_tfrecords_writer(tfrec_num, folder, save_dir, 
@@ -290,7 +289,7 @@ def parse_tfrecord_fn(example):
         tf.io object: tensorflow object containg the data
     """
     feature_description = {
-        "audio": tf.io.FixedLenFeature([config.context_win], tf.float32),
+        "audio": tf.io.FixedLenFeature([conf.CONTEXT_WIN], tf.float32),
         "label": tf.io.FixedLenFeature([], tf.int64),
         "file" : tf.io.FixedLenFeature([], tf.string),
         "time" : tf.io.FixedLenFeature([], tf.int64)
@@ -325,7 +324,7 @@ def run_data_pipeline(root_dir, data_dir, AUTOTUNE=None, return_spec=True, **kwa
 
 def spec():
     return tf.keras.Sequential([
-        tf.keras.layers.Input([config.context_win]),
+        tf.keras.layers.Input([conf.CONTEXT_WIN]),
         tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
         front_end.MelSpectrogram()])
 

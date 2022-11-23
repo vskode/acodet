@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 import hbdet.tfrec as tfrecord
 from pathlib import Path
-from hbdet.funcs import load_config
-config = load_config()
+import hbdet.global_config as conf
 
 # file = 'Daten/Tim/2020-11-17/channelA_2020-11-17_00-00-04.wav'
 # tfrecord.write_tfrecs_for_mixup(file)
@@ -19,7 +18,7 @@ for file in files:
     else:
         all_noise = False
 
-    save_dir = (Path(config.tfrec_destination)
+    save_dir = (Path(conf.TFREC_DESTINATION)
                 .joinpath(list(file.relative_to(SOURCE_DIR).parents)[-2]))
     
     tfrecord.write_tfrecords(annots, save_dir, 

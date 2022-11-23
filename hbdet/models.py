@@ -1,9 +1,8 @@
 import tensorflow as tf
 import yaml
 from pathlib import Path
-with open('hbdet/hbdet/config.yml', 'r') as f:
-    config = yaml.safe_load(f)
 
+import global_config as conf
 from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
@@ -63,7 +62,7 @@ class GoogleMod():
         else:
             # add MelSpectrogram layer
             model_list.append(tf.keras.layers.Input(
-                [config['context_win']]))
+                [conf.CONTEXT_WIN]))
             model_list.append(tf.keras.layers.Lambda(
                 lambda t: tf.expand_dims(t, -1)))
             model_list.append(self.model.layers[0])
@@ -121,7 +120,7 @@ class GoogleMod():
             tf.keras.Sequential: model with new arrays as inputs
         """
         model_list = self.model.layers
-        model_list.insert(0, tf.keras.layers.Input([config['context_win']]))
+        model_list.insert(0, tf.keras.layers.Input([conf.CONTEXT_WIN]))
         model_list.insert(1, tf.keras.layers.Lambda(
                             lambda t: tf.expand_dims(t, -1)))
         model_list.insert(2, front_end.MelSpectrogram())
@@ -156,7 +155,7 @@ class ModelHelper:
             tf.keras.Sequential: model with new arrays as inputs
         """
         model_list = self.model.layers
-        model_list.insert(0, tf.keras.layers.Input([config['context_win']]))
+        model_list.insert(0, tf.keras.layers.Input([conf.CONTEXT_WIN]))
         model_list.insert(1, tf.keras.layers.Lambda(
                             lambda t: tf.expand_dims(t, -1)))
         model_list.insert(2, front_end.MelSpectrogram())

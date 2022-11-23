@@ -5,13 +5,12 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from hbdet.funcs import save_model_results, load_config, get_train_set_size
+from hbdet.funcs import save_model_results, get_train_set_size
 from hbdet.models import GoogleMod, EffNet
 from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import run_data_pipeline, prepare
 from hbdet.augmentation import run_augment_pipeline
 
-config = load_config()
 TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v4_2khz', 
                 #  'Daten/Datasets/ScotWest_v4_2khz',
                 #  'Daten/Datasets/Mixed_v1_2khz',
@@ -52,8 +51,7 @@ unfreezes = ['no-TF']
 # data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem)
 
 
-def run_training(config=config, 
-                 ModelClass=ModelClass,
+def run_training(ModelClass=ModelClass,
                  TFRECORDS_DIR=TFRECORDS_DIR, 
                  AUTOTUNE=AUTOTUNE, 
                  batch_size=batch_size, 

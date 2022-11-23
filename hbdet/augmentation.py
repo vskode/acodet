@@ -5,8 +5,6 @@ import numpy as np
 import yaml
 import tensorflow_io as tfio
 
-with open('hbdet/hbdet/config.yml', 'r') as f:
-    config = yaml.safe_load(f)
 AUTOTUNE = tf.data.AUTOTUNE    
 
 class CropAndFill(BaseImageAugmentationLayer):
