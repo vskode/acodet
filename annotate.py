@@ -1,5 +1,5 @@
 import time
-from hbdet.google_funcs import GoogleMod
+from hbdet.models import GoogleMod
 from hbdet.funcs import get_files, gen_annotations
     
 if __name__ == '__main__':

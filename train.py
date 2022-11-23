@@ -6,35 +6,43 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 
 from hbdet.funcs import save_model_results, load_config, get_train_set_size
-from hbdet.google_funcs import GoogleMod
+from hbdet.models import GoogleMod, EffNet
 from hbdet.plot_utils import plot_model_results, create_and_save_figure
-from hbdet.tfrec import TFRECORDS_DIR, run_data_pipeline, prepare
-from hbdet.plot_utils import plot_pre_training_spectrograms
-from hbdet.augmentation import run_augment_pipeline, time_shift
+from hbdet.tfrec import run_data_pipeline, prepare
+from hbdet.augmentation import run_augment_pipeline
 
 config = load_config()
 TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v4_2khz', 
-                 'Daten/Datasets/ScotWest_v4_2khz',
-                 'Daten/Datasets/Mixed_v1_2khz',
-                 'Daten/Datasets/Mixed_v2_2khz',
-                 'Daten/Datasets/Benoit_v1_2khz',
+                #  'Daten/Datasets/ScotWest_v4_2khz',
+                #  'Daten/Datasets/Mixed_v1_2khz',
+                #  'Daten/Datasets/Mixed_v2_2khz',
+                #  'Daten/Datasets/Benoit_v1_2khz',
+                 'Daten/Datasets/BERCHOK_SAMANA_200901_4',
+                 'Daten/Datasets/CHALLENGER_AMAR123.1',
+                 'Daten/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+                 'Daten/Datasets/NJDEP_NJ_200903_PU182',
+                 'Daten/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+                 'Daten/Datasets/SAMOSAS_EL1_2021',
+                 'Daten/Datasets/SAMOSAS_N1_2021',
+                 'Daten/Datasets/SAMOSAS_S1_2021',
+                 'Daten/Datasets/Tolsta_2kHz_D2_2018'
                 ]
 AUTOTUNE = tf.data.AUTOTUNE
 
-epochs = 200
+epochs = 50
 
 batch_size = [32]*2
-time_augs = [True]*2
+time_augs =  [True]*2
 mixup_augs = [True]*2
-spec_aug = [False, True]
-init_lr = [1e-5] *2
+spec_aug =   [True]*2
+init_lr = [3e-4] *2
 final_lr = [1e-6]*2
 weight_clip = [1]*2
-Gmod = [True]*2
+ModelClass = [EffNet]
 
-load_weights = ['2022-11-17_17']*2
+load_ckpt_path = [False]*2
 load_g_weights = False
-steps_per_epoch = 2000
+steps_per_epoch = False
 data_description = TFRECORDS_DIR
 pre_blocks = 9
 f_score_beta = 0.5
@@ -45,12 +53,12 @@ unfreezes = ['no-TF']
 
 
 def run_training(config=config, 
-                 Gmod=Gmod,
+                 ModelClass=ModelClass,
                  TFRECORDS_DIR=TFRECORDS_DIR, 
                  AUTOTUNE=AUTOTUNE, 
                  batch_size=batch_size, 
                  epochs=epochs, 
-                 load_weights=load_weights, 
+                 load_ckpt_path=load_ckpt_path, 
                  load_g_weights=load_g_weights, 
                  steps_per_epoch=steps_per_epoch, 
                  time_augs=time_augs, 
@@ -74,9 +82,9 @@ def run_training(config=config,
     VARS:
     data_path       = {TFRECORDS_DIR}
     batch_size      = {batch_size}
-    Gmod            = {Gmod}
+    Model           = {ModelClass}
     epochs          = {epochs}
-    load_weights    = {load_weights}
+    load_ckpt_path  = {load_ckpt_path}
     steps_per_epoch = {steps_per_epoch}
     f_score_beta    = {f_score_beta}
     f_score_thresh  = {f_score_thresh}
@@ -101,7 +109,7 @@ def run_training(config=config,
     Path(f'trainings/{time_start}').mkdir(exist_ok=True)
 
     n_train, n_noise = get_train_set_size(TFRECORDS_DIR)
-    n_train_set = n_train*(1+time_augs + mixup_augs+spec_aug*2) // batch_size
+    n_train_set = n_train*(1+time_augs + mixup_augs+spec_aug*2) #// batch_size
     print('Train set size = {}. Epoch should correspond to this amount of steps.'
         .format(n_train_set), '\n')
 
@@ -120,23 +128,12 @@ def run_training(config=config,
     train_data = run_augment_pipeline(train_data, noise_data,
                                         n_noise, n_train, time_augs, 
                                         mixup_augs, seed, spec_aug=spec_aug,
-                                        time_start=time_start, plot=True,
-                                        random=True)
-
-    # a_data = train_data.map(lambda x, y: (time_shift()(x), y))
-    # b_data = train_data.map(lambda x, y: (x, y))
+                                        time_start=time_start, plot=False,
+                                        random=False)
     
-    # plot_pre_training_spectrograms(train_data, test_data, [],#augmented_data,
-    #                             time_start, seed)
-    
-    # train_data = b_data.concatenate(a_data)
-    # train_data = train_data.take(1)    
-    # train_data = train_data.batch(batch_size)    
-    # train_data = train_data.prefetch(buffer_size=AUTOTUNE)
-    # return
     train_data = prepare(train_data, batch_size, shuffle=True, 
                         shuffle_buffer=n_train_set*3)
-    if steps_per_epoch and n_train_set < epochs*steps_per_epoch:
+    if steps_per_epoch and n_train_set // batch_size < epochs*steps_per_epoch:
         train_data = train_data.repeat(epochs*steps_per_epoch//n_train_set+1)
     
 
@@ -148,7 +145,7 @@ def run_training(config=config,
     #############################################################################
 
     lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
-                                    decay_steps = steps_per_epoch,
+                                    decay_steps = n_train_set//batch_size,
                                     decay_rate = (final_lr/init_lr)**(1/epochs),
                                     staircase = True)
     for ind, unfreeze in enumerate(unfreezes):
@@ -157,26 +154,8 @@ def run_training(config=config,
             load_g_ckpt = False
         else:
             load_g_ckpt = True
-        model = GoogleMod(load_g_ckpt=load_g_ckpt).model
-        if not Gmod:
-            effNet = tf.keras.applications.EfficientNetB5(
-                    include_top=True,
-                    weights=None,
-                    input_tensor=None,
-                    input_shape=[128, 64, 3],
-                    pooling=None,
-                    classes=1,
-                    classifier_activation="sigmoid"
-                )
-            model = tf.keras.Sequential([
-                tf.keras.layers.Input([128, 64]),
-                model.layers[0],
-                tf.keras.layers.Lambda(lambda t: 255. *t /tf.math.reduce_max(t)),
-                tf.keras.layers.Lambda(lambda t: tf.tile(
-                    tf.expand_dims(t, -1),
-                    [1 for _ in range(3)] + [3])),
-                effNet
-            ])
+            
+        model = ModelClass(load_g_ckpt=load_g_ckpt).model
         
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate = lr,
@@ -200,9 +179,8 @@ def run_training(config=config,
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
                 
-        if load_weights:
-            model.load_weights(
-                f'trainings/{load_weights}/unfreeze_{unfreeze}/cp-last.ckpt')
+        if load_ckpt_path:
+            model.load_ckpt(load_ckpt_path)
 
         checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
                             "/cp-last.ckpt"
@@ -218,7 +196,7 @@ def run_training(config=config,
         model.save_weights(checkpoint_path)
         hist = model.fit(train_data, 
                 epochs = epochs, 
-                steps_per_epoch=steps_per_epoch,
+                # steps_per_epoch=steps_per_epoch,
                 validation_data = test_data,
                 callbacks=[cp_callback])
         result = hist.history
@@ -229,7 +207,7 @@ def run_training(config=config,
 
     plot_model_results(time_start, data = data_description, init_lr = init_lr,
                         final_lr = final_lr)
-    create_and_save_figure(GoogleMod, TFRECORDS_DIR, batch_size, time_start,
+    create_and_save_figure(ModelClass, TFRECORDS_DIR, batch_size, time_start,
                             plot_cm=True, data = data_description)
 
 if __name__ == '__main__':
@@ -241,5 +219,5 @@ if __name__ == '__main__':
                      init_lr=init_lr[i], 
                      final_lr=final_lr[i],
                      weight_clip=weight_clip[i],
-                     Gmod=Gmod[i],
-                     load_weights=load_weights[i])
+                     ModelClass=ModelClass[i],
+                     load_ckpt_path=load_ckpt_path[i])

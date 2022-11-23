@@ -52,6 +52,9 @@ def get_corresponding_sound_file(file):
     if not file_path:
         file_path = compensate_for_naming_inconsistencies(hard_drive_path, file)
         
+    if not file_path:
+        return 'empty'
+        
     if len(file_path) > 1:
         p_dir = list(file.relative_to(config.annotation_source).parents)[-2]
         p_dir_main = str(p_dir).split('_')[0]
@@ -76,7 +79,15 @@ def differentiate_label_flags(df, flag=None):
     df.loc[df[annotation_column]=='n', 'label'] = 'explicit 0'
     df = df.drop(df.loc[df[annotation_column]=='u'].index)
     if flag == 'noise':
-        df.loc[df[annotation_column] > 0.9, 'label'] = 'explicit 0'
+        # df['not_float'] = ~((df[annotation_column] == 'u') ^ (df[annotation_column] == 'n') ^ (df[annotation_column] == 'c'))
+        # index = df['not_float'] * df[annotation_column].astype(float) > 0.9
+        df.loc[df[annotation_column] == 'u', annotation_column] = -9
+        df.loc[df[annotation_column] == 'n', annotation_column] = -8
+        df.loc[df[annotation_column] == 'c', annotation_column] = -7
+        df.loc[df[annotation_column].astype(float) > 0.9, 'label'] = 'explicit 0'
+        # df.loc[df[annotation_column] == -9] = 'u'
+        # df.loc[df[annotation_column] == -8] = 'n'
+        # df.loc[df[annotation_column] == -7] = 'c'
     return df
 
 def get_labels(file, df, active_learning=False):
@@ -92,7 +103,8 @@ def get_labels(file, df, active_learning=False):
             df['label'] = 0
             df = differentiate_label_flags(df, flag='noise')
         elif annotated_flag in file.stem:
-            df = differentiate_label_flags(df)
+            df['label'] = 1
+            df = differentiate_label_flags(df, flag='calls')
     return df
             
 def standardize(df, *, mapper, filename_col='filename',

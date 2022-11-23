@@ -6,6 +6,7 @@ with open('hbdet/hbdet/config.yml', 'r') as f:
 
 from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
+from .humpback_model_dir import leaf_pcen
 
 class GoogleMod():
     def __init__(self, **params) -> None:
@@ -125,3 +126,70 @@ class GoogleMod():
                             lambda t: tf.expand_dims(t, -1)))
         model_list.insert(2, front_end.MelSpectrogram())
         self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
+
+class ModelHelper:
+    def load_ckpt(self, ckpt_path, ckpt_name='last'):
+        try:
+            file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
+            if not file_path.exists():
+                ckpts = list(ckpt_path.glob('cp-*.index'))
+                ckpts.sort()
+                ckpt = ckpts[-1]
+            else:
+                ckpt = file_path
+            self.model.load_weights(
+                str(ckpt).replace('.index', '')
+                ).expect_partial()
+        except Exception as e:
+            print('Checkpoint not found.', e)
+
+    def change_input_to_array(self):
+        """
+        change input layers of model after loading checkpoint so that a file
+        can be predicted based on arrays rather than spectrograms, i.e.
+        reintegrate the spectrogram creation into the model. 
+
+        Args:
+            model (tf.keras.Sequential): keras model
+
+        Returns:
+            tf.keras.Sequential: model with new arrays as inputs
+        """
+        model_list = self.model.layers
+        model_list.insert(0, tf.keras.layers.Input([config['context_win']]))
+        model_list.insert(1, tf.keras.layers.Lambda(
+                            lambda t: tf.expand_dims(t, -1)))
+        model_list.insert(2, front_end.MelSpectrogram())
+        self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
+
+
+
+class EffNet(ModelHelper):
+    def __init__(self, **params) -> None:
+        keras_model = tf.keras.applications.EfficientNetB0(
+                include_top=True,
+                weights=None,
+                input_tensor=None,
+                input_shape=[128, 64, 3],
+                pooling=None,
+                classes=1,
+                classifier_activation="sigmoid"
+            )
+        
+        self.model = tf.keras.Sequential([
+            tf.keras.layers.Input([128, 64]),
+            leaf_pcen.PCEN(
+                alpha=0.98,
+                delta=2.0,
+                root=2.0,
+                smooth_coef=0.025,
+                floor=1e-6,
+                trainable=True,
+                name='pcen',
+            ),
+            # tf.keras.layers.Lambda(lambda t: 255. *t /tf.math.reduce_max(t)),
+            tf.keras.layers.Lambda(lambda t: tf.tile(
+                tf.expand_dims(t, -1),
+                [1 for _ in range(3)] + [3])),
+            keras_model
+        ])

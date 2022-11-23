@@ -31,6 +31,8 @@ pred_win_lim: 20
 ## Paths
 # annotation_root_dir: 'Daten/Catherine_annotations'
 # files_root_dir: '/mnt/d/VINCENT_RawData'
-annotation_destination: 'Daten/combined_annotations'
+annotation_destination: 'Daten/combined_annotations/2022-11-19_22'
 annotation_source: 'generated_annotations/2022-11-19_22'
+# annotation_source: 'Daten/cathy'
 sound_files_source: 'Daten/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
+# sound_files_source: 'F/mnt/Daten/20221027_COMPASS/COMPASS_VINCENT'

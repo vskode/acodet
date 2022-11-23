@@ -1,7 +1,7 @@
 from hbdet.plot_utils import (plot_evaluation_metric, 
                               plot_model_results, 
                               plot_sample_spectrograms)
-from hbdet.google_funcs import GoogleMod
+from hbdet.models import GoogleMod
 from hbdet.funcs import load_config, get_labels_and_preds
 from hbdet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
@@ -14,11 +14,19 @@ from hbdet.humpback_model_dir import front_end
 config = load_config()
 
 tfrec_path =[
-    'Daten/Datasets/ScotWest_v5_2khz', 
-    'Daten/Datasets/ScotWest_v4_2khz',
-    'Daten/Datasets/Mixed_v1_2khz',
-    'Daten/Datasets/Mixed_v2_2khz',
-    'Daten/Datasets/Benoit_v1_2khz',
+    # 'Daten/Datasets/ScotWest_v4_2khz',
+    # # 'Daten/Datasets/Mixed_v1_2khz',
+    # # 'Daten/Datasets/Mixed_v2_2khz',
+    # # 'Daten/Datasets/Benoit_v1_2khz',
+    # 'Daten/Datasets/BERCHOK_SAMANA_200901_4',
+    # 'Daten/Datasets/CHALLENGER_AMAR123.1',
+    # 'Daten/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+    # 'Daten/Datasets/NJDEP_NJ_200903_PU182',
+    # 'Daten/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+    # 'Daten/Datasets/SAMOSAS_EL1_2021',
+    # 'Daten/Datasets/SAMOSAS_N1_2021',
+    # 'Daten/Datasets/SAMOSAS_S1_2021',
+    'Daten/Datasets/Tolsta_2kHz_D2_2018'
     ]
 
 train_dates = [
@@ -29,15 +37,16 @@ train_dates = [
     # '2022-11-08_03',
     # '2022-11-09_03',
     # '2022-11-10_18',
-    # '2022-11-14_16',
-    # '2022-11-16_18',
-    # '2022-11-17_09',
-    '2022-11-19_09'
+    # '2022-11-21_17',
+    # '2022-11-21_21',
+    # '2022-11-22_00',
+    '2022-11-22_17'
               ]
 
 display_keys = [
     # 'data_path', 
     # 'batch_size', 
+    'bool_SpecAug', 
     'bool_time_shift', 
     'bool_MixUps', 
     'init_lr', 
@@ -48,8 +57,9 @@ display_keys = [
 def get_info(date):
     keys = ['data_path', 'batch_size', 'epochs', 'load_weights', 
             'steps_per_epoch', 'f_score_beta', 'f_score_thresh', 
-            'bool_time_shift', 'bool_MixUps', 'weight_clipping', 
-            'init_lr', 'final_lr', 'unfreezes', 'preproc blocks']    
+            'bool_SpecAug', 'bool_time_shift', 'bool_MixUps', 
+            'weight_clipping', 'init_lr', 'final_lr', 'unfreezes', 
+            'preproc blocks']    
     path = Path(f'trainings/{date}')
     f = pd.read_csv(path.joinpath('training_info.txt'), sep='\t')
     l, found = [], 0
@@ -64,7 +74,7 @@ def get_info(date):
     return {key: s.split('= ')[-1] for s, key in zip(l, keys)}
 
 
-def create_overview_plot(train_dates, val_set, display_keys):
+def create_overview_plot(train_dates, val_set, display_keys, model_class):
     info_dicts = [get_info(date) for date in train_dates]
 
     val_s = ''.join([Path(s).stem.split('_2khz')[0]+';' for s in val_set])
@@ -72,10 +82,11 @@ def create_overview_plot(train_dates, val_set, display_keys):
         # 'batch:{}; ' 
         't_aug:{}; ' 
         'mixup:{}; ' 
+        'specaug:{}; ' 
         'lr_beg:{}; ' 
         'lr_end:{}; ' 
         # 'clip:{} ; '
-        f'val: {val_s}')
+        f'val: all')
     if config.thresh != 0.5:
         string += f' thr: {config.thresh}'
 
@@ -95,7 +106,7 @@ def create_overview_plot(train_dates, val_set, display_keys):
     subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
 
     plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
-    plot_evaluation_metric(GoogleMod, training_runs, val_data, plot_labels=labels,
+    plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
                             fig = subfigs[1], plot_pr=True, plot_cm=True, 
                             train_dates=train_dates, label=None)
 
@@ -132,4 +143,5 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
     
 
 # create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
-create_overview_plot(train_dates, tfrec_path, display_keys)
+for path in tfrec_path:
+    create_overview_plot(train_dates, path, display_keys, GoogleMod)

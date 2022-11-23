@@ -158,24 +158,34 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
     duration = annotations['start'].iloc[-1] + config.context_win/config.sr
     audio = load_audio(file, duration=duration)
     
-    seg_ar, times_c = [], []
+    segs, times = [], []
     for _, row in annotations.iterrows():
         beg = int((row.start)*config.sr)
         end = int((row.start)*config.sr + config.context_win)
         
         if len(audio[beg:end]) == config.context_win:
-            seg_ar.append(audio[beg:end])
-            times_c.append(beg)
+            segs.append(audio[beg:end])
+            times.append(beg)
         else:
             end = len(audio)
             beg = end - config.context_win
-            seg_ar.append(audio[beg:end])
-            times_c.append(beg)
+            segs.append(audio[beg:end])
+            times.append(beg)
             break
         
-    seg_ar = np.array(seg_ar, dtype='float32')
+    segs = np.array(segs, dtype='float32')
+    times = np.array(times, dtype='float32')
+    
+    # TODO docstrings aufraumen
+    if len(segs)-len(annotations) < 0:
+        annotations = annotations.drop(annotations.index[len(segs)-len(annotations)])
+    seg_ar = np.array(segs[annotations['label']==1], dtype='float32')
+    times_c = np.array(times[annotations['label']==1], dtype='float32')
     if inbetween_noise:
         noise_ar, times_n = return_inbetween_noise_arrays(audio, annotations)
+    elif len(annotations.loc[annotations['label']==0]) > 0:
+        noise_ar = np.array(segs[annotations['label']==0], dtype='float32')
+        times_n = np.array(times[annotations['label']==0], dtype='float32')
     else:
         noise_ar, times_n = np.array([]), np.array([])
     
@@ -242,17 +252,18 @@ def return_inbetween_noise_arrays(audio: np.ndarray,
     
     return np.array(noise_ar, dtype='float32'), times
 
-def get_train_set_size(TFRECORDS_DIR):
-    if not isinstance(TFRECORDS_DIR, list):
-        TFRECORDS_DIR = [TFRECORDS_DIR]
+def get_train_set_size(tfrec_path):
+    if not isinstance(tfrec_path, list):
+        tfrec_path = [tfrec_path]
     train_set_size, noise_set_size = 0, 0
-    for dataset_dir in TFRECORDS_DIR:
+    for dataset_dir in tfrec_path:
         try:
-            data_dict = json.load(open(dataset_dir+'/dataset_meta.json'))
-            if 'train' in data_dict['dataset']['size']:
-                train_set_size += data_dict['dataset']['size']['train']
-            if 'noise' in data_dict['dataset']['size']:
-                noise_set_size += data_dict['dataset']['size']['noise']
+            for dic in Path(dataset_dir).glob('dataset*.json'):
+                data_dict = json.load(open(dic))
+                if 'train' in data_dict['dataset']['size']:
+                    train_set_size += data_dict['dataset']['size']['train']
+                if 'noise' in data_dict['dataset']['size']:
+                    noise_set_size += data_dict['dataset']['size']['noise']
         except:
             print('No dataset dictionary found, estimating dataset size.'
                 'WARNING: This might lead to incorrect learning rates!')
