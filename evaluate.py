@@ -72,6 +72,21 @@ def get_info(date):
             l.append(f'{key}= nan')
     return {key: s.split('= ')[-1] for s, key in zip(l, keys)}
 
+def write_trainings_csv():
+    trains = list(Path('../trainings').iterdir())
+    df = pd.DataFrame()
+    for i, path in enumerate(trains):
+        try:
+            f = pd.read_csv(path.joinpath('training_info.txt'), sep='\t')
+            for s in f.values:
+                if '=' in s[0]:
+                    df.loc[i, s[0].split('= ')[0].replace(' ', '')] = s[0].split('= ')[-1]
+                    df.loc[i, 'training_date'] = path.stem
+        except Exception as e:
+            print(e)
+        df.to_csv('../trainings/meta_trainings.csv')
+            
+
 
 def create_overview_plot(train_dates, val_set, display_keys, model_class):
     info_dicts = [get_info(date) for date in train_dates]

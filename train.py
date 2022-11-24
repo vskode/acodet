@@ -6,7 +6,7 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 
 from hbdet.funcs import save_model_results, get_train_set_size
-from hbdet.models import GoogleMod, EffNet
+from hbdet import models
 from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import run_data_pipeline, prepare
 from hbdet.augmentation import run_augment_pipeline
@@ -28,16 +28,17 @@ TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz',
                 ]
 AUTOTUNE = tf.data.AUTOTUNE
 
-epochs = 50
+epochs = 10
 
 batch_size = [32]*4
-time_augs =  [False, True, True, False]
-mixup_augs = [True, False, True, False]
-spec_aug =   [True, True, False, False]
+time_augs =  [True]*4
+mixup_augs = [True]*4
+spec_aug =   [True]*4
 init_lr = [3e-4] *4
 final_lr = [1e-6]*4
 weight_clip = [1]*4
-ModelClass = [EffNet]*4
+ModelClassName = ['EffNet']*4
+keras_mod_name = ['MobileNetV2', 'MobileNet', 'EfficientNetB1', 'EfficientNetB4']
 
 load_ckpt_path = [False]*4
 load_g_weights = False
@@ -51,12 +52,13 @@ unfreezes = ['no-TF']
 # data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem)
 
 
-def run_training(ModelClass=ModelClass,
+def run_training(ModelClassName=ModelClassName,
                  TFRECORDS_DIR=TFRECORDS_DIR, 
                  AUTOTUNE=AUTOTUNE, 
                  batch_size=batch_size, 
                  epochs=epochs, 
                  load_ckpt_path=load_ckpt_path, 
+                 keras_mod_name=keras_mod_name,
                  load_g_weights=load_g_weights, 
                  steps_per_epoch=steps_per_epoch, 
                  time_augs=time_augs, 
@@ -80,7 +82,8 @@ def run_training(ModelClass=ModelClass,
     VARS:
     data_path       = {TFRECORDS_DIR}
     batch_size      = {batch_size}
-    Model           = {ModelClass}
+    Model           = {ModelClassName}
+    keras_mod_name  = {keras_mod_name}
     epochs          = {epochs}
     load_ckpt_path  = {load_ckpt_path}
     steps_per_epoch = {steps_per_epoch}
@@ -153,7 +156,8 @@ def run_training(ModelClass=ModelClass,
         else:
             load_g_ckpt = True
             
-        model = ModelClass(load_g_ckpt=load_g_ckpt).model
+        model = getattr(models, ModelClassName)(load_g_ckpt=load_g_ckpt,
+                                            keras_mod_name=keras_mod_name).model
         
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate = lr,
@@ -205,17 +209,20 @@ def run_training(ModelClass=ModelClass,
 
     plot_model_results(time_start, data = data_description, init_lr = init_lr,
                         final_lr = final_lr)
+    ModelClass = getattr(models, ModelClassName)
     create_and_save_figure(ModelClass, TFRECORDS_DIR, batch_size, time_start,
-                            plot_cm=True, data = data_description)
+                            plot_cm=True, data = data_description, 
+                            keras_mod_name=keras_mod_name)
 
 if __name__ == '__main__':
     for i in range(len(time_augs)):
         run_training(batch_size=batch_size[i],
+                     keras_mod_name=keras_mod_name[i],
                     time_augs=time_augs[i], 
                      mixup_augs=mixup_augs[i], 
                      spec_aug=spec_aug[i],
                      init_lr=init_lr[i], 
                      final_lr=final_lr[i],
                      weight_clip=weight_clip[i],
-                     ModelClass=ModelClass[i],
+                     ModelClassName=ModelClassName[i],
                      load_ckpt_path=load_ckpt_path[i])

@@ -163,8 +163,8 @@ class ModelHelper:
 
 
 class EffNet(ModelHelper):
-    def __init__(self, **params) -> None:
-        keras_model = tf.keras.applications.EfficientNetB0(
+    def __init__(self, keras_mod_name='EfficientNetB0', **params) -> None:
+        keras_model = getattr(tf.keras.applications, keras_mod_name)(
                 include_top=True,
                 weights=None,
                 input_tensor=None,
