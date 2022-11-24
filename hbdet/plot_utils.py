@@ -7,13 +7,10 @@ from pathlib import Path
 import seaborn as sns
 import json
 import librosa as lb
-import yaml
+from . import global_config as conf
 from . import funcs
 from . import tfrec
 import tensorflow as tf
-
-with open('hbdet/hbdet/config.yml', 'r') as f:
-    config = yaml.safe_load(f)
 
 def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
     if fig == None:
@@ -28,7 +25,7 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
         
     checkpoint_paths = []
     for datetime in datetimes:
-        checkpoint_paths += list(Path(f"trainings/{datetime}")
+        checkpoint_paths += list(Path(f"../trainings/{datetime}")
                                  .glob('unfreeze_*'))
         
     r, c = 2, 6
@@ -90,7 +87,7 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
     ref_time = time.strftime('%Y%m%d', time.gmtime())
     if savefig:
         fig.tight_layout()
-        fig.savefig(f'trainings/{datetime}/model_results_{ref_time}.png')
+        fig.savefig(f'../trainings/{datetime}/model_results_{ref_time}.png')
     else:
         return fig
 
@@ -101,7 +98,7 @@ def plot_spec_from_file(file, start, sr, cntxt_wn_sz = 39124, **kwArgs):
     return simple_spec(audio, sr = sr, cntxt_wn_sz=cntxt_wn_sz, **kwArgs)
 
 def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
-                          random=True, seed=None, sr=config['sr'], 
+                          random=True, seed=None, sr=conf.SR, 
                           rows=4, cols=4, plot_meta=False, **kwargs):
     r, c = rows, cols 
     if isinstance(dataset, tf.data.Dataset):
@@ -115,7 +112,7 @@ def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
     elif isinstance(dataset, list):
         sample = dataset
     
-    max_freq_bin = 128//(config['sr']//2000)
+    max_freq_bin = 128//(conf.SR//2000)
     
     fmin = sr/2/next(iter(sample))[0].numpy().shape[0]
     fmax = sr/2/next(iter(sample))[0].numpy().shape[0]*max_freq_bin
@@ -149,7 +146,7 @@ def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
             axes[i//r][i%c].set_yticklabels([])
             
     fig.suptitle(f'{name} sample of 16 spectrograms. random={random}')
-    fig.savefig(f'trainings/{dir}/{name}_sample.png')
+    fig.savefig(f'../trainings/{dir}/{name}_sample.png')
 
 def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000, 
                 cntxt_wn_sz = 39124, fig = None, colorbar = True):
@@ -176,7 +173,7 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
         return ax
     
 def plot_conf_matr(labels, preds, ax, training_run, iteration, **kwargs):
-    bin_preds = list(map(lambda x: 1 if x >= config['thresh'] else 0, preds))
+    bin_preds = list(map(lambda x: 1 if x >= conf.THRESH else 0, preds))
     heat = tf.math.confusion_matrix(labels, bin_preds).numpy()
     rearrange = lambda x:  np.array([[x[1, 1], x[1, 0]], 
                                 [x[0, 1], x[0, 0]]])
@@ -261,7 +258,7 @@ def create_and_save_figure(model_instance, tfrec_path, batch_size, train_date,
                             debug=False, plot_pr=True, plot_cm=False, 
                             **kwargs):
     
-    training_runs = list(Path(f'trainings/{train_date}').glob('unfreeze*'))
+    training_runs = list(Path(f'../trainings/{train_date}').glob('unfreeze*'))
     val_data = tfrec.run_data_pipeline(tfrec_path, 'val', return_spec=False)
     
     fig = plt.figure(constrained_layout=True)
@@ -289,7 +286,7 @@ def plot_pre_training_spectrograms(train_data, test_data,
     plot_sample_spectrograms(test_data, dir = time_start, name = 'test')
     
     
-def compare_random_spectrogram(filenames, dataset_size = config['tfrecs_lim']):
+def compare_random_spectrogram(filenames, dataset_size = conf.TFRECS_LIM):
     r = np.random.randint(dataset_size)
     dataset = (
         tf.data.TFRecordDataset(filenames)

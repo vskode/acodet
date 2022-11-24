@@ -5,42 +5,43 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from hbdet.funcs import save_model_results, load_config, get_train_set_size
-from hbdet.models import GoogleMod, EffNet
+from hbdet.funcs import save_model_results, get_train_set_size, init_model
+from hbdet import models
 from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import run_data_pipeline, prepare
 from hbdet.augmentation import run_augment_pipeline
 
-config = load_config()
-TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v4_2khz', 
-                #  'Daten/Datasets/ScotWest_v4_2khz',
-                #  'Daten/Datasets/Mixed_v1_2khz',
-                #  'Daten/Datasets/Mixed_v2_2khz',
-                #  'Daten/Datasets/Benoit_v1_2khz',
-                 'Daten/Datasets/BERCHOK_SAMANA_200901_4',
-                 'Daten/Datasets/CHALLENGER_AMAR123.1',
-                 'Daten/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
-                 'Daten/Datasets/NJDEP_NJ_200903_PU182',
-                 'Daten/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
-                 'Daten/Datasets/SAMOSAS_EL1_2021',
-                 'Daten/Datasets/SAMOSAS_N1_2021',
-                 'Daten/Datasets/SAMOSAS_S1_2021',
-                 'Daten/Datasets/Tolsta_2kHz_D2_2018'
+TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz', 
+                #  '../Daten/Datasets/ScotWest_v4_2khz',
+                #  '../Daten/Datasets/Mixed_v1_2khz',
+                #  '../Daten/Datasets/Mixed_v2_2khz',
+                 '../Data/Datasets/SABA01_201511_201604_SN275',
+                 '../Data/Datasets/SABA01_201604_201608_SN276',
+                 '../Data/Datasets/BERCHOK_SAMANA_200901_4',
+                 '../Data/Datasets/CHALLENGER_AMAR123.1',
+                 '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+                 '../Data/Datasets/NJDEP_NJ_200903_PU182',
+                 '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+                 '../Data/Datasets/SAMOSAS_EL1_2021',
+                 '../Data/Datasets/SAMOSAS_N1_2021',
+                 '../Data/Datasets/SAMOSAS_S1_2021',
+                 '../Data/Datasets/Tolsta_2kHz_D2_2018'
                 ]
 AUTOTUNE = tf.data.AUTOTUNE
 
-epochs = 50
+epochs = [40, 100]
 
 batch_size = [32]*2
 time_augs =  [True]*2
 mixup_augs = [True]*2
 spec_aug =   [True]*2
-init_lr = [3e-4] *2
-final_lr = [1e-6]*2
+init_lr = [8e-5, 3e-4] 
+final_lr = [6e-6, 1e-5]
 weight_clip = [1]*2
-ModelClass = [EffNet]
+ModelClassName = ['GoogleMod', 'EffNet']
+keras_mod_name = [False, 'EfficientNetB5']
 
-load_ckpt_path = [False]*2
+load_ckpt_path = ['2022-11-17_17', False]
 load_g_weights = False
 steps_per_epoch = False
 data_description = TFRECORDS_DIR
@@ -52,13 +53,13 @@ unfreezes = ['no-TF']
 # data_description = data_description.format(Path(TFRECORDS_DIR).parent.stem)
 
 
-def run_training(config=config, 
-                 ModelClass=ModelClass,
+def run_training(ModelClassName=ModelClassName,
                  TFRECORDS_DIR=TFRECORDS_DIR, 
                  AUTOTUNE=AUTOTUNE, 
                  batch_size=batch_size, 
                  epochs=epochs, 
                  load_ckpt_path=load_ckpt_path, 
+                 keras_mod_name=keras_mod_name,
                  load_g_weights=load_g_weights, 
                  steps_per_epoch=steps_per_epoch, 
                  time_augs=time_augs, 
@@ -82,7 +83,8 @@ def run_training(config=config,
     VARS:
     data_path       = {TFRECORDS_DIR}
     batch_size      = {batch_size}
-    Model           = {ModelClass}
+    Model           = {ModelClassName}
+    keras_mod_name  = {keras_mod_name}
     epochs          = {epochs}
     load_ckpt_path  = {load_ckpt_path}
     steps_per_epoch = {steps_per_epoch}
@@ -106,7 +108,7 @@ def run_training(config=config,
     
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
     time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
-    Path(f'trainings/{time_start}').mkdir(exist_ok=True)
+    Path(f'../trainings/{time_start}').mkdir(exist_ok=True)
 
     n_train, n_noise = get_train_set_size(TFRECORDS_DIR)
     n_train_set = n_train*(1+time_augs + mixup_augs+spec_aug*2) #// batch_size
@@ -114,7 +116,7 @@ def run_training(config=config,
         .format(n_train_set), '\n')
 
     seed = np.random.randint(100)
-    open(f'trainings/{time_start}/training_info.txt', 'w').write(info_text)
+    open(f'../trainings/{time_start}/training_info.txt', 'w').write(info_text)
 
     ###################### DATA PREPROC PIPELINE ################################
 
@@ -128,7 +130,7 @@ def run_training(config=config,
     train_data = run_augment_pipeline(train_data, noise_data,
                                         n_noise, n_train, time_augs, 
                                         mixup_augs, seed, spec_aug=spec_aug,
-                                        time_start=time_start, plot=False,
+                                        time_start=time_start, plot=True,
                                         random=False)
     
     train_data = prepare(train_data, batch_size, shuffle=True, 
@@ -149,13 +151,19 @@ def run_training(config=config,
                                     decay_rate = (final_lr/init_lr)**(1/epochs),
                                     staircase = True)
     for ind, unfreeze in enumerate(unfreezes):
-        # continue
+        # if ModelClassName=='GoogleMod':
+        #     continue
         if unfreeze == 'no-TF':
             load_g_ckpt = False
         else:
             load_g_ckpt = True
             
-        model = ModelClass(load_g_ckpt=load_g_ckpt).model
+        model_class = getattr(models, ModelClassName)#(load_g_ckpt=load_g_ckpt,
+                                            #keras_mod_name=keras_mod_name).model
+        model = init_model(model_class, 
+                    f'../trainings/{load_ckpt_path}/unfreeze_no-TF', 
+                    keras_mod_name=keras_mod_name, input_specs=True,
+                    load_g_ckpt=load_g_ckpt)
         
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate = lr,
@@ -178,11 +186,8 @@ def run_training(config=config,
         if not unfreeze == 'no-TF':
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
-                
-        if load_ckpt_path:
-            model.load_ckpt(load_ckpt_path)
 
-        checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
+        checkpoint_path = f"../trainings/{time_start}/unfreeze_{unfreeze}" + \
                             "/cp-last.ckpt"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         
@@ -207,17 +212,21 @@ def run_training(config=config,
 
     plot_model_results(time_start, data = data_description, init_lr = init_lr,
                         final_lr = final_lr)
+    ModelClass = getattr(models, ModelClassName)
     create_and_save_figure(ModelClass, TFRECORDS_DIR, batch_size, time_start,
-                            plot_cm=True, data = data_description)
+                            plot_cm=True, data = data_description, 
+                            keras_mod_name=keras_mod_name)
 
 if __name__ == '__main__':
     for i in range(len(time_augs)):
         run_training(batch_size=batch_size[i],
-                    time_augs=time_augs[i], 
+                     epochs=epochs[i],
+                     keras_mod_name=keras_mod_name[i],
+                     time_augs=time_augs[i], 
                      mixup_augs=mixup_augs[i], 
                      spec_aug=spec_aug[i],
                      init_lr=init_lr[i], 
                      final_lr=final_lr[i],
                      weight_clip=weight_clip[i],
-                     ModelClass=ModelClass[i],
+                     ModelClassName=ModelClassName[i],
                      load_ckpt_path=load_ckpt_path[i])

@@ -1,13 +1,11 @@
 import pandas as pd
 import glob
-from ketos.data_handling import selection_table as sl
 from pathlib import Path
 import os
-from hbdet.funcs import load_config
 import numpy as np
+import hbdet.global_config as conf
 
-config = load_config()
-annotation_files = Path(config.annotation_source).glob('**/*.txt')
+annotation_files = Path(conf.ANNOTATION_SOURCE).glob('**/*.txt')
 # annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
 # annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
 
@@ -46,7 +44,7 @@ def compensate_for_naming_inconsistencies(hard_drive_path, file):
     return file_path
 
 def get_corresponding_sound_file(file):
-    hard_drive_path = config.sound_files_source
+    hard_drive_path = conf.SOUND_FILES_SOURCE
     file_path = glob.glob(f'{hard_drive_path}/**/{file.stem}*wav',
                       recursive = True)
     if not file_path:
@@ -56,7 +54,7 @@ def get_corresponding_sound_file(file):
         return 'empty'
         
     if len(file_path) > 1:
-        p_dir = list(file.relative_to(config.annotation_source).parents)[-2]
+        p_dir = list(file.relative_to(conf.ANNOTATION_SOURCE).parents)[-2]
         p_dir_main = str(p_dir).split('_')[0]
         for path in file_path:
             if p_dir_main in path:
@@ -90,7 +88,7 @@ def differentiate_label_flags(df, flag=None):
         # df.loc[df[annotation_column] == -7] = 'c'
     return df
 
-def get_labels(file, df, active_learning=False):
+def get_labels(file, df, active_learning=False, **kwargs):
     if not active_learning:
         df['label'] = 1
     else:
@@ -116,7 +114,10 @@ def standardize(df, *, mapper, filename_col='filename',
                                                      df[selection_col]))
     return out_df.astype(dtype=np.float64)
     
-    
+def clean_benoits_data(df):
+    df = df.loc[df['High Freq (Hz)'] <= 2000]
+    df = df.loc[df['End Time (s)']-df['Begin Time (s)'] >= 0.4]
+    return df
     
 def finalize_annotation(file, all_noise=False, **kwargs):
     ann = pd.read_csv(file, sep = '\t')
@@ -133,19 +134,17 @@ def finalize_annotation(file, all_noise=False, **kwargs):
     # std_annot_train1 = sl.standardize(table=ann,
     #                                 mapper = map_to_ketos_annot_std, 
     #                                 trim_table=True)
+    if 'benoit' in kwargs:
+        ann = clean_benoits_data(ann)
+        
     ann_explicit_noise = ann.loc[ann['label']=='explicit 0', :]
     ann_explicit_noise['label'] = 0
     ann = ann.drop(ann.loc[ann['label']=='explicit 0'].index)
     std_annot_train = standardize(ann, mapper=map_to_ketos_annot_std)
     std_annot_enoise = standardize(ann_explicit_noise, 
                                    mapper=map_to_ketos_annot_std)
-    return std_annot_train, std_annot_enoise
     
-def save_ket_annot_only_existing_paths(df):
-    check_if_full_path_func = lambda x: x[0] == '/'
-    df[list( map(check_if_full_path_func, 
-        df.index.get_level_values(0)) )].to_csv(
-        'Daten/ket_annot_file_exists.csv')
+    return std_annot_train, std_annot_enoise
         
 def leading_underscore_in_parent_dirs(file):
     return '_' in [f.stem[0] for f in list(file.parents)[:-1]]
@@ -158,11 +157,11 @@ def get_active_learning_files(files):
                                     [True for d in drop_cases if d in f.stem]]
     return final_cleanup
 
-def main(annotation_files, active_learning=False):
+def main(annotation_files, active_learning=False, **kwargs):
     files = list(annotation_files)
     if active_learning:
         files = get_active_learning_files(files)
-    folders, counts = np.unique([list(f.relative_to(config.annotation_source)
+    folders, counts = np.unique([list(f.relative_to(conf.ANNOTATION_SOURCE)
                                 .parents)[-2] for f in files],
                         return_counts=True)
     files.sort()
@@ -173,19 +172,21 @@ def main(annotation_files, active_learning=False):
             if leading_underscore_in_parent_dirs(files[ind]):
                 print(files[ind], ' skipped due to leading underscore in parent dir.')
                 continue
-            df_train, df_enoise = finalize_annotation(files[ind], all_noise=False, 
-                                                active_learning=active_learning)
+            df_train, df_enoise = finalize_annotation(files[ind], 
+                                                      all_noise=False, 
+                                            active_learning=active_learning, 
+                                                      **kwargs)
             df_t = pd.concat([df_t, df_train])
             df_n = pd.concat([df_n, df_enoise])
             print(f'Completed file {ind}/{len(files)}.', end='\r')
             ind += 1
         
     # TODO include date in path by default
-        save_dir = Path(config.annotation_destination).joinpath(folder)
+        save_dir = Path(conf.ANNOTATION_DESTINATION).joinpath(folder)
         save_dir.mkdir(exist_ok=True, parents=True)
         df_t.to_csv(save_dir.joinpath('combined_annotations.csv'))
         df_n.to_csv(save_dir.joinpath('explicit_noise.csv'))
     # save_ket_annot_only_existing_paths(df)
     
 if __name__ == '__main__':
-    main(annotation_files, active_learning=True)
+    main(annotation_files, active_learning=False, benoit=True)

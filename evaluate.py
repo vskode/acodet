@@ -1,8 +1,8 @@
 from hbdet.plot_utils import (plot_evaluation_metric, 
                               plot_model_results, 
                               plot_sample_spectrograms)
-from hbdet.models import GoogleMod
-from hbdet.funcs import load_config, get_labels_and_preds
+from hbdet import models
+from hbdet.funcs import get_labels_and_preds
 from hbdet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -10,23 +10,23 @@ import pandas as pd
 import time
 import numpy as np
 from hbdet.humpback_model_dir import front_end
-
-config = load_config()
+import hbdet.global_config as conf
 
 tfrec_path =[
-    # 'Daten/Datasets/ScotWest_v4_2khz',
-    # # 'Daten/Datasets/Mixed_v1_2khz',
-    # # 'Daten/Datasets/Mixed_v2_2khz',
-    # # 'Daten/Datasets/Benoit_v1_2khz',
-    # 'Daten/Datasets/BERCHOK_SAMANA_200901_4',
-    # 'Daten/Datasets/CHALLENGER_AMAR123.1',
-    # 'Daten/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
-    # 'Daten/Datasets/NJDEP_NJ_200903_PU182',
-    # 'Daten/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
-    # 'Daten/Datasets/SAMOSAS_EL1_2021',
-    # 'Daten/Datasets/SAMOSAS_N1_2021',
-    # 'Daten/Datasets/SAMOSAS_S1_2021',
-    'Daten/Datasets/Tolsta_2kHz_D2_2018'
+    '../Data/Datasets/ScotWest_v4_2khz',
+    # # 'Data/Datasets/Mixed_v1_2khz',
+    # # 'Data/Datasets/Mixed_v2_2khz',
+    '../Data/Datasets/SABA01_201511_201604_SN275',
+    '../Data/Datasets/SABA01_201604_201608_SN276',
+    '../Data/Datasets/BERCHOK_SAMANA_200901_4',
+    '../Data/Datasets/CHALLENGER_AMAR123.1',
+    '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+    '../Data/Datasets/NJDEP_NJ_200903_PU182',
+    '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+    '../Data/Datasets/SAMOSAS_EL1_2021',
+    '../Data/Datasets/SAMOSAS_N1_2021',
+    '../Data/Datasets/SAMOSAS_S1_2021',
+    '../Data/Datasets/Tolsta_2kHz_D2_2018'
     ]
 
 train_dates = [
@@ -36,10 +36,10 @@ train_dates = [
     # '2022-11-07_21',
     # '2022-11-08_03',
     # '2022-11-09_03',
-    # '2022-11-10_18',
-    # '2022-11-21_17',
-    # '2022-11-21_21',
-    # '2022-11-22_00',
+    # '2022-11-23_12',
+    # '2022-11-23_17',
+    # '2022-11-23_20',
+    # '2022-11-24_00',
     '2022-11-22_17'
               ]
 
@@ -60,7 +60,7 @@ def get_info(date):
             'bool_SpecAug', 'bool_time_shift', 'bool_MixUps', 
             'weight_clipping', 'init_lr', 'final_lr', 'unfreezes', 
             'preproc blocks']    
-    path = Path(f'trainings/{date}')
+    path = Path(f'../trainings/{date}')
     f = pd.read_csv(path.joinpath('training_info.txt'), sep='\t')
     l, found = [], 0
     for key in keys:
@@ -73,8 +73,23 @@ def get_info(date):
             l.append(f'{key}= nan')
     return {key: s.split('= ')[-1] for s, key in zip(l, keys)}
 
+def write_trainings_csv():
+    trains = list(Path('../trainings').iterdir())
+    df = pd.DataFrame()
+    for i, path in enumerate(trains):
+        try:
+            f = pd.read_csv(path.joinpath('training_info.txt'), sep='\t')
+            for s in f.values:
+                if '=' in s[0]:
+                    df.loc[i, s[0].split('= ')[0].replace(' ', '')] = s[0].split('= ')[-1]
+                    df.loc[i, 'training_date'] = path.stem
+        except Exception as e:
+            print(e)
+        df.to_csv('../trainings/meta_trainings.csv')
+            
 
-def create_overview_plot(train_dates, val_set, display_keys, model_class):
+
+def create_overview_plot(train_dates, val_set, display_keys):
     info_dicts = [get_info(date) for date in train_dates]
 
     val_s = ''.join([Path(s).stem.split('_2khz')[0]+';' for s in val_set])
@@ -87,19 +102,24 @@ def create_overview_plot(train_dates, val_set, display_keys, model_class):
         'lr_end:{}; ' 
         # 'clip:{} ; '
         f'val: all')
-    if config.thresh != 0.5:
-        string += f' thr: {config.thresh}'
+    if conf.THRESH != 0.5:
+        string += f' thr: {conf.THRESH}'
 
 
     labels = [string.format(*[d[k] for k in display_keys]) for d in info_dicts]
 
     training_runs = []
     for i, train in enumerate(train_dates):
-        training_runs += list(Path(f'trainings/{train}').glob('unfreeze*'))
-        for _ in range(len(list(Path(f'trainings/{train}').glob('unfreeze*')))):
+        training_runs += list(Path(f'../trainings/{train}').glob('unfreeze*'))
+        for _ in range(len(list(Path(f'../trainings/{train}').glob('unfreeze*')))):
             labels += labels[i]
     val_data = run_data_pipeline(val_set, 'val', return_spec=False)
 
+    df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
+    row = df.loc[df['training_date'] == train_dates[0]]
+    model_name = row.Model.values[0]
+    keras_mod_name = row.keras_mod_name.values[0]
+    model_class = getattr(models, model_name)
 
     time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
     fig = plt.figure(constrained_layout=True, figsize=(15, 15))
@@ -108,17 +128,18 @@ def create_overview_plot(train_dates, val_set, display_keys, model_class):
     plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
     plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
                             fig = subfigs[1], plot_pr=True, plot_cm=True, 
-                            train_dates=train_dates, label=None)
+                            train_dates=train_dates, label=None, 
+                            keras_mod_name=keras_mod_name)
 
-    fig.savefig(f'trainings/{train_dates[-1]}/{time_start}_results_combo.png')
+    fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png')
 
 def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwargs):
-    training_run = Path(f'trainings/{train_date}').glob('unfreeze*')
+    training_run = Path(f'../trainings/{train_date}').glob('unfreeze*')
     val_data = run_data_pipeline(val_data_path, 'val', return_spec=False)
     labels, preds = get_labels_and_preds(model_instance, training_run, 
                                          val_data, **kwargs)
     preds = preds.reshape([len(preds)])
-    bin_preds = list(map(lambda x: 1 if x >= config.thresh else 0, preds))
+    bin_preds = list(map(lambda x: 1 if x >= conf.THRESH else 0, preds))
     false_pos, false_neg = [], []
     for i in range(len(preds)):
         if bin_preds[i] == 0 and labels[i] == 1:
@@ -143,5 +164,5 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
     
 
 # create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
-for path in tfrec_path:
-    create_overview_plot(train_dates, path, display_keys, GoogleMod)
+# for path in tfrec_path:
+create_overview_plot(train_dates, tfrec_path, display_keys)

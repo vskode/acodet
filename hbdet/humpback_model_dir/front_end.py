@@ -25,7 +25,7 @@ from __future__ import print_function
 import collections
 
 import tensorflow as tf
-from hbdet import funcs
+from hbdet import global_config as conf
 
 Config = collections.namedtuple("Config", [
     "stft_frame_length",
@@ -45,13 +45,13 @@ Attributes:
   lower_f: Lower boundary of mel bins in Hz.
   upper_f: Upper boundary of mel bins in Hz.
 """
-settings = funcs.load_config()
-Config.__new__.__defaults__ = (settings.stft_frame_len, 
-                               settings.fft_hop, 
+
+Config.__new__.__defaults__ = (conf.STFT_FRAME_LEN, 
+                               conf.FFT_HOP, 
                                64, 
-                               settings.sr, 
+                               conf.SR, 
                                0.0, 
-                               settings.sr/2)
+                               conf.SR/2)
 
 
 class MelSpectrogram(tf.keras.layers.Layer):

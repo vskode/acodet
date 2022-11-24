@@ -1,38 +1,13 @@
 from email import generator
+import re
+import datetime as dt
 import json
 import tensorflow as tf
 import numpy as np
 import librosa as lb
 from pathlib import Path
-import collections
-import yaml
 import pandas as pd
-
-def load_config() -> collections.namedtuple:
-    """
-    Load configuration file and return config with attributes. 
-
-    Returns
-    -------
-    collections.namedtuple
-        config object
-    """
-    with open('hbdet/hbdet/config.yml', 'r') as f:
-        config = yaml.safe_load(f)
-    
-    fft_hop = (config['context_win'] - config['stft_frame_len']) \
-                // (config['n_freq_bins'] - 1)
-
-    pred_batch_size = config['pred_win_lim'] * config['context_win']                
-    config.update({'fft_hop': fft_hop})
-    config.update({'pred_batch_size': pred_batch_size})
-    Config = collections.namedtuple("Config", list(config.keys()))
-    Config.__new__.__defaults__ = (tuple(config.values()))
-    return Config()
-
-############# Define Config #################################################
-
-config = load_config()
+from . import global_config as conf
 
 ############# TFRECORDS helpers #############################################
 def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
@@ -54,6 +29,24 @@ def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
     """
     return annots[annots.filename == file].sort_values('start')
 
+
+def get_datetime_from_filename(file):
+    stem = Path(file).stem
+    
+    numbs = re.findall('[0-9]+', stem)
+    numbs = [n for n in numbs if len(n)%2 == 0] 
+    
+    i, datetime = 1, ''
+    while len(datetime) < 12:
+        datetime = ''.join(numbs[-i:])
+        i += 1
+        
+    if len(datetime) == 12:
+        file_date = dt.datetime.strptime(datetime, '%y%m%d%H%M%S')
+    elif len(datetime) == 14:
+        file_date = dt.datetime.strptime(datetime, '%Y%m%d%H%M%S')
+    return file_date
+
 def load_audio(file, **kwargs) -> np.ndarray:
     """
     Load audio file, print error if file is corrupted. If the sample rate
@@ -71,12 +64,12 @@ def load_audio(file, **kwargs) -> np.ndarray:
         audio array
     """
     try:
-        if config.sr == config.downsample_sr:
-            audio_flat, _ = lb.load(file, sr = config.downsample_sr, **kwargs)
+        if conf.SR == conf.DOWNSAMPLE_SR:
+            audio_flat, _ = lb.load(file, sr = conf.DOWNSAMPLE_SR, **kwargs)
         else:
-            audio_flat, _ = lb.load(file, sr = config.downsample_sr, **kwargs)
-            audio_flat = lb.resample(audio_flat, orig_sr = config.downsample_sr, 
-                                    target_sr = config.sr)
+            audio_flat, _ = lb.load(file, sr = conf.DOWNSAMPLE_SR, **kwargs)
+            audio_flat = lb.resample(audio_flat, orig_sr = conf.DOWNSAMPLE_SR, 
+                                    target_sr = conf.SR)
         if len(audio_flat) == 0: return
         return audio_flat
     except:
@@ -106,12 +99,12 @@ def return_windowed_file(file) -> tuple([np.ndarray, np.ndarray]):
         start times of the context windows
     """
     audio = load_audio(file)    
-    audio = audio[:len(audio)//config.context_win * config.context_win]
-    audio_arr = audio.reshape([len(audio)//config.context_win, 
-                               config.context_win])
+    audio = audio[:len(audio)//conf.CONTEXT_WIN * conf.CONTEXT_WIN]
+    audio_arr = audio.reshape([len(audio)//conf.CONTEXT_WIN, 
+                               conf.CONTEXT_WIN])
     
-    times = np.arange(0, audio_arr.shape[0]*config.context_win/config.sr, 
-                      config.context_win/config.sr)
+    times = np.arange(0, audio_arr.shape[0]*conf.CONTEXT_WIN/conf.SR, 
+                      conf.CONTEXT_WIN/conf.SR)
     return audio_arr, times
 
 def cntxt_wndw_arr(annotations: pd.DataFrame, file, 
@@ -155,20 +148,20 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
     times_n
         time list for noise
     """
-    duration = annotations['start'].iloc[-1] + config.context_win/config.sr
+    duration = annotations['start'].iloc[-1] + conf.CONTEXT_WIN/conf.SR
     audio = load_audio(file, duration=duration)
     
     segs, times = [], []
     for _, row in annotations.iterrows():
-        beg = int((row.start)*config.sr)
-        end = int((row.start)*config.sr + config.context_win)
+        beg = int((row.start)*conf.SR)
+        end = int((row.start)*conf.SR + conf.CONTEXT_WIN)
         
-        if len(audio[beg:end]) == config.context_win:
+        if len(audio[beg:end]) == conf.CONTEXT_WIN:
             segs.append(audio[beg:end])
             times.append(beg)
         else:
             end = len(audio)
-            beg = end - config.context_win
+            beg = end - conf.CONTEXT_WIN
             segs.append(audio[beg:end])
             times.append(beg)
             break
@@ -178,7 +171,7 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
     
     # TODO docstrings aufraumen
     if len(segs)-len(annotations) < 0:
-        annotations = annotations.drop(annotations.index[len(segs)-len(annotations)])
+        annotations = annotations.drop(annotations.index[len(segs)-len(annotations):])
     seg_ar = np.array(segs[annotations['label']==1], dtype='float32')
     times_c = np.array(times[annotations['label']==1], dtype='float32')
     if inbetween_noise:
@@ -209,7 +202,7 @@ def wins_bet_calls(annotations: pd.DataFrame) -> list:
         the previous annotation
     """
     beg_min_start = annotations.start[1:].values - annotations.end[:-1].values
-    return (beg_min_start//(config.context_win/config.sr)).astype(int)
+    return (beg_min_start//(conf.CONTEXT_WIN/conf.SR)).astype(int)
 
 def return_inbetween_noise_arrays(audio: np.ndarray, 
                                   annotations: pd.DataFrame) -> tuple:
@@ -244,9 +237,9 @@ def return_inbetween_noise_arrays(audio: np.ndarray,
             continue
         
         for window_ind in range(num_wndws):
-            beg = int(annotations.end.iloc[ind]*config.sr) \
-                  + config.context_win * window_ind
-            end = beg + config.context_win
+            beg = int(annotations.end.iloc[ind]*conf.SR) \
+                  + conf.CONTEXT_WIN * window_ind
+            end = beg + conf.CONTEXT_WIN
             noise_ar.append(audio[beg:end])
             times.append(beg)
     
@@ -333,7 +326,8 @@ def get_val_labels(val_data: tf.data.Dataset,
 ############### Model Evaluation helpers ####################################
 
 def init_model(model_instance: type, 
-               checkpoint_dir: str, **kwargs) -> tf.keras.Sequential:
+               checkpoint_dir: str, 
+               input_specs=False, **kwargs) -> tf.keras.Sequential:
     """
     Initiate model instance, load weights. As the model is trained on 
     spectrogram tensors but will now be used for inference on audio files
@@ -354,7 +348,8 @@ def init_model(model_instance: type,
     """
     mod_obj = model_instance(**kwargs)
     mod_obj.load_ckpt(checkpoint_dir)
-    mod_obj.change_input_to_array()
+    if not input_specs:
+        mod_obj.change_input_to_array()
     return mod_obj.model
 
 def print_evaluation(val_data: tf.data.Dataset, 
@@ -472,10 +467,10 @@ def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
     tf.Tensor
         2D audio tensor with shape [context window length, number of windows]
     """
-    num = np.ceil(len(audio) / config.context_win)
+    num = np.ceil(len(audio) / conf.CONTEXT_WIN)
     # zero pad in case the end is reached
-    audio = [*audio, *np.zeros([int(num*config.context_win - len(audio))])]
-    wins = np.array(audio).reshape([int(num), config.context_win])
+    audio = [*audio, *np.zeros([int(num*conf.CONTEXT_WIN - len(audio))])]
+    wins = np.array(audio).reshape([int(num), conf.CONTEXT_WIN])
     
     return tf.convert_to_tensor(wins)
 
@@ -504,19 +499,19 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     df = pd.DataFrame(columns = ['Begin Time (s)', 'End Time (s)',
                                  'High Freq (Hz)', 'Low Freq (Hz)'])
 
-    df['Begin Time (s)'] = (np.arange(0, len(preds)) * config.context_win) \
-                            / config.sr
+    df['Begin Time (s)'] = (np.arange(0, len(preds)) * conf.CONTEXT_WIN) \
+                            / conf.SR
     df['End Time (s)'] = df['Begin Time (s)'] \
-                            + config.context_win/config.sr
+                            + conf.CONTEXT_WIN/conf.SR
                                 
-    df['Begin Time (s)'] += (ind*config.pred_batch_size)/config.sr
-    df['End Time (s)'] += (ind*config.pred_batch_size)/config.sr
+    df['Begin Time (s)'] += (ind*conf.PRED_BATCH_SIZE)/conf.SR
+    df['End Time (s)'] += (ind*conf.PRED_BATCH_SIZE)/conf.SR
     
-    df['High Freq (Hz)'] = config.fmax
-    df['Low Freq (Hz)'] = config.fmin
+    df['High Freq (Hz)'] = conf.FMAX
+    df['Low Freq (Hz)'] = conf.FMIN
     df['Prediction/Comments'] = preds
 
-    return df.iloc[preds.reshape([len(preds)]) > config.thresh]
+    return df.iloc[preds.reshape([len(preds)]) > conf.THRESH]
     
 def create_annotation_df(audio_batches: np.ndarray, 
                          model: tf.keras.Sequential) -> pd.DataFrame:
@@ -565,16 +560,16 @@ def batch_audio(audio_flat: np.ndarray) -> np.ndarray:
     np.ndarray
         batched audio array
     """
-    if len(audio_flat) < config.pred_batch_size:
+    if len(audio_flat) < conf.PRED_BATCH_SIZE:
         audio_batches = [audio_flat]
     else:
-        n = config.pred_batch_size
+        n = conf.PRED_BATCH_SIZE
         audio_batches = [audio_flat[i:i+n] for i in \
-                    range(0, len(audio_flat), config.pred_batch_size)]
+                    range(0, len(audio_flat), conf.PRED_BATCH_SIZE)]
     return audio_batches
 
-def gen_annotations(file, model_instance: type, training_path: str, 
-                         mod_label: str, time_start: str, **kwargs):
+def gen_annotations(file, model: tf.keras.Model,
+                    mod_label: str, time_start: str):
     """
     Load audio file, instantiate model, use it to predict labels, fill a 
     dataframe with the predicted labels as well as necessary information to
@@ -586,10 +581,8 @@ def gen_annotations(file, model_instance: type, training_path: str,
     ----------
     file : str or pathlib.Path object
         file path
-    model_instance : type
-        callable class to retrieve model
-    training_path : str
-        path to model checkpoint
+    model : tf.keras.Model
+        tensorflow model
     mod_label : str
         label to clarify which model was used
     time_start : str
@@ -597,9 +590,7 @@ def gen_annotations(file, model_instance: type, training_path: str,
         computed
     """
     audio_batches = batch_audio(load_audio(file))
-            
-    model = init_model(model_instance, 
-                       f'{training_path}/{mod_label}/unfreeze_no-TF', **kwargs)
+    
     annotation_df = create_annotation_df(audio_batches, model)
     
     save_path = (Path(f'generated_annotations/{time_start}')
@@ -609,3 +600,5 @@ def gen_annotations(file, model_instance: type, training_path: str,
     annotation_df.to_csv(save_path
                          .joinpath(f'{file.stem}_annot_{mod_label}.txt'),
                 sep='\t')
+    
+    return annotation_df
