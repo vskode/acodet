@@ -7,7 +7,7 @@ import random
 from .humpback_model_dir import front_end
 from pathlib import Path
 import json
-import global_config as conf
+from . import global_config as conf
 
 ########################################################
 #################  WRITING   ###########################

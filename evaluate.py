@@ -1,7 +1,7 @@
 from hbdet.plot_utils import (plot_evaluation_metric, 
                               plot_model_results, 
                               plot_sample_spectrograms)
-from hbdet.models import GoogleMod
+from hbdet.models import GoogleMod, EffNet
 from hbdet.funcs import get_labels_and_preds
 from hbdet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
@@ -13,19 +13,19 @@ from hbdet.humpback_model_dir import front_end
 import hbdet.global_config as conf
 
 tfrec_path =[
-    # 'Daten/Datasets/ScotWest_v4_2khz',
-    # # 'Daten/Datasets/Mixed_v1_2khz',
-    # # 'Daten/Datasets/Mixed_v2_2khz',
-    # # 'Daten/Datasets/Benoit_v1_2khz',
-    # 'Daten/Datasets/BERCHOK_SAMANA_200901_4',
-    # 'Daten/Datasets/CHALLENGER_AMAR123.1',
-    # 'Daten/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
-    # 'Daten/Datasets/NJDEP_NJ_200903_PU182',
-    # 'Daten/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
-    # 'Daten/Datasets/SAMOSAS_EL1_2021',
-    # 'Daten/Datasets/SAMOSAS_N1_2021',
-    # 'Daten/Datasets/SAMOSAS_S1_2021',
-    'Daten/Datasets/Tolsta_2kHz_D2_2018'
+    '../Data/Datasets/ScotWest_v4_2khz',
+    # # 'Data/Datasets/Mixed_v1_2khz',
+    # # 'Data/Datasets/Mixed_v2_2khz',
+    # # 'Data/Datasets/Benoit_v1_2khz',
+    '../Data/Datasets/BERCHOK_SAMANA_200901_4',
+    '../Data/Datasets/CHALLENGER_AMAR123.1',
+    '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+    '../Data/Datasets/NJDEP_NJ_200903_PU182',
+    '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+    '../Data/Datasets/SAMOSAS_EL1_2021',
+    '../Data/Datasets/SAMOSAS_N1_2021',
+    '../Data/Datasets/SAMOSAS_S1_2021',
+    '../Data/Datasets/Tolsta_2kHz_D2_2018'
     ]
 
 train_dates = [
@@ -35,11 +35,11 @@ train_dates = [
     # '2022-11-07_21',
     # '2022-11-08_03',
     # '2022-11-09_03',
-    # '2022-11-10_18',
-    # '2022-11-21_17',
-    # '2022-11-21_21',
-    # '2022-11-22_00',
-    '2022-11-22_17'
+    '2022-11-23_12',
+    '2022-11-23_17',
+    '2022-11-23_20',
+    '2022-11-24_00',
+    '2022-11-24_02'
               ]
 
 display_keys = [
@@ -59,7 +59,7 @@ def get_info(date):
             'bool_SpecAug', 'bool_time_shift', 'bool_MixUps', 
             'weight_clipping', 'init_lr', 'final_lr', 'unfreezes', 
             'preproc blocks']    
-    path = Path(f'trainings/{date}')
+    path = Path(f'../trainings/{date}')
     f = pd.read_csv(path.joinpath('training_info.txt'), sep='\t')
     l, found = [], 0
     for key in keys:
@@ -94,8 +94,8 @@ def create_overview_plot(train_dates, val_set, display_keys, model_class):
 
     training_runs = []
     for i, train in enumerate(train_dates):
-        training_runs += list(Path(f'trainings/{train}').glob('unfreeze*'))
-        for _ in range(len(list(Path(f'trainings/{train}').glob('unfreeze*')))):
+        training_runs += list(Path(f'../trainings/{train}').glob('unfreeze*'))
+        for _ in range(len(list(Path(f'../trainings/{train}').glob('unfreeze*')))):
             labels += labels[i]
     val_data = run_data_pipeline(val_set, 'val', return_spec=False)
 
@@ -109,10 +109,10 @@ def create_overview_plot(train_dates, val_set, display_keys, model_class):
                             fig = subfigs[1], plot_pr=True, plot_cm=True, 
                             train_dates=train_dates, label=None)
 
-    fig.savefig(f'trainings/{train_dates[-1]}/{time_start}_results_combo.png')
+    fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png')
 
 def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwargs):
-    training_run = Path(f'trainings/{train_date}').glob('unfreeze*')
+    training_run = Path(f'../trainings/{train_date}').glob('unfreeze*')
     val_data = run_data_pipeline(val_data_path, 'val', return_spec=False)
     labels, preds = get_labels_and_preds(model_instance, training_run, 
                                          val_data, **kwargs)
@@ -142,5 +142,5 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
     
 
 # create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
-for path in tfrec_path:
-    create_overview_plot(train_dates, path, display_keys, GoogleMod)
+# for path in tfrec_path:
+create_overview_plot(train_dates, tfrec_path, display_keys, EffNet)

@@ -31,5 +31,5 @@ annotation_source: 'generated_annotations/2022-11-19_22'
 annotation_destination: 'Daten/combined_annotations/2022-11-19_22'
 
 # source path for your sound files (top most directory)
-sound_files_source: 'Daten/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
+sound_files_source: '/mnt/f/Daten/20221027_COMPASS/SAMOSAS_VINCENT/EL1_2kHz_March-April'
 

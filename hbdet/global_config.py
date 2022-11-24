@@ -12,7 +12,7 @@
 
 import yaml
 
-with open('hbdet/hbdet/config.yml', 'r') as f:
+with open('user_config.yml', 'r') as f:
     config = yaml.safe_load(f)
     
 ## Preprocessing Parameters
@@ -24,21 +24,21 @@ SR = 2000
 CONTEXT_WIN = 7755
 
 # downsample every audio file to this frame rate to ensure comparability
-DOWNSAMPLE_SR : 2000
+DOWNSAMPLE_SR = 2000
 
 ## Settings for Creation of Tfrecord Dataset
 # limit of context windows in a tfrecords file
-TFRECS_LIM: 600
+TFRECS_LIM = 600
 # train/test split
-TRAIN_RATIO: 0.7
+TRAIN_RATIO = 0.7
 # test/val split
-TEST_VAL_RATIO: 0.7
+TEST_VAL_RATIO = 0.7
 
 ## Model Parameters
 # threshold for predictions
 THRESH = config['thresh']
 # prediction window limit
-PRED_WIN_LIM: 20
+PRED_WIN_LIM = 20
 
 # calculated global variables
 FFT_HOP = (CONTEXT_WIN - STFT_FRAME_LEN) // (N_FREQ_BINS - 1)

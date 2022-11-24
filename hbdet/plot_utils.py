@@ -7,7 +7,7 @@ from pathlib import Path
 import seaborn as sns
 import json
 import librosa as lb
-import global_config as conf
+from . import global_config as conf
 from . import funcs
 from . import tfrec
 import tensorflow as tf
@@ -25,7 +25,7 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
         
     checkpoint_paths = []
     for datetime in datetimes:
-        checkpoint_paths += list(Path(f"trainings/{datetime}")
+        checkpoint_paths += list(Path(f"../trainings/{datetime}")
                                  .glob('unfreeze_*'))
         
     r, c = 2, 6
@@ -87,7 +87,7 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
     ref_time = time.strftime('%Y%m%d', time.gmtime())
     if savefig:
         fig.tight_layout()
-        fig.savefig(f'trainings/{datetime}/model_results_{ref_time}.png')
+        fig.savefig(f'../trainings/{datetime}/model_results_{ref_time}.png')
     else:
         return fig
 
@@ -146,7 +146,7 @@ def plot_sample_spectrograms(dataset, *, dir, name, ds_size=None,
             axes[i//r][i%c].set_yticklabels([])
             
     fig.suptitle(f'{name} sample of 16 spectrograms. random={random}')
-    fig.savefig(f'trainings/{dir}/{name}_sample.png')
+    fig.savefig(f'../trainings/{dir}/{name}_sample.png')
 
 def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000, 
                 cntxt_wn_sz = 39124, fig = None, colorbar = True):
@@ -258,7 +258,7 @@ def create_and_save_figure(model_instance, tfrec_path, batch_size, train_date,
                             debug=False, plot_pr=True, plot_cm=False, 
                             **kwargs):
     
-    training_runs = list(Path(f'trainings/{train_date}').glob('unfreeze*'))
+    training_runs = list(Path(f'../trainings/{train_date}').glob('unfreeze*'))
     val_data = tfrec.run_data_pipeline(tfrec_path, 'val', return_spec=False)
     
     fig = plt.figure(constrained_layout=True)

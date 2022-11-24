@@ -1,8 +1,7 @@
 import tensorflow as tf
-import yaml
 from pathlib import Path
 
-import global_config as conf
+from . import global_config as conf
 from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
@@ -32,7 +31,7 @@ class GoogleMod():
         """
         self.model = humpback_model.Model()
         if load_g_ckpt:
-            self.model.load_weights('models/google_humpback_model')
+            self.model.load_weights('../models/google_humpback_model')
 
     def load_flat_model(self, input_tensors='spectrograms', **_):
         """

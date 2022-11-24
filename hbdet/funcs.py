@@ -4,10 +4,8 @@ import tensorflow as tf
 import numpy as np
 import librosa as lb
 from pathlib import Path
-import collections
-import yaml
 import pandas as pd
-import global_config as conf
+from . import global_config as conf
 
 ############# TFRECORDS helpers #############################################
 def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:

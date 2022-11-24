@@ -11,35 +11,35 @@ from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import run_data_pipeline, prepare
 from hbdet.augmentation import run_augment_pipeline
 
-TFRECORDS_DIR = ['Daten/Datasets/ScotWest_v4_2khz', 
-                #  'Daten/Datasets/ScotWest_v4_2khz',
-                #  'Daten/Datasets/Mixed_v1_2khz',
-                #  'Daten/Datasets/Mixed_v2_2khz',
-                #  'Daten/Datasets/Benoit_v1_2khz',
-                 'Daten/Datasets/BERCHOK_SAMANA_200901_4',
-                 'Daten/Datasets/CHALLENGER_AMAR123.1',
-                 'Daten/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
-                 'Daten/Datasets/NJDEP_NJ_200903_PU182',
-                 'Daten/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
-                 'Daten/Datasets/SAMOSAS_EL1_2021',
-                 'Daten/Datasets/SAMOSAS_N1_2021',
-                 'Daten/Datasets/SAMOSAS_S1_2021',
-                 'Daten/Datasets/Tolsta_2kHz_D2_2018'
+TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz', 
+                #  '../Daten/Datasets/ScotWest_v4_2khz',
+                #  '../Daten/Datasets/Mixed_v1_2khz',
+                #  '../Daten/Datasets/Mixed_v2_2khz',
+                #  '../Daten/Datasets/Benoit_v1_2khz',
+                 '../Data/Datasets/BERCHOK_SAMANA_200901_4',
+                 '../Data/Datasets/CHALLENGER_AMAR123.1',
+                 '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+                 '../Data/Datasets/NJDEP_NJ_200903_PU182',
+                 '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+                 '../Data/Datasets/SAMOSAS_EL1_2021',
+                 '../Data/Datasets/SAMOSAS_N1_2021',
+                 '../Data/Datasets/SAMOSAS_S1_2021',
+                 '../Data/Datasets/Tolsta_2kHz_D2_2018'
                 ]
 AUTOTUNE = tf.data.AUTOTUNE
 
 epochs = 50
 
-batch_size = [32]*2
-time_augs =  [True]*2
-mixup_augs = [True]*2
-spec_aug =   [True]*2
-init_lr = [3e-4] *2
-final_lr = [1e-6]*2
-weight_clip = [1]*2
-ModelClass = [EffNet]
+batch_size = [32]*4
+time_augs =  [False, True, True, False]
+mixup_augs = [True, False, True, False]
+spec_aug =   [True, True, False, False]
+init_lr = [3e-4] *4
+final_lr = [1e-6]*4
+weight_clip = [1]*4
+ModelClass = [EffNet]*4
 
-load_ckpt_path = [False]*2
+load_ckpt_path = [False]*4
 load_g_weights = False
 steps_per_epoch = False
 data_description = TFRECORDS_DIR
@@ -104,7 +104,7 @@ def run_training(ModelClass=ModelClass,
     
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
     time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
-    Path(f'trainings/{time_start}').mkdir(exist_ok=True)
+    Path(f'../trainings/{time_start}').mkdir(exist_ok=True)
 
     n_train, n_noise = get_train_set_size(TFRECORDS_DIR)
     n_train_set = n_train*(1+time_augs + mixup_augs+spec_aug*2) #// batch_size
@@ -112,7 +112,7 @@ def run_training(ModelClass=ModelClass,
         .format(n_train_set), '\n')
 
     seed = np.random.randint(100)
-    open(f'trainings/{time_start}/training_info.txt', 'w').write(info_text)
+    open(f'../trainings/{time_start}/training_info.txt', 'w').write(info_text)
 
     ###################### DATA PREPROC PIPELINE ################################
 
@@ -126,7 +126,7 @@ def run_training(ModelClass=ModelClass,
     train_data = run_augment_pipeline(train_data, noise_data,
                                         n_noise, n_train, time_augs, 
                                         mixup_augs, seed, spec_aug=spec_aug,
-                                        time_start=time_start, plot=False,
+                                        time_start=time_start, plot=True,
                                         random=False)
     
     train_data = prepare(train_data, batch_size, shuffle=True, 
@@ -180,7 +180,7 @@ def run_training(ModelClass=ModelClass,
         if load_ckpt_path:
             model.load_ckpt(load_ckpt_path)
 
-        checkpoint_path = f"trainings/{time_start}/unfreeze_{unfreeze}" + \
+        checkpoint_path = f"../trainings/{time_start}/unfreeze_{unfreeze}" + \
                             "/cp-last.ckpt"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         
