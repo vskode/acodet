@@ -12,9 +12,9 @@ from hbdet.tfrec import run_data_pipeline, prepare
 from hbdet.augmentation import run_augment_pipeline
 
 TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz', 
-                #  '../Daten/Datasets/ScotWest_v4_2khz',
-                #  '../Daten/Datasets/Mixed_v1_2khz',
-                #  '../Daten/Datasets/Mixed_v2_2khz',
+                 '../Data/Datasets/ScotWest_v5_2khz',
+                 '../Daten/Datasets/Mixed_v1_2khz',
+                 '../Daten/Datasets/Mixed_v2_2khz',
                  '../Data/Datasets/SABA01_201511_201604_SN275',
                  '../Data/Datasets/SABA01_201604_201608_SN276',
                  '../Data/Datasets/BERCHOK_SAMANA_200901_4',
@@ -29,19 +29,19 @@ TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz',
                 ]
 AUTOTUNE = tf.data.AUTOTUNE
 
-epochs = [40, 100]
+epochs = [400]
 
-batch_size = [32]*2
-time_augs =  [True]*2
-mixup_augs = [True]*2
-spec_aug =   [True]*2
-init_lr = [8e-5, 3e-4] 
-final_lr = [6e-6, 1e-5]
-weight_clip = [1]*2
-ModelClassName = ['GoogleMod', 'EffNet']
-keras_mod_name = [False, 'EfficientNetB5']
+batch_size = [32]
+time_augs =  [True]
+mixup_augs = [True]
+spec_aug =   [True]
+init_lr = [4e-4] 
+final_lr = [3e-6]
+weight_clip = [1]
+ModelClassName = ['GoogleMod']
+keras_mod_name = [False]
 
-load_ckpt_path = ['2022-11-17_17', False]
+load_ckpt_path = [False]
 load_g_weights = False
 steps_per_epoch = False
 data_description = TFRECORDS_DIR
