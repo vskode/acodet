@@ -6,6 +6,8 @@ import numpy as np
 import hbdet.global_config as conf
 
 annotation_files = Path(conf.ANNOTATION_SOURCE).glob('**/*.txt')
+# TODO aufraeumen
+annotation_column = 'Prediction/Comments'
 # annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
 # annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
 
@@ -71,10 +73,17 @@ def get_corresponding_sound_file(file):
 
     return file_path
 
-annotation_column = 'Prediction/Comments'
 def differentiate_label_flags(df, flag=None):
     df.loc[df[annotation_column]=='c', 'label'] = 1
     df.loc[df[annotation_column]=='n', 'label'] = 'explicit 0'
+    for b in df.loc[df['End Time (s)']-df['Begin Time (s)'] \
+        > conf.CONTEXT_WIN/conf.SR]:
+        if df.loc[b.index, annotation_column] == 'n':
+            1 # TODO noise aufschneiden und einfuegen
+        
+    df.loc[df[annotation_column]=='n' \
+           and df['End Time (s)']-df['Begin Time (s)'] > conf.CONTEXT_WIN/conf.SR,
+           'label'] = 0
     df = df.drop(df.loc[df[annotation_column]=='u'].index)
     if flag == 'noise':
         # df['not_float'] = ~((df[annotation_column] == 'u') ^ (df[annotation_column] == 'n') ^ (df[annotation_column] == 'c'))
@@ -131,9 +140,6 @@ def finalize_annotation(file, all_noise=False, **kwargs):
                               'End Time (s)': 'end',
                               'Low Freq (Hz)' : 'freq_min', 
                               'High Freq (Hz)' : 'freq_max',} 
-    # std_annot_train1 = sl.standardize(table=ann,
-    #                                 mapper = map_to_ketos_annot_std, 
-    #                                 trim_table=True)
     if 'benoit' in kwargs:
         ann = clean_benoits_data(ann)
         

@@ -130,7 +130,7 @@ class ModelHelper:
         try:
             file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
             if not file_path.exists():
-                ckpts = list(ckpt_path.glob('cp-*.index'))
+                ckpts = list(Path(ckpt_path).glob('cp-*.index'))
                 ckpts.sort()
                 ckpt = ckpts[-1]
             else:

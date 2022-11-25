@@ -30,7 +30,7 @@ def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
     return annots[annots.filename == file].sort_values('start')
 
 
-def get_datetime_from_filename(file):
+def get_dt_filename(file):
     stem = Path(file).stem
     
     numbs = re.findall('[0-9]+', stem)
@@ -593,7 +593,7 @@ def gen_annotations(file, model: tf.keras.Model,
     
     annotation_df = create_annotation_df(audio_batches, model)
     
-    save_path = (Path(f'generated_annotations/{time_start}')
+    save_path = (Path(f'../generated_annotations/{time_start}')
                  .joinpath(file.parent.stem))
     save_path.mkdir(exist_ok=True, parents=True)
 

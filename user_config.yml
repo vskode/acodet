@@ -19,16 +19,17 @@
 
 ## Model Parameters
 # threshold for predictions
-thresh: 0.9
+thresh: 0.5
 
 ## Paths
 
 # source path for your annotations
 #   -> might be easier to just copy annotation files to default location
-annotation_source: '/media/vincent/Extreme SSD/MA/generated_annotations/generated_annotations/2022-11-24_16/EL1'
+annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 
 # destination path for automatically generated annotations
-annotation_destination: '../Data/generated_annotations/2022-11-24_15'
+annotation_destination: '../generated_annotations/2022-11-25_15'
 
 # source path for your sound files (top most directory)
-sound_files_source: '/mnt/f/Daten/20221027_COMPASS/SAMOSAS_VINCENT/EL1_2kHz_March-April'
+# sound_files_source: '/mnt/f/Daten/20221027_COMPASS/SAMOSAS_VINCENT/EL1_2kHz_March-April'
+sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated'

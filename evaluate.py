@@ -30,32 +30,38 @@ tfrec_path =[
     ]
 
 train_dates = [
-    # '2022-11-10_18',
-    # '2022-05-00_00',
-    # '2022-11-07_16',
-    # '2022-11-07_21',
-    # '2022-11-08_03',
-    # '2022-11-09_03',
-    # '2022-11-23_12',
-    # '2022-11-23_17',
-    # '2022-11-23_20',
-    # '2022-11-24_00',
-    '2022-11-22_17'
-              ]
+    '2022-11-22_03', 
+    '2022-11-22_06', 
+    '2022-11-22_11', 
+    '2022-11-22_17', 
+    # '2022-11-23_12', 
+    # '2022-11-23_17', 
+    # '2022-11-23_20', 
+    # '2022-11-24_00', 
+    '2022-11-24_02', 
+    '2022-11-24_10', 
+    # '2022-11-24_13', 
+    # '2022-11-24_14', 
+    '2022-11-24_16', 
+    '2022-11-25_00', 
+    '2022-11-24_12', 
+    '2022-11-24_17'
+    ]
 
 display_keys = [
     # 'data_path', 
     # 'batch_size', 
-    'bool_SpecAug', 
-    'bool_time_shift', 
-    'bool_MixUps', 
-    'init_lr', 
+    'Model', 
+    'keras_mod_name', 
+    'epochs', 
+    'training_date', 
     'final_lr',    
     # 'weight_clipping', 
     ]
 
 def get_info(date):
-    keys = ['data_path', 'batch_size', 'epochs', 'load_weights', 
+    keys = ['data_path', 'batch_size', 'epochs', 'Model',
+            'keras_mod_name', 'load_weights', 'training_date',
             'steps_per_epoch', 'f_score_beta', 'f_score_thresh', 
             'bool_SpecAug', 'bool_time_shift', 'bool_MixUps', 
             'weight_clipping', 'init_lr', 'final_lr', 'unfreezes', 
@@ -75,30 +81,41 @@ def get_info(date):
 
 def write_trainings_csv():
     trains = list(Path('../trainings').iterdir())
-    df = pd.DataFrame()
-    for i, path in enumerate(trains):
+    try:
+        df = pd.read_csv('../trainings/meta_trainings.csv')
+        new = [t for t in trains if t.stem not in df['training_date'].values]
+        i = len(trains) - len(new) + 1
+        trains = new
+    except Exception as e:
+        print('file not found', e)
+        df = pd.DataFrame()
+        i = 0
+    for path in trains:
         try:
             f = pd.read_csv(path.joinpath('training_info.txt'), sep='\t')
             for s in f.values:
                 if '=' in s[0]:
                     df.loc[i, s[0].split('= ')[0].replace(' ', '')] = s[0].split('= ')[-1]
                     df.loc[i, 'training_date'] = path.stem
+            i += 1
         except Exception as e:
             print(e)
-        df.to_csv('../trainings/meta_trainings.csv')
+        df.to_csv('../trainings/20221124_meta_trainings.csv')
             
 
 
 def create_overview_plot(train_dates, val_set, display_keys):
-    info_dicts = [get_info(date) for date in train_dates]
+    
+    df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
+    # info_dicts = [get_info(date) for date in train_dates]
 
-    val_s = ''.join([Path(s).stem.split('_2khz')[0]+';' for s in val_set])
+    # val_s = ''.join([Path(s).stem.split('_2khz')[0]+';' for s in val_set])
     string = str(
         # 'batch:{}; ' 
-        't_aug:{}; ' 
-        'mixup:{}; ' 
-        'specaug:{}; ' 
-        'lr_beg:{}; ' 
+        'Model:{}; ' 
+        'keras_mod_name:{}; ' 
+        'epochs:{}; ' 
+        'training_date:{}; ' 
         'lr_end:{}; ' 
         # 'clip:{} ; '
         f'val: all')
@@ -106,7 +123,9 @@ def create_overview_plot(train_dates, val_set, display_keys):
         string += f' thr: {conf.THRESH}'
 
 
-    labels = [string.format(*[d[k] for k in display_keys]) for d in info_dicts]
+    # labels = [string.format(*[d[k] for k in display_keys]) for d in info_dicts]
+    labels = [string.format(*df.loc[df['training_date'] == d, 
+                                    display_keys].values[0]) for d in train_dates]
 
     training_runs = []
     for i, train in enumerate(train_dates):
@@ -115,17 +134,16 @@ def create_overview_plot(train_dates, val_set, display_keys):
             labels += labels[i]
     val_data = run_data_pipeline(val_set, 'val', return_spec=False)
 
-    df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
-    row = df.loc[df['training_date'] == train_dates[0]]
-    model_name = row.Model.values[0]
-    keras_mod_name = row.keras_mod_name.values[0]
-    model_class = getattr(models, model_name)
+
+    model_name = [df.loc[df['training_date'] == d, 'Model'].values[0] for d in train_dates]
+    keras_mod_name = [df.loc[df['training_date'] == d, 'keras_mod_name'].values[0] for d in train_dates]
+    model_class = list(map(lambda x: getattr(models, x), model_name))
 
     time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
     fig = plt.figure(constrained_layout=True, figsize=(15, 15))
     subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
 
-    plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
+    plot_model_results(train_dates, labels, fig=subfigs[0], legend=True)#, **info_dict)
     plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
                             fig = subfigs[1], plot_pr=True, plot_cm=True, 
                             train_dates=train_dates, label=None, 
@@ -166,3 +184,4 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
 # create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
 # for path in tfrec_path:
 create_overview_plot(train_dates, tfrec_path, display_keys)
+# write_trainings_csv()

@@ -225,6 +225,7 @@ def plot_pr_curve(labels, preds, ax, training_path, iteration=0, **kwargs):
 def plot_evaluation_metric(model_instance, training_runs, val_data, 
                            fig, plot_pr=True, plot_cm=False, 
                            plot_untrained=False, legend=False,
+                           keras_mod_name=False, 
                            **kwargs):
     r = plot_cm+plot_pr
     c = len(training_runs)
@@ -233,8 +234,14 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
         ax_pr = fig.add_subplot(gs[0, :])
         
     for i, run in enumerate(training_runs):
-        labels, preds = funcs.get_labels_and_preds(model_instance, run, 
-                                                   val_data, **kwargs)            
+        if not isinstance(model_instance, list):
+            model_instance = [model_instance]
+        if not isinstance(keras_mod_name, list):
+            keras_mod_name = [keras_mod_name]
+        labels, preds = funcs.get_labels_and_preds(model_instance[i], run, 
+                                                   val_data, 
+                                                   keras_mod_name=keras_mod_name[i],
+                                                   **kwargs)            
         if not plot_pr:
             plot_conf_matr(labels, preds, fig.add_subplot(gs[-1, i]), 
                            run, iteration=i)
