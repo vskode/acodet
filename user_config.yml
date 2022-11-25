@@ -25,7 +25,7 @@ thresh: 0.9
 
 # source path for your annotations
 #   -> might be easier to just copy annotation files to default location
-annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
+annotation_source: '/media/vincent/Extreme SSD/MA/generated_annotations/generated_annotations/2022-11-24_16/EL1'
 
 # destination path for automatically generated annotations
 annotation_destination: '../Data/generated_annotations/2022-11-24_15'
