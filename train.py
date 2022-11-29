@@ -13,8 +13,8 @@ from hbdet.augmentation import run_augment_pipeline
 
 TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz', 
                  '../Data/Datasets/ScotWest_v5_2khz',
-                 '../Daten/Datasets/Mixed_v1_2khz',
-                 '../Daten/Datasets/Mixed_v2_2khz',
+                 '../Data/Datasets/Mixed_v1_2khz',
+                 '../Data/Datasets/Mixed_v2_2khz',
                  '../Data/Datasets/SABA01_201511_201604_SN275',
                  '../Data/Datasets/SABA01_201604_201608_SN276',
                  '../Data/Datasets/BERCHOK_SAMANA_200901_4',
@@ -29,7 +29,7 @@ TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz',
                 ]
 AUTOTUNE = tf.data.AUTOTUNE
 
-epochs = [400]
+epochs = [10]
 
 batch_size = [32]
 time_augs =  [True]
