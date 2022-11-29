@@ -38,7 +38,7 @@ TEST_VAL_RATIO = 0.7
 # threshold for predictions
 THRESH = config['thresh']
 # prediction window limit
-PRED_WIN_LIM = 200
+PRED_WIN_LIM = 50
 
 # calculated global variables
 FFT_HOP = (CONTEXT_WIN - STFT_FRAME_LEN) // (N_FREQ_BINS - 1)

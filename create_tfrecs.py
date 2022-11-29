@@ -7,7 +7,7 @@ import hbdet.global_config as conf
 # file = 'Daten/Tim/2020-11-17/channelA_2020-11-17_00-00-04.wav'
 # tfrecord.write_tfrecs_for_mixup(file)
 
-SOURCE_DIR = '../Data/combined_annotations/Benoit'
+SOURCE_DIR = '../Data/combined_annotations/2022-11-28_15'
 
 annotation_files = Path(SOURCE_DIR).glob('**/*.csv')
 files = list(annotation_files)

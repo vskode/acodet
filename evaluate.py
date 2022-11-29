@@ -30,22 +30,23 @@ tfrec_path =[
     ]
 
 train_dates = [
-    '2022-11-22_03', 
-    '2022-11-22_06', 
-    '2022-11-22_11', 
-    '2022-11-22_17', 
-    # '2022-11-23_12', 
-    # '2022-11-23_17', 
-    # '2022-11-23_20', 
-    # '2022-11-24_00', 
-    '2022-11-24_02', 
-    '2022-11-24_10', 
-    # '2022-11-24_13', 
-    # '2022-11-24_14', 
-    '2022-11-24_16', 
-    '2022-11-25_00', 
-    '2022-11-24_12', 
-    '2022-11-24_17'
+    # '2022-11-22_03', 
+    # '2022-11-22_06', 
+    # '2022-11-22_11', 
+    # '2022-11-22_17', 
+    # # '2022-11-23_12', 
+    # # '2022-11-23_17', 
+    # # '2022-11-23_20', 
+    # # '2022-11-24_00', 
+    # '2022-11-24_02', 
+    # '2022-11-24_10', 
+    # # '2022-11-24_13', 
+    # # '2022-11-24_14', 
+    # '2022-11-24_16', 
+    # '2022-11-25_00', 
+    # '2022-11-24_12', 
+    # '2022-11-24_17'
+    '2022-11-28_15'
     ]
 
 display_keys = [
@@ -82,7 +83,7 @@ def get_info(date):
 def write_trainings_csv():
     trains = list(Path('../trainings').iterdir())
     try:
-        df = pd.read_csv('../trainings/meta_trainings.csv')
+        df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
         new = [t for t in trains if t.stem not in df['training_date'].values]
         i = len(trains) - len(new) + 1
         trains = new
@@ -183,5 +184,5 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
 
 # create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
 # for path in tfrec_path:
+write_trainings_csv()
 create_overview_plot(train_dates, tfrec_path, display_keys)
-# write_trainings_csv()

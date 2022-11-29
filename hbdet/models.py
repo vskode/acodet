@@ -103,6 +103,7 @@ class GoogleMod():
             self.model.load_weights(
                 str(ckpt).replace('.index', '')
                 ).expect_partial()
+            print('Checkpoint successfully loaded.')
         except Exception as e:
             print('Checkpoint not found.', e)
 

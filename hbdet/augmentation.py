@@ -46,8 +46,7 @@ class CropAndFill(BaseImageAugmentationLayer):
                                 dtype=tf.int32)
         
         # for debugging purposes
-        if False:
-            tf.print('time shift augmentation computed, val: ', beg)
+        # tf.print('time shift augmentation computed, val: ', beg)
             
         return tf.roll(audio, shift=[beg], axis=[0])
     
@@ -111,8 +110,16 @@ def m_test(ds1, ds2, alpha=0.4):
     noise, l = ds2
     noise_alpha = alpha * tf.math.reduce_max(noise)
     train_alpha = (1-alpha) * tf.math.reduce_max(call) 
-    # tf.print(noise.shape, call.shape)
+    # tf.print('performing mixup')
     return (call*train_alpha + noise*noise_alpha, lab)
+
+def time_mask(x, y, spec_param=10):
+    # tf.print('performing time_mask')
+    return (tfio.audio.time_mask(x, param=spec_param), y)
+
+def freq_mask(x, y, spec_param=10):
+    # tf.print('performing freq_mask')
+    return (tfio.audio.freq_mask(x, param=spec_param), y)
 
 def run_augment_pipeline(ds, noise_data, noise_set_size,
                          train_set_size, time_augs, mixup_augs,
@@ -155,12 +162,14 @@ def run_augment_pipeline(ds, noise_data, noise_set_size,
         # ds = ds.concatenate(ds_t)
         
     if spec_aug:
-        ds_tm = ds.map(lambda x, y: (tfio.audio.time_mask(x, param=spec_param), y))
+        ds_tm = ds.map(time_mask)
+        # ds = ds.concatenate(ds_tm)
         if plot:
             plot_sample_spectrograms(ds_tm, dir = time_start,
                                 name=f'augment_0-TimeMask', seed=seed, 
                                 ds_size=train_set_size, **kwargs)
-        ds_fm = ds.map(lambda x, y: (tfio.audio.freq_mask(x, param=spec_param), y))
+        ds_fm = ds.map(freq_mask)
+        # ds = ds.concatenate(ds_fm)
         if plot:
             plot_sample_spectrograms(ds_fm, dir = time_start,
                                 name=f'augment_0-TFreqMask', seed=seed, 

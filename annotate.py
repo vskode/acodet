@@ -7,7 +7,7 @@ import numpy as np
     
 if __name__ == '__main__':
     time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
-    train_date = '2022-11-24_17'
+    train_date = '2022-11-25_16'
     files = get_files(location=conf.SOUND_FILES_SOURCE,
                       search_str='**/*wav')
     # files = get_files(location='/media/vincent/Extreme SSD/MA/for_manual_annotation/src_to_be_annotated/resampled_2kHz',
