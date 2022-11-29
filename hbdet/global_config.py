@@ -38,7 +38,7 @@ TEST_VAL_RATIO = 0.7
 # threshold for predictions
 THRESH = config['thresh']
 # prediction window limit
-PRED_WIN_LIM = 200
+PRED_WIN_LIM = 50
 
 # calculated global variables
 FFT_HOP = (CONTEXT_WIN - STFT_FRAME_LEN) // (N_FREQ_BINS - 1)
@@ -50,3 +50,7 @@ TFREC_DESTINATION = '../Data/Datasets'
 ANNOTATION_DESTINATION = config['annotation_destination']
 ANNOTATION_SOURCE = config['annotation_source']
 SOUND_FILES_SOURCE = config['sound_files_source']
+
+## Column Names
+# column name for annotation prediction values
+ANNOTATION_COLUMN = 'Prediction/Comments'

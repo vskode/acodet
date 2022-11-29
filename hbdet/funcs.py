@@ -41,11 +41,29 @@ def get_dt_filename(file):
         datetime = ''.join(numbs[-i:])
         i += 1
         
-    if len(datetime) == 12:
-        file_date = dt.datetime.strptime(datetime, '%y%m%d%H%M%S')
-    elif len(datetime) == 14:
-        file_date = dt.datetime.strptime(datetime, '%Y%m%d%H%M%S')
-    return file_date
+    i = 1
+    while 12 <= len(datetime) > 14:
+        datetime = datetime[:-i]
+        
+    for _ in range(2):
+        try:
+            if len(datetime) == 12:
+                file_date = dt.datetime.strptime(datetime, '%y%m%d%H%M%S')
+            elif len(datetime) == 14:
+                file_date = dt.datetime.strptime(datetime, '%Y%m%d%H%M%S')
+        except:
+            i = 1
+            while  len(datetime) > 12:
+                datetime = datetime[:-i]
+        
+    try:
+        # print(file_date)
+        return file_date
+    except Exception as e:
+        print('File date naming not understood.\n', 
+              'This will be prevent hourly prediction computation.\n',
+              e)
+        return 'ERROR'
 
 def load_audio(file, **kwargs) -> np.ndarray:
     """
@@ -509,7 +527,7 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     
     df['High Freq (Hz)'] = conf.FMAX
     df['Low Freq (Hz)'] = conf.FMIN
-    df['Prediction/Comments'] = preds
+    df[conf.ANNOTATION_COLUMN] = preds
 
     return df.iloc[preds.reshape([len(preds)]) > conf.THRESH]
     
