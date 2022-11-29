@@ -5,9 +5,10 @@ import os
 import numpy as np
 import hbdet.global_config as conf
 
-annotation_files = Path(conf.ANNOTATION_SOURCE).glob('**/*.txt')
+annotation_files = list(Path(conf.ANNOTATION_SOURCE).glob('**/*.txt'))
+if len(annotation_files) == 0:
+    annotation_files = list(Path(conf.ANNOTATION_SOURCE).glob('*.txt'))
 # TODO aufraeumen
-annotation_column = 'Prediction/Comments'
 # annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
 # annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
 
@@ -73,35 +74,52 @@ def get_corresponding_sound_file(file):
 
     return file_path
 
-def differentiate_label_flags(df, flag=None):
-    df.loc[df[annotation_column]=='c', 'label'] = 1
-    df.loc[df[annotation_column]=='n', 'label'] = 'explicit 0'
-    for b in df.loc[df['End Time (s)']-df['Begin Time (s)'] \
-        > conf.CONTEXT_WIN/conf.SR]:
-        if df.loc[b.index, annotation_column] == 'n':
-            1 # TODO noise aufschneiden und einfuegen
-        
-    df.loc[df[annotation_column]=='n' \
-           and df['End Time (s)']-df['Begin Time (s)'] > conf.CONTEXT_WIN/conf.SR,
-           'label'] = 0
-    df = df.drop(df.loc[df[annotation_column]=='u'].index)
-    if flag == 'noise':
-        # df['not_float'] = ~((df[annotation_column] == 'u') ^ (df[annotation_column] == 'n') ^ (df[annotation_column] == 'c'))
-        # index = df['not_float'] * df[annotation_column].astype(float) > 0.9
-        df.loc[df[annotation_column] == 'u', annotation_column] = -9
-        df.loc[df[annotation_column] == 'n', annotation_column] = -8
-        df.loc[df[annotation_column] == 'c', annotation_column] = -7
-        df.loc[df[annotation_column].astype(float) > 0.9, 'label'] = 'explicit 0'
-        # df.loc[df[annotation_column] == -9] = 'u'
-        # df.loc[df[annotation_column] == -8] = 'n'
-        # df.loc[df[annotation_column] == -7] = 'c'
+def seperate_long_annotations(df):
+    bool_long_annot = df['End Time (s)']-df['Begin Time (s)'] > \
+                    round(conf.CONTEXT_WIN/conf.SR)
+    for i, row in df.loc[bool_long_annot].iterrows():
+        n_new_annots = int((row['End Time (s)'] - row['Begin Time (s)'])
+                        /(conf.CONTEXT_WIN/conf.SR))
+        begins = (row['Begin Time (s)'] 
+                    +np.arange(n_new_annots)*(conf.CONTEXT_WIN/conf.SR))
+        ends = begins + (conf.CONTEXT_WIN/conf.SR)
+        n_df = pd.DataFrame()
+        for col in row.keys():
+            n_df[col] = [row[col]]*n_new_annots
+        n_df['label'] = [0]*n_new_annots
+        n_df['Begin Time (s)'] = begins
+        n_df['End Time (s)'] = ends
+        n_df['Selection'] = np.arange(n_new_annots) + row['Selection']
+        df = pd.concat([df.drop(df.loc[df.Selection == row.Selection].index),
+                        n_df])
     return df
+
+def label_explicit_noise(df):
+    bool_floats = df[conf.ANNOTATION_COLUMN].apply(type) == type(0.)
+    expl_noise_crit_idx = np.where(df[conf.ANNOTATION_COLUMN]
+                                    .loc[bool_floats.values]>0.9)[0]
+    df.loc[expl_noise_crit_idx, 'label'] = 'explicit 0'
+    return df
+
+def differentiate_label_flags(df, flag=None):
+    df[conf.ANNOTATION_COLUMN] = df[conf.ANNOTATION_COLUMN].fillna(value = 1)
+    df.loc[df[conf.ANNOTATION_COLUMN]=='c', 'label'] = 1
+    df.loc[df[conf.ANNOTATION_COLUMN]=='n', 'label'] = 'explicit 0'
+    df_std = seperate_long_annotations(df)
+    
+    df_std = df_std.drop(df_std.loc[df_std[conf.ANNOTATION_COLUMN]=='u'].index)
+    df_std.index = pd.RangeIndex(0, len(df_std))
+    if flag == 'noise':
+        df_std = label_explicit_noise(df_std)
+        
+    return df_std
 
 def get_labels(file, df, active_learning=False, **kwargs):
     if not active_learning:
         df['label'] = 1
     else:
-        noise_flag, annotated_flag, calls_flag = ['_allnoise', '_annotated', '_allcalls']
+        noise_flag, annotated_flag, calls_flag = ['_allnoise', '_annotated', 
+                                                  '_allcalls']
         df = df.iloc[df.Selection.drop_duplicates().index]
         if calls_flag in file.stem:
             df['label'] = 1
@@ -110,8 +128,9 @@ def get_labels(file, df, active_learning=False, **kwargs):
             df['label'] = 0
             df = differentiate_label_flags(df, flag='noise')
         elif annotated_flag in file.stem:
-            df['label'] = 1
-            df = differentiate_label_flags(df, flag='calls')
+            df.loc[df[conf.ANNOTATION_COLUMN].apply(type) == type(0.).values,
+                   conf.ANNOTATION_COLUMN] = 'u'
+            df = differentiate_label_flags(df)
     return df
             
 def standardize(df, *, mapper, filename_col='filename',
@@ -168,7 +187,11 @@ def main(annotation_files, active_learning=False, **kwargs):
     if active_learning:
         files = get_active_learning_files(files)
     folders, counts = np.unique([list(f.relative_to(conf.ANNOTATION_SOURCE)
-                                .parents)[-2] for f in files],
+                                .parents) for f in files],
+                        return_counts=True)
+    if len(folders)>1:
+        folders, counts = np.unique([list(f.relative_to(conf.ANNOTATION_SOURCE)
+                            .parents)[-2] for f in files],
                         return_counts=True)
     files.sort()
     ind = 0
@@ -195,4 +218,4 @@ def main(annotation_files, active_learning=False, **kwargs):
     # save_ket_annot_only_existing_paths(df)
     
 if __name__ == '__main__':
-    main(annotation_files, active_learning=False, benoit=True)
+    main(annotation_files, active_learning=True, benoit=False)

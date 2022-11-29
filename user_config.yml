@@ -25,7 +25,8 @@ thresh: 0.5
 
 # source path for your annotations
 #   -> might be easier to just copy annotation files to default location
-annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
+annotation_source: '../generated_annotations/2022-11-27_02'
+# annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 
 # destination path for automatically generated annotations
 annotation_destination: '../generated_annotations/2022-11-28_14'

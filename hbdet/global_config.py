@@ -50,3 +50,7 @@ TFREC_DESTINATION = '../Data/Datasets'
 ANNOTATION_DESTINATION = config['annotation_destination']
 ANNOTATION_SOURCE = config['annotation_source']
 SOUND_FILES_SOURCE = config['sound_files_source']
+
+## Column Names
+# column name for annotation prediction values
+ANNOTATION_COLUMN = 'Prediction/Comments'

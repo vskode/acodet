@@ -4,6 +4,35 @@ from hbdet.funcs import get_files, gen_annotations, init_model, get_dt_filename
 from hbdet import global_config as conf
 import pandas as pd
 import numpy as np
+from pathlib import Path
+
+
+class MetaData:
+    def __init__(self):
+        self.filename = 'filename'
+        self.f_dt = 'date from timestamp'
+        self.n_pred_col = 'number of predictions'
+        self.avg_pred_col = 'average prediction value'
+        self.n_pred08_col = 'number of predictions with thresh>0.8'
+        self.n_pred09_col =  'number of predictions with thresh>0.9'
+        self.df = pd.DataFrame(columns=[self.filename, 
+                                        self.f_dt, 
+                                        self.n_pred_col, 
+                                        self.avg_pred_col, 
+                                        self.n_pred08_col, 
+                                        self.n_pred09_col])
+        
+    def append_and_save_meta_file(self, annot):
+        self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
+        self.df.loc[f_ind, self.filename] = Path(file).relative_to(
+                                                        conf.SOUND_FILES_SOURCE)
+        self.df.loc[f_ind, self.n_pred_col] = len(annot)
+        self.df.loc[f_ind, self.avg_pred_col] = np.mean(annot[conf.ANNOTATION_COLUMN])
+        self.df.loc[f_ind, self.n_pred08_col] = len(annot.loc[annot[
+                                                conf.ANNOTATION_COLUMN]>0.8])
+        self.df.loc[f_ind, self.n_pred09_col] = len(annot.loc[annot[
+                                                conf.ANNOTATION_COLUMN]>0.9])
+        self.df.to_csv(f'../generated_annotations/{time_start}/stats.csv')
     
 if __name__ == '__main__':
     time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
@@ -21,18 +50,15 @@ if __name__ == '__main__':
     model = init_model(model_class, 
                        f'../trainings/{train_date}/unfreeze_no-TF', 
                        keras_mod_name=keras_mod_name)
-    df = pd.DataFrame(columns=['Date', 'Daily_Presence', 
-                                *['%.2i' % i for i in np.arange(24)]])
-    for i, file in enumerate(files):
+    mdf = MetaData()
+    f_ind = 0
+    for i, file in enumerate(files):    
         try:
-            
+            f_ind += 1
             annot = gen_annotations(file, model, mod_label=train_date, 
                                  time_start=time_start)
-            
-            file_dt = get_dt_filename(file)
-            df.loc[i+1, 'Date'] = str(file_dt.date())
-            # df.loc[i+1, '%.2i'%file_dt.hour] = return_hourly_presence(annot)
-            
+            mdf.append_and_save_meta_file(annot)
+
         except Exception as e:
             print(f"{file} couldn't be loaded, continuing with next file.\n", e)
             continue
