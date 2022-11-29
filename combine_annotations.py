@@ -1,6 +1,8 @@
 import pandas as pd
+pd.options.mode.chained_assignment = None  # default='warn'
 import glob
 from pathlib import Path
+from hbdet.funcs import remove_str_flags_from_predictions
 import os
 import numpy as np
 import hbdet.global_config as conf
@@ -30,7 +32,7 @@ def compensate_for_naming_inconsistencies(hard_drive_path, file):
         
     if not file_path :
         file_new_annot = file.stem.split('_annot')[0]
-        file_path = glob.glob(f'{hard_drive_path}/**/{file_new_annot}*wav',
+        file_path = glob.glob(f'{hard_drive_path}/**/{file_new_annot}*',
                     recursive = True)
         
     if not file_path :
@@ -43,6 +45,7 @@ def compensate_for_naming_inconsistencies(hard_drive_path, file):
                         recursive = True)
         
     if not file_path :
+        print('sound file could not be found, continuing with next file')
         return False
     return file_path
 
@@ -86,23 +89,22 @@ def seperate_long_annotations(df):
         n_df = pd.DataFrame()
         for col in row.keys():
             n_df[col] = [row[col]]*n_new_annots
-        n_df['label'] = [0]*n_new_annots
         n_df['Begin Time (s)'] = begins
         n_df['End Time (s)'] = ends
         n_df['Selection'] = np.arange(n_new_annots) + row['Selection']
-        df = pd.concat([df.drop(df.loc[df.Selection == row.Selection].index),
-                        n_df])
+        df = pd.concat([df.drop(row.name), n_df]) # delete long annotation from df
     return df
 
+
 def label_explicit_noise(df):
-    bool_floats = df[conf.ANNOTATION_COLUMN].apply(type) == type(0.)
-    expl_noise_crit_idx = np.where(df[conf.ANNOTATION_COLUMN]
-                                    .loc[bool_floats.values]>0.9)[0]
+    df_clean = remove_str_flags_from_predictions(df)
+    
+    expl_noise_crit_idx = np.where(df_clean[conf.ANNOTATION_COLUMN]>0.9)[0]
     df.loc[expl_noise_crit_idx, 'label'] = 'explicit 0'
     return df
 
 def differentiate_label_flags(df, flag=None):
-    df[conf.ANNOTATION_COLUMN] = df[conf.ANNOTATION_COLUMN].fillna(value = 1)
+    df.loc[:, conf.ANNOTATION_COLUMN].fillna(value = 'c', inplace=True)
     df.loc[df[conf.ANNOTATION_COLUMN]=='c', 'label'] = 1
     df.loc[df[conf.ANNOTATION_COLUMN]=='n', 'label'] = 'explicit 0'
     df_std = seperate_long_annotations(df)
@@ -128,8 +130,8 @@ def get_labels(file, df, active_learning=False, **kwargs):
             df['label'] = 0
             df = differentiate_label_flags(df, flag='noise')
         elif annotated_flag in file.stem:
-            df.loc[df[conf.ANNOTATION_COLUMN].apply(type) == type(0.).values,
-                   conf.ANNOTATION_COLUMN] = 'u'
+            df_clean = remove_str_flags_from_predictions(df)
+            df.loc[df_clean.index, conf.ANNOTATION_COLUMN] = 'u'
             df = differentiate_label_flags(df)
     return df
             
@@ -142,12 +144,12 @@ def standardize(df, *, mapper, filename_col='filename',
                                                      df[selection_col]))
     return out_df.astype(dtype=np.float64)
     
-def clean_benoits_data(df):
+def filter_out_high_freq_and_high_transient(df):
     df = df.loc[df['High Freq (Hz)'] <= 2000]
     df = df.loc[df['End Time (s)']-df['Begin Time (s)'] >= 0.4]
     return df
     
-def finalize_annotation(file, all_noise=False, **kwargs):
+def finalize_annotation(file, freq_time_crit=False, **kwargs):
     ann = pd.read_csv(file, sep = '\t')
 
     ann['filename'] = get_corresponding_sound_file(file)
@@ -159,8 +161,8 @@ def finalize_annotation(file, all_noise=False, **kwargs):
                               'End Time (s)': 'end',
                               'Low Freq (Hz)' : 'freq_min', 
                               'High Freq (Hz)' : 'freq_max',} 
-    if 'benoit' in kwargs:
-        ann = clean_benoits_data(ann)
+    if freq_time_crit:
+        ann = filter_out_high_freq_and_high_transient(ann)
         
     ann_explicit_noise = ann.loc[ann['label']=='explicit 0', :]
     ann_explicit_noise['label'] = 0
@@ -218,4 +220,4 @@ def main(annotation_files, active_learning=False, **kwargs):
     # save_ket_annot_only_existing_paths(df)
     
 if __name__ == '__main__':
-    main(annotation_files, active_learning=True, benoit=False)
+    main(annotation_files, active_learning=True, freq_time_crit=False)

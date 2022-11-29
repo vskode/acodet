@@ -29,8 +29,8 @@ annotation_source: '../generated_annotations/2022-11-27_02'
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 
 # destination path for automatically generated annotations
-annotation_destination: '../generated_annotations/2022-11-28_14'
+annotation_destination: '../combined_annotations/2022-11-27_02'
 
 # source path for your sound files (top most directory)
 # sound_files_source: '/mnt/f/Daten/20221027_COMPASS/SAMOSAS_VINCENT/EL1_2kHz_March-April'
-sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated/resampld_2kHz'
+sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated/resampled_2kHz'

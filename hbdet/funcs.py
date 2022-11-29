@@ -9,6 +9,23 @@ from pathlib import Path
 import pandas as pd
 from . import global_config as conf
 
+############# ANNOTATION helpers ############################################
+
+
+def remove_str_flags_from_predictions(df):
+    n = df.loc[df[conf.ANNOTATION_COLUMN]=='n'].index
+    n_ = df.loc[df[conf.ANNOTATION_COLUMN]=='n '].index
+    u = df.loc[df[conf.ANNOTATION_COLUMN]=='u'].index
+    u_ = df.loc[df[conf.ANNOTATION_COLUMN]=='u '].index
+    c = df.loc[df[conf.ANNOTATION_COLUMN]=='c'].index
+    c_ = df.loc[df[conf.ANNOTATION_COLUMN]=='c '].index
+    
+    clean = df.drop([*n, *u, *c, *n_, *u_, *c_])
+    clean.loc[:, conf.ANNOTATION_COLUMN] = (clean[conf.ANNOTATION_COLUMN]
+                                            .astype(float))
+    return clean
+
+
 ############# TFRECORDS helpers #############################################
 def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
     """
@@ -32,6 +49,9 @@ def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
 
 def get_dt_filename(file):
     stem = Path(file).stem
+    
+    if '_annot_' in stem:
+        stem = stem.split('_annot_')[0]
     
     numbs = re.findall('[0-9]+', stem)
     numbs = [n for n in numbs if len(n)%2 == 0] 
@@ -269,12 +289,12 @@ def get_train_set_size(tfrec_path):
     train_set_size, noise_set_size = 0, 0
     for dataset_dir in tfrec_path:
         try:
-            for dic in Path(dataset_dir).glob('dataset*.json'):
+            for dic in Path(dataset_dir).glob('**/*dataset*.json'):
                 data_dict = json.load(open(dic))
-                if 'train' in data_dict['dataset']['size']:
+                if 'noise' in str(dic):
+                    noise_set_size += data_dict['dataset']['size']['train']
+                elif 'train' in data_dict['dataset']['size']:
                     train_set_size += data_dict['dataset']['size']['train']
-                if 'noise' in data_dict['dataset']['size']:
-                    noise_set_size += data_dict['dataset']['size']['noise']
         except:
             print('No dataset dictionary found, estimating dataset size.'
                 'WARNING: This might lead to incorrect learning rates!')

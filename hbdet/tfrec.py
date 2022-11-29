@@ -147,7 +147,7 @@ def read_raw_file(file, annots, **kwargs):
 #         writer.write(examples.SerializeToString())
                 
 def write_tfrecords(annots, save_dir, 
-                    all_noise=False, inbetween_noise=True, 
+                    inbetween_noise=True, 
                     **kwargs):
     """
     Write tfrecords files from wav files. 
@@ -169,14 +169,11 @@ def write_tfrecords(annots, save_dir,
     
     split_mode = 'within_file'
     specs = ['size', 'noise', 'calls']
-    if all_noise:
-        folders = ['noise']
-    else:
-        folders = ['train', 'test', 'val']
-        train_file_index = int(len(files)*conf.TRAIN_RATIO)
-        test_file_index = int(len(files)
-                            *(1-conf.TRAIN_RATIO)
-                            *conf.TEST_VAL_RATIO)
+    folders = ['train', 'test', 'val']
+    train_file_index = int(len(files)*conf.TRAIN_RATIO)
+    test_file_index = int(len(files)
+                        *(1-conf.TRAIN_RATIO)
+                        *conf.TEST_VAL_RATIO)
         
     dataset = {k: {k1: 0 for k1 in folders} 
                for k in specs}
@@ -187,15 +184,12 @@ def write_tfrecords(annots, save_dir,
         print('writing tf records files, progress:'
               f'{i/len(files)*100:.0f} %')
         
-        if all_noise:
+        if i < train_file_index:
             folder = folders[0]
+        elif i < train_file_index + test_file_index:
+            folder = folders[1]
         else:
-            if i < train_file_index:
-                folder = folders[0]
-            elif i < train_file_index + test_file_index:
-                folder = folders[1]
-            else:
-                folder = folders[2]
+            folder = folders[2]
 
         call_tup, noise_tup = read_raw_file(file, annots, 
                                             inbetween_noise=inbetween_noise, 
@@ -206,17 +200,15 @@ def write_tfrecords(annots, save_dir,
         samples = [*calls, *noise]
         random.shuffle(samples)
         data = dict()
-        if all_noise:
-            data['noise'] = samples
-        else:
-            end_tr, end_te = map(lambda x: int(x*len(samples)),
-                                (conf.TRAIN_RATIO, (1-conf.TRAIN_RATIO)
-                                                    *conf.TEST_VAL_RATIO
-                                                    +conf.TRAIN_RATIO) )
-            
-            data['train'] = samples[:end_tr]
-            data['test'] = samples[end_tr:end_te]
-            data['val'] = samples[end_tr:-1]
+        
+        end_tr, end_te = map(lambda x: int(x*len(samples)),
+                            (conf.TRAIN_RATIO, (1-conf.TRAIN_RATIO)
+                                                *conf.TEST_VAL_RATIO
+                                                +conf.TRAIN_RATIO) )
+        
+        data['train'] = samples[:end_tr]
+        data['test'] = samples[end_tr:end_te]
+        data['val'] = samples[end_tr:-1]
         
         
         for folder, samples in data.items():
@@ -236,8 +228,8 @@ def write_tfrecords(annots, save_dir,
     # TODO automatisch die noise sachen miterstellen
     data_meta_dict.update({'dataset': dataset})
     data_meta_dict.update({'files': files_dict})
-    with open(Path(save_dir)
-              .joinpath(f'dataset_meta_{folders[0]}.json'), 'w') as f:
+    path = add_child_dirs(save_dir, **kwargs)
+    with open(path.joinpath(f'dataset_meta_{folders[0]}.json'), 'w') as f:
         json.dump(data_meta_dict, f)
     
 def randomize_arrays(tup, file):
@@ -258,7 +250,13 @@ def update_dict(samples, d, dataset_dict, folder, tfrec_num):
         dataset_dict[l][folder] += k
     return d, dataset_dict
 
-def get_tfrecords_writer(num, fold, save_dir, alt_subdir = ''):
+def add_child_dirs(save_dir, alt_subdir='', all_noise=False, **kwargs):
+    path = save_dir.joinpath(alt_subdir)
+    if all_noise:
+        path = path.joinpath('noise')
+    return path
+
+def get_tfrecords_writer(num, fold, save_dir, **kwargs):
     """
     Return TFRecordWriter object to write file.
 
@@ -268,7 +266,7 @@ def get_tfrecords_writer(num, fold, save_dir, alt_subdir = ''):
     Returns:
         TFRecordWriter object: file handle
     """
-    path = save_dir.joinpath(alt_subdir)
+    path = add_child_dirs(save_dir, **kwargs)
     Path(path.joinpath(fold)).mkdir(parents = True, exist_ok = True)
     return tf.io.TFRecordWriter(str(path.joinpath(fold).joinpath(
                                 "file_%.2i.tfrec" % num)))
@@ -315,7 +313,17 @@ def run_data_pipeline(root_dir, data_dir, AUTOTUNE=None, return_spec=True, **kwa
         root_dir = [root_dir]
     files = []
     for root in root_dir:
-        files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
+        if data_dir == 'train':
+            files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
+        elif data_dir == 'noise':
+            files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
+            files += tf.io.gfile.glob(f"{root}/noise/train/*.tfrec")
+        else:
+            try:
+                files += tf.io.gfile.glob(f"{root}/noise/{data_dir}/*.tfrec")
+            except:
+                print('No explicit noise for ', root)
+            files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
     dataset = get_dataset(files, AUTOTUNE = AUTOTUNE, **kwargs)
     if return_spec:
         return make_spec_tensor(dataset)

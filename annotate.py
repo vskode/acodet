@@ -1,6 +1,8 @@
 import time
 from hbdet import models
-from hbdet.funcs import get_files, gen_annotations, init_model, get_dt_filename
+from hbdet.funcs import (get_files, gen_annotations, 
+                         init_model, get_dt_filename, 
+                         remove_str_flags_from_predictions)
 from hbdet import global_config as conf
 import pandas as pd
 import numpy as np
@@ -22,19 +24,21 @@ class MetaData:
                                         self.n_pred08_col, 
                                         self.n_pred09_col])
         
-    def append_and_save_meta_file(self, annot):
+    def append_and_save_meta_file(self, file, annot, f_ind, time_start,
+                                  relativ_path = conf.SOUND_FILES_SOURCE):
         self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
         self.df.loc[f_ind, self.filename] = Path(file).relative_to(
-                                                        conf.SOUND_FILES_SOURCE)
+                                                        relativ_path)
         self.df.loc[f_ind, self.n_pred_col] = len(annot)
-        self.df.loc[f_ind, self.avg_pred_col] = np.mean(annot[conf.ANNOTATION_COLUMN])
-        self.df.loc[f_ind, self.n_pred08_col] = len(annot.loc[annot[
+        df_clean = remove_str_flags_from_predictions(annot)
+        self.df.loc[f_ind, self.avg_pred_col] = np.mean(df_clean[conf.ANNOTATION_COLUMN])
+        self.df.loc[f_ind, self.n_pred08_col] = len(df_clean.loc[df_clean[
                                                 conf.ANNOTATION_COLUMN]>0.8])
-        self.df.loc[f_ind, self.n_pred09_col] = len(annot.loc[annot[
+        self.df.loc[f_ind, self.n_pred09_col] = len(df_clean.loc[df_clean[
                                                 conf.ANNOTATION_COLUMN]>0.9])
         self.df.to_csv(f'../generated_annotations/{time_start}/stats.csv')
     
-if __name__ == '__main__':
+def main():
     time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
     train_date = '2022-11-25_16'
     files = get_files(location=conf.SOUND_FILES_SOURCE,
@@ -57,8 +61,23 @@ if __name__ == '__main__':
             f_ind += 1
             annot = gen_annotations(file, model, mod_label=train_date, 
                                  time_start=time_start)
-            mdf.append_and_save_meta_file(annot)
+            mdf.append_and_save_meta_file(file, annot, f_ind, time_start)
 
         except Exception as e:
             print(f"{file} couldn't be loaded, continuing with next file.\n", e)
             continue
+
+def generate_stats():
+    files = get_files(location=conf.ANNOTATION_SOURCE, search_str='**/*txt')
+    mdf = MetaData()
+    f_ind = 0
+    for i, file in enumerate(files):    
+        f_ind += 1
+        annot = pd.read_csv(file, sep='\t')
+        mdf.append_and_save_meta_file(file, annot, f_ind, 
+                                        Path(conf.ANNOTATION_SOURCE).stem,
+                                        relativ_path=conf.ANNOTATION_SOURCE)
+
+
+
+generate_stats()

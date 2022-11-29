@@ -10,23 +10,9 @@ from hbdet import models
 from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import run_data_pipeline, prepare
 from hbdet.augmentation import run_augment_pipeline
+from hbdet import global_config as conf
 
-TFRECORDS_DIR = ['../Data/Datasets/ScotWest_v4_2khz', 
-                 '../Data/Datasets/ScotWest_v5_2khz',
-                 '../Data/Datasets/Mixed_v1_2khz',
-                 '../Data/Datasets/Mixed_v2_2khz',
-                 '../Data/Datasets/SABA01_201511_201604_SN275',
-                 '../Data/Datasets/SABA01_201604_201608_SN276',
-                 '../Data/Datasets/BERCHOK_SAMANA_200901_4',
-                 '../Data/Datasets/CHALLENGER_AMAR123.1',
-                 '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
-                 '../Data/Datasets/NJDEP_NJ_200903_PU182',
-                 '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
-                 '../Data/Datasets/SAMOSAS_EL1_2021',
-                 '../Data/Datasets/SAMOSAS_N1_2021',
-                 '../Data/Datasets/SAMOSAS_S1_2021',
-                 '../Data/Datasets/Tolsta_2kHz_D2_2018'
-                ]
+TFRECORDS_DIR = list(Path(conf.TFREC_DESTINATION).iterdir())
 AUTOTUNE = tf.data.AUTOTUNE
 
 epochs = [10]
@@ -37,13 +23,13 @@ mixup_augs = [True]
 spec_aug =   [True]
 init_lr = [4e-4] 
 final_lr = [3e-6]
-weight_clip = [1]
-ModelClassName = ['GoogleMod']
-keras_mod_name = [False]
+weight_clip = [None]
+ModelClassName = ['EffNet']
+keras_mod_name = ['EfficientNetB0']
 
 load_ckpt_path = [False]
 load_g_weights = False
-steps_per_epoch = False
+steps_per_epoch = 2000
 data_description = TFRECORDS_DIR
 pre_blocks = 9
 f_score_beta = 0.5
@@ -147,8 +133,8 @@ def run_training(ModelClassName=ModelClassName,
     #############################################################################
 
     lr = tf.keras.optimizers.schedules.ExponentialDecay(init_lr,
-                                    decay_steps = n_train_set//batch_size,
-                                    decay_rate = (final_lr/init_lr)**(1/epochs),
+                    decay_steps = steps_per_epoch or n_train_set//batch_size,
+                                decay_rate = (final_lr/init_lr)**(1/epochs),
                                     staircase = True)
     for ind, unfreeze in enumerate(unfreezes):
         # if ModelClassName=='GoogleMod':
@@ -201,7 +187,7 @@ def run_training(ModelClassName=ModelClassName,
         model.save_weights(checkpoint_path)
         hist = model.fit(train_data, 
                 epochs = epochs, 
-                # steps_per_epoch=steps_per_epoch,
+                steps_per_epoch=steps_per_epoch,
                 validation_data = test_data,
                 callbacks=[cp_callback])
         result = hist.history
