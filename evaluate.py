@@ -12,22 +12,23 @@ import numpy as np
 from hbdet.humpback_model_dir import front_end
 import hbdet.global_config as conf
 
-tfrec_path =[
-    '../Data/Datasets/ScotWest_v4_2khz',
-    # # 'Data/Datasets/Mixed_v1_2khz',
-    # # 'Data/Datasets/Mixed_v2_2khz',
-    '../Data/Datasets/SABA01_201511_201604_SN275',
-    '../Data/Datasets/SABA01_201604_201608_SN276',
-    '../Data/Datasets/BERCHOK_SAMANA_200901_4',
-    '../Data/Datasets/CHALLENGER_AMAR123.1',
-    '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
-    '../Data/Datasets/NJDEP_NJ_200903_PU182',
-    '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
-    '../Data/Datasets/SAMOSAS_EL1_2021',
-    '../Data/Datasets/SAMOSAS_N1_2021',
-    '../Data/Datasets/SAMOSAS_S1_2021',
-    '../Data/Datasets/Tolsta_2kHz_D2_2018'
-    ]
+tfrec_path =list(Path(conf.TFREC_DESTINATION).iterdir())
+# [
+#     '../Data/Datasets/ScotWest_v4_2khz',
+#     # # 'Data/Datasets/Mixed_v1_2khz',
+#     # # 'Data/Datasets/Mixed_v2_2khz',
+#     '../Data/Datasets/SABA01_201511_201604_SN275',
+#     '../Data/Datasets/SABA01_201604_201608_SN276',
+#     '../Data/Datasets/BERCHOK_SAMANA_200901_4',
+#     '../Data/Datasets/CHALLENGER_AMAR123.1',
+#     '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+#     '../Data/Datasets/NJDEP_NJ_200903_PU182',
+#     '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+#     '../Data/Datasets/SAMOSAS_EL1_2021',
+#     '../Data/Datasets/SAMOSAS_N1_2021',
+#     '../Data/Datasets/SAMOSAS_S1_2021',
+#     '../Data/Datasets/Tolsta_2kHz_D2_2018'
+#     ]
 
 train_dates = [
     # '2022-11-22_03', 
@@ -46,7 +47,14 @@ train_dates = [
     # '2022-11-25_00', 
     # '2022-11-24_12', 
     # '2022-11-24_17'
-    '2022-11-28_15'
+    # '2022-11-29_13',
+    # # '2022-11-29_16',
+    # '2022-11-29_17',
+    # '2022-11-29_19',
+    # '2022-11-29_21',
+    # '2022-11-29_22',
+    # '2022-11-30_13',
+    '2022-05-00_00'
     ]
 
 display_keys = [
@@ -55,7 +63,7 @@ display_keys = [
     'Model', 
     'keras_mod_name', 
     'epochs', 
-    'training_date', 
+    'init_lr', 
     'final_lr',    
     # 'weight_clipping', 
     ]
@@ -111,15 +119,20 @@ def create_overview_plot(train_dates, val_set, display_keys):
     # info_dicts = [get_info(date) for date in train_dates]
 
     # val_s = ''.join([Path(s).stem.split('_2khz')[0]+';' for s in val_set])
+    if isinstance(val_set, list):
+        val_label = 'all'
+    else:
+        val_label = Path(val_set).stem
     string = str(
         # 'batch:{}; ' 
         'Model:{}; ' 
         'keras_mod_name:{}; ' 
         'epochs:{}; ' 
-        'training_date:{}; ' 
+        # 'training_date:{}; ' 
+        'init_lr:{}; ' 
         'lr_end:{}; ' 
         # 'clip:{} ; '
-        f'val: all')
+        f'val: {val_label}')
     if conf.THRESH != 0.5:
         string += f' thr: {conf.THRESH}'
 
@@ -144,7 +157,7 @@ def create_overview_plot(train_dates, val_set, display_keys):
     fig = plt.figure(constrained_layout=True, figsize=(15, 15))
     subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
 
-    plot_model_results(train_dates, labels, fig=subfigs[0], legend=True)#, **info_dict)
+    plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
     plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
                             fig = subfigs[1], plot_pr=True, plot_cm=True, 
                             train_dates=train_dates, label=None, 
@@ -185,4 +198,7 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
 # create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
 # for path in tfrec_path:
 write_trainings_csv()
+    # try:
 create_overview_plot(train_dates, tfrec_path, display_keys)
+    # except:
+    #     continue

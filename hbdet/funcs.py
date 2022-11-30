@@ -408,7 +408,7 @@ def print_evaluation(val_data: tf.data.Dataset,
     model.evaluate(val_data, batch_size = batch_size, verbose =2)
 
 def get_pr_arrays(labels: np.ndarray, preds: np.ndarray, 
-                  metric: str) -> np.ndarray:
+                  metric: str, **kwargs) -> np.ndarray:
     """
     Compute Precision or Recall on given set of labels and predictions. 
     Threshold values are created with 0.01 increments. 
@@ -427,8 +427,7 @@ def get_pr_arrays(labels: np.ndarray, preds: np.ndarray,
     np.ndarray
         resulting values
     """
-    threshs=np.linspace(0, 1, num=100)[:-1]
-    r = getattr(tf.keras.metrics, metric)(thresholds = list(threshs))
+    r = getattr(tf.keras.metrics, metric)(**kwargs)
     r.update_state(labels, preds.reshape(len(preds)))
     return r.result().numpy()
 

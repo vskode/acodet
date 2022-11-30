@@ -11,25 +11,75 @@ from hbdet.plot_utils import plot_model_results, create_and_save_figure
 from hbdet.tfrec import run_data_pipeline, prepare
 from hbdet.augmentation import run_augment_pipeline
 from hbdet import global_config as conf
-
-TFRECORDS_DIR = list(Path(conf.TFREC_DESTINATION).iterdir())
+#list(Path(conf.TFREC_DESTINATION).iterdir())
+TFRECORDS_DIR = [*[[
+    '../Data/Datasets/NEAQ_MA-RI_201302',
+    '../Data/Datasets/HWDT_JOIN_2019',
+    '../Data/Datasets/SAMOSAS_EL1_2021',
+    '../Data/Datasets/SAMOSAS_N1_2021',
+    '../Data/Datasets/NEAQ_MA-RI_201111',
+    '../Data/Datasets/Tolsta_2kHz_D2_2018',
+    '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+    '../Data/Datasets/NEFSC_GOM_202003_PETITMANAN',
+    '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+    # '../Data/Datasets/SABA01_201511_201604_SN275',
+    '../Data/Datasets/MELLINGER_ICELAND-GREENLAND_200705_SE',
+    '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_RswyW',
+    '../Data/Datasets/CHALLENGER_AMAR123.1',
+    # '../Data/Datasets/SABA01_201604_201608_SN276',
+    '../Data/Datasets/StantonBank_2kHz_D5_2019',
+    '../Data/Datasets/ScotWest_v5_2khz',
+    '../Data/Datasets/MELLINGER_ICELAND-GREENLAND_200705_CE',
+    '../Data/Datasets/ScotWest_v4_2khz',
+    '../Data/Datasets/SAMOSAS_S1_2021',
+    '../Data/Datasets/NJDEP_NJ_200903_PU182',
+    '../Data/Datasets/NEFSC_GOM_202003_MATINICUS',
+    '../Data/Datasets/StantonBank_2kHz_D2_2018',
+    '../Data/Datasets/BERCHOK_SAMANA_200901_4',
+    '../Data/Datasets/NRS08_20162018_new20220711'
+]]*5,
+['../Data/Datasets/NEAQ_MA-RI_201302',
+    '../Data/Datasets/HWDT_JOIN_2019',
+    '../Data/Datasets/SAMOSAS_EL1_2021',
+    '../Data/Datasets/SAMOSAS_N1_2021',
+    '../Data/Datasets/NEAQ_MA-RI_201111',
+    '../Data/Datasets/Tolsta_2kHz_D2_2018',
+    '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
+    '../Data/Datasets/NEFSC_GOM_202003_PETITMANAN',
+    '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
+    '../Data/Datasets/SABA01_201511_201604_SN275',
+    '../Data/Datasets/MELLINGER_ICELAND-GREENLAND_200705_SE',
+    '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_RswyW',
+    '../Data/Datasets/CHALLENGER_AMAR123.1',
+    '../Data/Datasets/SABA01_201604_201608_SN276',
+    '../Data/Datasets/StantonBank_2kHz_D5_2019',
+    '../Data/Datasets/ScotWest_v5_2khz',
+    '../Data/Datasets/MELLINGER_ICELAND-GREENLAND_200705_CE',
+    '../Data/Datasets/ScotWest_v4_2khz',
+    '../Data/Datasets/SAMOSAS_S1_2021',
+    '../Data/Datasets/NJDEP_NJ_200903_PU182',
+    '../Data/Datasets/NEFSC_GOM_202003_MATINICUS',
+    '../Data/Datasets/StantonBank_2kHz_D2_2018',
+    '../Data/Datasets/BERCHOK_SAMANA_200901_4',
+    '../Data/Datasets/NRS08_20162018_new20220711'
+]]
 AUTOTUNE = tf.data.AUTOTUNE
 
-epochs = [10]
+epochs = [*[43]*5, 100]
 
-batch_size = [32]
-time_augs =  [True]
-mixup_augs = [True]
-spec_aug =   [True]
-init_lr = [4e-4] 
-final_lr = [3e-6]
-weight_clip = [None]
-ModelClassName = ['EffNet']
-keras_mod_name = ['EfficientNetB0']
+batch_size = [32]*6
+time_augs =  [False, False, False, True, True, True]
+mixup_augs = [True, False, True, False, True, True]
+spec_aug =   [False, True, True, True, False, True]
+init_lr = [*[4e-4] *5, 1e-5]
+final_lr = [3e-6]*6
+weight_clip = [None]*6
+ModelClassName = ['GoogleMod']*6
+keras_mod_name = [None]*6
 
-load_ckpt_path = [False]
+load_ckpt_path = [*[False]*5, '2022-11-30_01']
 load_g_weights = False
-steps_per_epoch = 2000
+steps_per_epoch = 1000
 data_description = TFRECORDS_DIR
 pre_blocks = 9
 f_score_beta = 0.5
@@ -122,7 +172,7 @@ def run_training(ModelClassName=ModelClassName,
     train_data = prepare(train_data, batch_size, shuffle=True, 
                         shuffle_buffer=n_train_set*3)
     if steps_per_epoch and n_train_set // batch_size < epochs*steps_per_epoch:
-        train_data = train_data.repeat(epochs*steps_per_epoch//n_train_set+1)
+        train_data = train_data.repeat(epochs*steps_per_epoch//(n_train_set//batch_size)+1)
     
 
     test_data = prepare(test_data, batch_size)
@@ -206,6 +256,7 @@ def run_training(ModelClassName=ModelClassName,
 if __name__ == '__main__':
     for i in range(len(time_augs)):
         run_training(batch_size=batch_size[i],
+                     TFRECORDS_DIR=TFRECORDS_DIR[i],
                      epochs=epochs[i],
                      keras_mod_name=keras_mod_name[i],
                      time_augs=time_augs[i], 

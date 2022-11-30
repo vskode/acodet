@@ -172,21 +172,56 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
     else:
         return ax
     
+# def plot_confusion_matrix(cm, classes,
+#                           normalize=False,
+#                           title='Confusion matrix',
+#                           cmap=plt.cm.Blues):
+#     """
+#     This function prints and plots the confusion matrix.
+#     Normalization can be applied by setting `normalize=True`.
+#     """
+#     plt.figure(figsize=(10, 10))
+#     plt.imshow(cm, interpolation='nearest', cmap=cmap)
+#     plt.title(title)
+#     tick_marks = np.arange(len(classes))
+#     plt.xticks(tick_marks, classes, rotation=45)
+#     plt.yticks(tick_marks, classes)
+
+#     if normalize:
+#         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+#     thresh = cm.max() / 2.
+#     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+#         plt.text(j, i, cm[i, j],
+#             horizontalalignment="center",
+#             color="white" if cm[i, j] > thresh else "black")
+
+#     plt.tight_layout()
+#     plt.ylabel('True label'), plt.xlabel('Predicted label')
+# # call confusion matrix
+# cm = tf.math.confusion_matrix(labels=y_test_true, predictions=y_test_pred)
+# cm = cm.numpy()
+# plot_confusion_matrix(cm, classes=config['classes'], normalize=False, title='Confusion matrix', cmap=plt.cm.Blues)
+    
+    
 def plot_conf_matr(labels, preds, ax, training_run, iteration, **kwargs):
     bin_preds = list(map(lambda x: 1 if x >= conf.THRESH else 0, preds))
     heat = tf.math.confusion_matrix(labels, bin_preds).numpy()
     rearrange = lambda x:  np.array([[x[1, 1], x[1, 0]], 
                                 [x[0, 1], x[0, 0]]])
-    rearranged_head = rearrange(heat)
+    # rearranged_head = rearrange(heat)
     value_string = '{}\n{:.0f}%'
     heat_annot = [[[], []], [[], []]]
+    heat_perc = [[[], []], [[], []]]
     for row in range(2):
         for col in range(2):
             heat_annot[row][col] = value_string.format(heat[row, col], 
                                          heat[row, col]/np.sum(heat[row])*100)
+            heat_perc[row][col] = heat[row, col]/np.sum(heat[row])*100
     rearranged_annot = rearrange(np.array(heat_annot))
+    rearranged_heat = rearrange(np.array(heat_perc))
     
-    ax = sns.heatmap(rearranged_head, annot=rearranged_annot, fmt='', 
+    ax = sns.heatmap(rearranged_heat, annot=rearranged_annot, fmt='', 
                      cbar=False, ax=ax, xticklabels=False, yticklabels=False)
     ax.set_yticks([0.5, 1.5], labels=['TP', 'TN'])
     ax.set_xticks([1.5, 0.5], labels=['pred. N', 'pred.P'])
@@ -196,22 +231,28 @@ def plot_conf_matr(labels, preds, ax, training_run, iteration, **kwargs):
     return ax
 
 def plot_pr_curve(labels, preds, ax, training_path, iteration=0, **kwargs):
-    pr = dict()
+    m = dict()
     for met in ('Recall', 'Precision'):
-        pr.update({met: funcs.get_pr_arrays(labels, preds, met)})
-    
+        threshs = list(np.linspace(0, 1, num=200)[:-1])
+        m.update({met: funcs.get_pr_arrays(labels, preds, met,
+                                            thresholds=threshs)})
+    for curve in ('ROC', 'PR'):
+        m.update({curve: funcs.get_pr_arrays(labels, preds, 'AUC',
+                                            curve=curve)})
+    perform_str = f"; AUC_PR:{m['PR']:.2f}; AUC_ROC:{m['ROC']:.2f}"
     if 'plot_labels' in kwargs:
         if isinstance(kwargs['plot_labels'], list):
-            label = kwargs['plot_labels'][iteration] 
+            label = kwargs['plot_labels'][iteration] + perform_str
         else:
-            label = kwargs['plot_labels']
+            label = kwargs['plot_labels'] + perform_str
     elif 'load_untrained_model' in kwargs:
-        label='untrained_model'
+        label = 'untrained_model' + perform_str
     else:
         label = str(training_path.parent.stem
-                    + training_path.stem.split('_')[-1])
+                    + training_path.stem.split('_')[-1]
+                     + perform_str)
         
-    ax.plot(pr['Recall'], pr['Precision'], label=label)
+    ax.plot(m['Recall'], m['Precision'], label=label)
         
     ax.set_ylabel('precision')
     ax.set_xlabel('recall')
