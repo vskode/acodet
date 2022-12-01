@@ -44,7 +44,7 @@ train_dates = [
     # # '2022-11-24_13', 
     # # '2022-11-24_14', 
     # '2022-11-24_16', 
-    # '2022-11-25_00', 
+    '2022-11-25_00', 
     # '2022-11-24_12', 
     # '2022-11-24_17'
     # '2022-11-29_13',
@@ -52,9 +52,9 @@ train_dates = [
     # '2022-11-29_17',
     # '2022-11-29_19',
     # '2022-11-29_21',
-    # '2022-11-29_22',
+    '2022-11-29_22',
     # '2022-11-30_13',
-    '2022-05-00_00'
+    '2022-11-17_17'
     ]
 
 display_keys = [
@@ -116,6 +116,7 @@ def write_trainings_csv():
 def create_overview_plot(train_dates, val_set, display_keys):
     
     df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
+    df.index = df['training_date']
     # info_dicts = [get_info(date) for date in train_dates]
 
     # val_s = ''.join([Path(s).stem.split('_2khz')[0]+';' for s in val_set])
@@ -162,6 +163,23 @@ def create_overview_plot(train_dates, val_set, display_keys):
                             fig = subfigs[1], plot_pr=True, plot_cm=True, 
                             train_dates=train_dates, label=None, 
                             keras_mod_name=keras_mod_name)
+    
+    d = df.loc[, display_keys]
+    f = plt.figure()
+    a1 = f.add_subplot(121)
+    a1.plot([1, 2, 3, 4, 5, 6])
+    a2 = f.add_subplot(122)
+    font_size = 14
+    bbox = [0, 0, 1, 1]
+    a2.axis('off')
+    mpl_table = a2.table(cellText=d.values, rowLabels=d.index, 
+                         bbox=bbox, colLabels=d.columns,
+                         rowColours = color[:3])
+    # mpl_table.auto_set_font_size(False)
+    # mpl_table.set_fontsize(font_size)
+    color = list(mcolors.TABLEAU_COLORS.keys())
+    
+    f.show()
 
     fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png')
 
@@ -199,7 +217,7 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
 # for path in tfrec_path:
 write_trainings_csv()
     # try:
-plot_model_results(train_dates)
+# plot_model_results(train_dates)
 create_overview_plot(train_dates, tfrec_path, display_keys)
     # except:
     #     continue
