@@ -298,6 +298,21 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
                                run, iteration=i)
             
         print('creating pr curve for ', run.stem)
+    f = plt.figure()
+    a1 = f.add_subplot(121)
+    a1.plot([1, 2, 3, 4, 5, 6])
+    a2 = f.add_subplot(122)
+    font_size = 14
+    bbox = [0, 0, 1, 1]
+    a2.axis('off')
+    mpl_table = a2.table(cellText=d.values, rowLabels=d.index, 
+                         bbox=bbox, colLabels=d.columns,
+                         rowColours = color[:3])
+    # mpl_table.auto_set_font_size(False)
+    # mpl_table.set_fontsize(font_size)
+    color = list(mcolors.TABLEAU_COLORS.keys())
+    
+    f.show()
     if legend:
         ax_pr.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     return fig

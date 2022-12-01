@@ -160,26 +160,10 @@ def create_overview_plot(train_dates, val_set, display_keys):
 
     plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
     plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
+                            table_df=df.loc[train_dates, display_keys],
                             fig = subfigs[1], plot_pr=True, plot_cm=True, 
                             train_dates=train_dates, label=None, 
                             keras_mod_name=keras_mod_name)
-    
-    d = df.loc[, display_keys]
-    f = plt.figure()
-    a1 = f.add_subplot(121)
-    a1.plot([1, 2, 3, 4, 5, 6])
-    a2 = f.add_subplot(122)
-    font_size = 14
-    bbox = [0, 0, 1, 1]
-    a2.axis('off')
-    mpl_table = a2.table(cellText=d.values, rowLabels=d.index, 
-                         bbox=bbox, colLabels=d.columns,
-                         rowColours = color[:3])
-    # mpl_table.auto_set_font_size(False)
-    # mpl_table.set_fontsize(font_size)
-    color = list(mcolors.TABLEAU_COLORS.keys())
-    
-    f.show()
 
     fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png')
 
