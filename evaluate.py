@@ -5,30 +5,14 @@ from hbdet import models
 from hbdet.funcs import get_labels_and_preds
 from hbdet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from pathlib import Path
 import pandas as pd
 import time
 import numpy as np
 from hbdet.humpback_model_dir import front_end
 import hbdet.global_config as conf
-
 tfrec_path =list(Path(conf.TFREC_DESTINATION).iterdir())
-# [
-#     '../Data/Datasets/ScotWest_v4_2khz',
-#     # # 'Data/Datasets/Mixed_v1_2khz',
-#     # # 'Data/Datasets/Mixed_v2_2khz',
-#     '../Data/Datasets/SABA01_201511_201604_SN275',
-#     '../Data/Datasets/SABA01_201604_201608_SN276',
-#     '../Data/Datasets/BERCHOK_SAMANA_200901_4',
-#     '../Data/Datasets/CHALLENGER_AMAR123.1',
-#     '../Data/Datasets/MELLINGER_NOVA-SCOTIA_200508_EmrldN',
-#     '../Data/Datasets/NJDEP_NJ_200903_PU182',
-#     '../Data/Datasets/SALLY_TUCKERS_AMAR088.1.16000',
-#     '../Data/Datasets/SAMOSAS_EL1_2021',
-#     '../Data/Datasets/SAMOSAS_N1_2021',
-#     '../Data/Datasets/SAMOSAS_S1_2021',
-#     '../Data/Datasets/Tolsta_2kHz_D2_2018'
-#     ]
 
 train_dates = [
     # '2022-11-22_03', 
@@ -44,17 +28,22 @@ train_dates = [
     # # '2022-11-24_13', 
     # # '2022-11-24_14', 
     # '2022-11-24_16', 
-    '2022-11-25_00', 
+    # '2022-11-25_00', 
     # '2022-11-24_12', 
     # '2022-11-24_17'
     # '2022-11-29_13',
-    # # '2022-11-29_16',
     # '2022-11-29_17',
     # '2022-11-29_19',
     # '2022-11-29_21',
-    '2022-11-29_22',
+    # '2022-11-29_22',
+    # '2022-11-30_11',
+    # '2022-11-30_20',
     # '2022-11-30_13',
-    '2022-11-17_17'
+    # '2022-11-30_17',
+    # '2022-12-01_02',
+    # '2022-11-30_22',
+    # '2022-12-01_00',
+    '2022-11-30_01'
     ]
 
 display_keys = [
@@ -113,7 +102,7 @@ def write_trainings_csv():
             
 
 
-def create_overview_plot(train_dates, val_set, display_keys):
+def create_overview_plot(train_dates, val_set, display_keys, plot_metrics=True):
     
     df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
     df.index = df['training_date']
@@ -155,17 +144,26 @@ def create_overview_plot(train_dates, val_set, display_keys):
     model_class = list(map(lambda x: getattr(models, x), model_name))
 
     time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
-    fig = plt.figure(constrained_layout=True, figsize=(15, 15))
-    subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
-
-    plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
+    
+    if plot_metrics:
+        fig = plt.figure(constrained_layout=True, figsize=(15, 15))
+        subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
+        plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
+        eval_fig = subfigs[1]
+    else:
+        fig = plt.figure(constrained_layout=True, figsize=(5, 5))
+        eval_fig = fig
+        display_keys = ['keras_mod_name']
+        table_df=df.loc[train_dates, display_keys]
+        table_df.iloc[-1] = 'GoogleModel'
+        # titles = [t[0] for t in table_df.values]
+        titles = [f'config {i}' for i in range(1, 9)]
     plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
-                            table_df=df.loc[train_dates, display_keys],
-                            fig = subfigs[1], plot_pr=True, plot_cm=True, 
-                            train_dates=train_dates, label=None, 
+                            fig = eval_fig, plot_pr=False, plot_cm=True, titles=titles,
+                            train_dates=train_dates, label=None, legend=False, 
                             keras_mod_name=keras_mod_name)
 
-    fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png')
+    fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png', dpi=150)
 
 def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwargs):
     training_run = Path(f'../trainings/{train_date}').glob('unfreeze*')
@@ -195,13 +193,41 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
     plot_sample_spectrograms(fp, dir = train_date,
                     name=f'False_Positive', plot_meta=True, **kwargs)
    
-    
+def create_table():
+    time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
+    df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
+    df.index = df['training_date']
+    # display_keys = ['bool_SpecAug', 'bool_time_shift', 'bool_MixUps']
+    # col_labels = ['Spec Aug', 'time shift', 'MixUp']
+    display_keys = ['keras_mod_name']
+    col_labels = ['model name']
+    table_df=df.loc[train_dates, display_keys]
+    table_df.iloc[-1] = 'GoogleModel'
+    f, ax_tb = plt.subplots()
+    bbox = [0, 0, 1, 1]
+    ax_tb.axis('off')
+    font_size = 20
+    import seaborn as sns
+    color = list(sns.color_palette())
+    mpl_table = ax_tb.table(cellText=table_df.values, rowLabels=['     ']*len(table_df), 
+                        bbox=bbox, colLabels=col_labels,
+                        rowColours = color)
+    mpl_table.auto_set_font_size(False)
+    mpl_table.set_fontsize(font_size)
+    f.tight_layout()
+    f.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_table.png', dpi=150)
 
 # create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
 # for path in tfrec_path:
-write_trainings_csv()
+# write_trainings_csv()
     # try:
-# plot_model_results(train_dates)
-create_overview_plot(train_dates, tfrec_path, display_keys)
+# df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
+# string = str('bool_SpecAug:{}; ' 'bool_time_shift:{}; ' 'bool_MixUps:{}; ')
+# labels = [string.format(*df.loc[df['training_date'] == d, 
+#             ['bool_SpecAug', 'bool_time_shift', 'bool_MixUps']].values[0]) for d in train_dates]
+# plot_model_results(train_dates, legend=False)
+# create_table()
+create_overview_plot(train_dates, tfrec_path, display_keys, plot_metrics=False)
     # except:
+    #     print(path, 'not working')
     #     continue

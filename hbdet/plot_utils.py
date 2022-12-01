@@ -11,8 +11,16 @@ from . import global_config as conf
 from . import funcs
 from . import tfrec
 import tensorflow as tf
-
+drop_keyz = {'fbeta', 'val_fbeta'}
+sns.set_theme()
+sns.set_style('white')
+# sns.despine(fig=None, ax=None, top=False, right=False, left=False, bottom=False, offset=None, trim=False)
 def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
+    
+    plt.rc('axes', labelsize=20)
+    plt.rc('axes', titlesize=20)
+    plt.rc('xtick', labelsize=14)
+    plt.rc('ytick', labelsize=14)
     if fig == None:
         fig = plt.figure(figsize=(15, 8))
         savefig = True
@@ -28,7 +36,7 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
         checkpoint_paths += list(Path(f"../trainings/{datetime}")
                                  .glob('unfreeze_*'))
         
-    r, c = 2, 6
+    r, c = 2, 5
     for j, checkpoint_path in enumerate(checkpoint_paths):
         unfreeze = checkpoint_path.stem.split('_')[-1]
 
@@ -38,6 +46,8 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
             continue
         with open(f"{checkpoint_path}/results.json", 'r') as f:
             results = json.load(f)
+            for k in drop_keyz:
+                del results[k]
         
         if j == 0:
             c = len(list(results.keys()))//2
@@ -53,19 +63,19 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
                 row = 1
             else:
                 row = 0
-            if 'loss' in key:
+            if 'loss' in key or i == 0:
                 col = 0
             else:
                 col += 1
                 
             ax[row, col].plot(results[key], label = label)
             if not col == 0:
-                ax[row, col].set_ylim([.5, 1.01])
+                ax[row, col].set_ylim([.7, 1.01])
             
             # axis handling depending on subplot index
             if row == 1 and col == 0:
-                ax[row, col].set_ylim([0, 1.5])
-            if row == 0:
+                ax[row, col].set_ylim([0, 1.01])
+            if row == 0 and j == 0:
                 ax[row, col].set_title(f'{key}')
             if row == col == 0:
                 ax[row, col].set_ylim([0, .5])
@@ -81,9 +91,9 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
         info_string += f' | {key}: {val}'
     
     today = time.ctime()
-    fig.suptitle(f'Model Results{info_string}'
-                '\n'
-                f'{today}')
+    # fig.suptitle(f'Model Results{info_string}'
+    #             '\n'
+    #             f'{today}')
     ref_time = time.strftime('%Y%m%d', time.gmtime())
     if savefig:
         fig.tight_layout()
@@ -204,7 +214,7 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
 # plot_confusion_matrix(cm, classes=config['classes'], normalize=False, title='Confusion matrix', cmap=plt.cm.Blues)
     
     
-def plot_conf_matr(labels, preds, ax, training_run, iteration, **kwargs):
+def plot_conf_matr(labels, preds, ax, iteration, title, **kwargs):
     bin_preds = list(map(lambda x: 1 if x >= conf.THRESH else 0, preds))
     heat = tf.math.confusion_matrix(labels, bin_preds).numpy()
     rearrange = lambda x:  np.array([[x[1, 1], x[1, 0]], 
@@ -225,12 +235,11 @@ def plot_conf_matr(labels, preds, ax, training_run, iteration, **kwargs):
                      cbar=False, ax=ax, xticklabels=False, yticklabels=False)
     ax.set_yticks([0.5, 1.5], labels=['TP', 'TN'])
     ax.set_xticks([1.5, 0.5], labels=['pred. N', 'pred.P'])
-    color = list(mcolors.TABLEAU_COLORS.keys())[iteration]
-    ax.set_title(Path(training_run).parent.stem 
-                 + Path(training_run).stem.split('_')[-1], color=color)
+    color = list(sns.color_palette())[iteration]
+    ax.set_title(title, color=color)
     return ax
 
-def plot_pr_curve(labels, preds, ax, training_path, iteration=0, **kwargs):
+def plot_pr_curve(labels, preds, ax, training_path, iteration=0, legend=True, **kwargs):
     m = dict()
     for met in ('Recall', 'Precision'):
         threshs = list(np.linspace(0, 1, num=200)[:-1])
@@ -258,18 +267,20 @@ def plot_pr_curve(labels, preds, ax, training_path, iteration=0, **kwargs):
     ax.set_xlabel('recall')
     ax.set_ylim([0.5, 1])
     ax.set_xlim([0.7, 1])
-    ax.legend()
+    if legend:
+        ax.legend()
     ax.grid(True)
     ax.set_title('Precision and Recall Curves')
     return ax
     
 def plot_evaluation_metric(model_instance, training_runs, val_data, 
                            fig, plot_pr=True, plot_cm=False, 
-                           plot_untrained=False, legend=False,
+                           plot_untrained=False, titles=None, 
                            keras_mod_name=False, 
                            **kwargs):
     r = plot_cm+plot_pr
     c = len(training_runs)
+    if c < 2: c = 2
     gs = GridSpec(r, c, figure=fig)
     if plot_pr:
         ax_pr = fig.add_subplot(gs[0, :])
@@ -279,13 +290,17 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
             model_instance = [model_instance]
         if not isinstance(keras_mod_name, list):
             keras_mod_name = [keras_mod_name]
+        if not isinstance(titles, list):
+            title = Path(run).parent.stem + Path(run).stem.split('_')[-1]
+        else:
+            title = titles[i]
         labels, preds = funcs.get_labels_and_preds(model_instance[i], run, 
                                                    val_data, 
                                                    keras_mod_name=keras_mod_name[i],
                                                    **kwargs)            
         if not plot_pr:
             plot_conf_matr(labels, preds, fig.add_subplot(gs[-1, i]), 
-                           run, iteration=i)
+                           title=title, iteration=i)
         else:
             ax_pr = plot_pr_curve(labels, preds, 
                                   ax_pr, run, iteration=i, **kwargs)
@@ -295,25 +310,11 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
                                 **kwargs)
             if plot_cm:
                 plot_conf_matr(labels, preds, fig.add_subplot(gs[-1, i]), 
-                               run, iteration=i)
+                               title=title, iteration=i)
             
         print('creating pr curve for ', run.stem)
-    f = plt.figure()
-    a1 = f.add_subplot(121)
-    a1.plot([1, 2, 3, 4, 5, 6])
-    a2 = f.add_subplot(122)
-    font_size = 14
-    bbox = [0, 0, 1, 1]
-    a2.axis('off')
-    mpl_table = a2.table(cellText=d.values, rowLabels=d.index, 
-                         bbox=bbox, colLabels=d.columns,
-                         rowColours = color[:3])
-    # mpl_table.auto_set_font_size(False)
-    # mpl_table.set_fontsize(font_size)
-    color = list(mcolors.TABLEAU_COLORS.keys())
     
-    f.show()
-    if legend:
+    if 'legend' in kwargs and kwargs['legend']:
         ax_pr.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     return fig
     

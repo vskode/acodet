@@ -17,6 +17,7 @@ class MetaData:
         self.avg_pred_col = 'average prediction value'
         self.n_pred08_col = 'number of predictions with thresh>0.8'
         self.n_pred09_col =  'number of predictions with thresh>0.9'
+        self.time_per_file = 'computing time [s]'
         self.df = pd.DataFrame(columns=[self.filename, 
                                         self.f_dt, 
                                         self.n_pred_col, 
@@ -25,7 +26,8 @@ class MetaData:
                                         self.n_pred09_col])
         
     def append_and_save_meta_file(self, file, annot, f_ind, time_start,
-                                  relativ_path = conf.SOUND_FILES_SOURCE):
+                                  relativ_path = conf.SOUND_FILES_SOURCE,
+                                  computing_time = 'not calculated'):
         self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
         self.df.loc[f_ind, self.filename] = Path(file).relative_to(
                                                         relativ_path)
@@ -36,11 +38,11 @@ class MetaData:
                                                 conf.ANNOTATION_COLUMN]>0.8])
         self.df.loc[f_ind, self.n_pred09_col] = len(df_clean.loc[df_clean[
                                                 conf.ANNOTATION_COLUMN]>0.9])
+        self.df.loc[f_ind, self.time_per_file] = computing_time
         self.df.to_csv(f'../generated_annotations/{time_start}/stats.csv')
     
-def main():
-    time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
-    train_date = '2022-11-30_01'
+def main(train_date):
+    time_start = time.strftime('%Y-%m-%d_%H_%M', time.gmtime())
     files = get_files(location=conf.SOUND_FILES_SOURCE,
                       search_str='**/*wav')
     # files = get_files(location='/media/vincent/Extreme SSD/MA/for_manual_annotation/src_to_be_annotated/resampled_2kHz',
@@ -59,9 +61,12 @@ def main():
     for i, file in enumerate(files):    
         try:
             f_ind += 1
+            start = time.time()
             annot = gen_annotations(file, model, mod_label=train_date, 
                                  time_start=time_start)
-            mdf.append_and_save_meta_file(file, annot, f_ind, time_start)
+            computing_time = time.time() - start
+            mdf.append_and_save_meta_file(file, annot, f_ind, time_start,
+                                          computing_time=computing_time)
 
         except Exception as e:
             print(f"{file} couldn't be loaded, continuing with next file.\n", e)
@@ -78,8 +83,20 @@ def generate_stats():
                                         Path(conf.ANNOTATION_SOURCE).stem,
                                         relativ_path=conf.ANNOTATION_SOURCE)
 
+train_dates = [    
+    # '2022-11-30_11',
+    # '2022-12-01_02',
+    # '2022-11-30_22',
+    # '2022-11-30_01',
+    # '2022-11-29_17',
+    # '2022-11-29_19',
+    # '2022-11-29_21',
+    # '2022-11-29_22'
+    '2022-11-30_01'
+    ]
 
-start = time.time()
-main()
-end = time.time()
-print(end-start)
+for train_date in train_dates:
+    start = time.time()
+    main(train_date)
+    end = time.time()
+    print(end-start)
