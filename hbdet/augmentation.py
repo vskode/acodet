@@ -140,7 +140,6 @@ def run_augment_pipeline(ds, noise_data, noise_set_size,
             dss = tf.data.Dataset.zip((ds, ds_n))
             ds_mu = dss.map(lambda x, y: m_test(x, y),
                             num_parallel_calls=AUTOTUNE)
-            ds_mu_n = ds_mu.concatenate(noise_data)
             plot_sample_spectrograms(ds_mu, dir = time_start,
                                 name=f'augment_0-MixUp', seed=seed, 
                                 ds_size=train_set_size, **kwargs)

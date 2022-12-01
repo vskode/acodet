@@ -199,6 +199,7 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
 # for path in tfrec_path:
 write_trainings_csv()
     # try:
+plot_model_results(train_dates)
 create_overview_plot(train_dates, tfrec_path, display_keys)
     # except:
     #     continue

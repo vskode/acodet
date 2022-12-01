@@ -298,7 +298,8 @@ def prepare_sample(features, return_meta=False, **kwargs):
     if not return_meta:
         return features["audio"], features["label"]
     else:
-        return features["audio"], features["label"], features["file"], features["time"]
+        return (features["audio"], features["label"], 
+                features["file"], features["time"])
 
 def get_dataset(filenames, AUTOTUNE=None, **kwargs):
     dataset = (
@@ -308,7 +309,8 @@ def get_dataset(filenames, AUTOTUNE=None, **kwargs):
     )
     return dataset
 
-def run_data_pipeline(root_dir, data_dir, AUTOTUNE=None, return_spec=True, **kwargs):
+def run_data_pipeline(root_dir, data_dir, 
+                      AUTOTUNE=None, return_spec=True, **kwargs):
     if not isinstance(root_dir, list):
         root_dir = [root_dir]
     files = []
@@ -345,5 +347,5 @@ def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750,
 
 def make_spec_tensor(ds, AUTOTUNE=None):
     ds = ds.batch(1)
-    ds = ds.map(lambda x, y: (spec()(x), y), num_parallel_calls=AUTOTUNE)
+    ds = ds.map(lambda x, *y: (spec()(x), *y), num_parallel_calls=AUTOTUNE)
     return ds.unbatch()
