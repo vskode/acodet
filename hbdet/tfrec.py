@@ -135,16 +135,6 @@ def read_raw_file(file, annots, **kwargs):
     y_noise = np.zeros(len(x_noise), dtype = 'float32')
     
     return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
-
-# def write_tfrecs_for_mixup(file):
-#     noise, t = funcs.return_windowed_file(file)
-#     noise_tups = list(zip(noise, [0]*len(t), [file]*len(t), t))
-#     random.shuffle(noise_tups)
-    
-#     writer = get_tfrecords_writer(1, 'noise', save_dir)
-#     for audio, label, file, time in noise_tups:
-#         examples = create_example(audio, label, file, time)
-#         writer.write(examples.SerializeToString())
                 
 def write_tfrecords(annots, save_dir, 
                     inbetween_noise=True, 

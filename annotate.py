@@ -1,7 +1,7 @@
 import time
 from hbdet import models
 from hbdet.funcs import (get_files, gen_annotations, 
-                         init_model, get_dt_filename, 
+                         get_dt_filename, 
                          remove_str_flags_from_predictions)
 from hbdet import global_config as conf
 import pandas as pd
@@ -41,21 +41,23 @@ class MetaData:
         self.df.loc[f_ind, self.time_per_file] = computing_time
         self.df.to_csv(f'../generated_annotations/{time_start}/stats.csv')
     
-def main(train_date):
+def run_annotation(train_date=None):
     time_start = time.strftime('%Y-%m-%d_%H_%M', time.gmtime())
     files = get_files(location=conf.SOUND_FILES_SOURCE,
                       search_str='**/*wav')
-    # files = get_files(location='/media/vincent/Extreme SSD/MA/for_manual_annotation/src_to_be_annotated/resampled_2kHz',
-    #                   search_str='**/*wav')
-    df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
-    row = df.loc[df['training_date'] == train_date]
-    model_name = row.Model.values[0]
-    keras_mod_name = row.keras_mod_name.values[0]
-    model_class = getattr(models, model_name)
     
-    model = init_model(model_class, 
-                       f'../trainings/{train_date}/unfreeze_no-TF', 
-                       keras_mod_name=keras_mod_name)
+    if not train_date:
+            model = models.init_model()
+    else:
+        df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
+        row = df.loc[df['training_date'] == train_date]
+        model_name = row.Model.values[0]
+        keras_mod_name = row.keras_mod_name.values[0]
+        model_class = getattr(models, model_name)
+        
+        model = models.init_model(model_instance=model_class, 
+                        checkpoint_dir=f'../trainings/{train_date}/unfreeze_no-TF', 
+                        keras_mod_name=keras_mod_name)
     mdf = MetaData()
     f_ind = 0
     for i, file in enumerate(files):    
@@ -83,20 +85,21 @@ def generate_stats():
                                         Path(conf.ANNOTATION_SOURCE).stem,
                                         relativ_path=conf.ANNOTATION_SOURCE)
 
-train_dates = [    
-    # '2022-11-30_11',
-    # '2022-12-01_02',
-    # '2022-11-30_22',
-    # '2022-11-30_01',
-    # '2022-11-29_17',
-    # '2022-11-29_19',
-    # '2022-11-29_21',
-    # '2022-11-29_22'
-    '2022-11-30_01'
-    ]
+if __name__ == '__main__':
+    train_dates = [    
+        # '2022-11-30_11',
+        # '2022-12-01_02',
+        # '2022-11-30_22',
+        # '2022-11-30_01',
+        # '2022-11-29_17',
+        # '2022-11-29_19',
+        # '2022-11-29_21',
+        # '2022-11-29_22'
+        '2022-11-30_01'
+        ]
 
-for train_date in train_dates:
-    start = time.time()
-    main(train_date)
-    end = time.time()
-    print(end-start)
+    for train_date in train_dates:
+        start = time.time()
+        run_annotation(train_date)
+        end = time.time()
+        print(end-start)

@@ -1,12 +1,60 @@
 import tensorflow as tf
 from pathlib import Path
+import zipfile
 
 from . import global_config as conf
 from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
 
-class GoogleMod():
+class ModelHelper:
+    def load_model(self):
+        if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
+            for model_path in Path(conf.MODEL_DIR).iterdir():
+                if not model_path.suffix == '.zip':
+                    continue
+                else:
+                    with zipfile.ZipFile(model_path, 'r') as model_zip:
+                        model_zip.extractall(conf.MODEL_DIR)
+        self.model = tf.keras.models.load_model(Path(conf.MODEL_DIR)
+                                   .joinpath(conf.MODEL_NAME))
+    
+    def load_ckpt(self, ckpt_path, ckpt_name='last'):
+        try:
+            file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
+            if not file_path.exists():
+                ckpts = list(Path(ckpt_path).glob('cp-*.index'))
+                ckpts.sort()
+                ckpt = ckpts[-1]
+            else:
+                ckpt = file_path
+            self.model.load_weights(
+                str(ckpt).replace('.index', '')
+                ).expect_partial()
+        except Exception as e:
+            print('Checkpoint not found.', e)
+
+    def change_input_to_array(self):
+        """
+        change input layers of model after loading checkpoint so that a file
+        can be predicted based on arrays rather than spectrograms, i.e.
+        reintegrate the spectrogram creation into the model. 
+
+        Args:
+            model (tf.keras.Sequential): keras model
+
+        Returns:
+            tf.keras.Sequential: model with new arrays as inputs
+        """
+        model_list = self.model.layers
+        model_list.insert(0, tf.keras.layers.Input([conf.CONTEXT_WIN]))
+        model_list.insert(1, tf.keras.layers.Lambda(
+                            lambda t: tf.expand_dims(t, -1)))
+        model_list.insert(2, front_end.MelSpectrogram())
+        self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
+
+
+class ResNET50(ModelHelper):
     def __init__(self, **params) -> None:
         """
         This class is the framework to load and flatten the model created
@@ -31,7 +79,7 @@ class GoogleMod():
         """
         self.model = humpback_model.Model()
         if load_g_ckpt:
-            self.model.load_weights('../models/google_humpback_model')
+            self.model.load_from_tf_hub()
 
     def load_flat_model(self, input_tensors='spectrograms', **_):
         """
@@ -90,80 +138,8 @@ class GoogleMod():
         # generate new model
         self.model = tf.keras.Sequential(
             layers=[layer for layer in model_list])
-        
-    def load_ckpt(self, ckpt_path, ckpt_name='last'):
-        try:
-            file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
-            if not file_path.exists():
-                ckpts = list(Path(ckpt_path).glob('cp-*.index'))
-                ckpts.sort()
-                ckpt = ckpts[-1]
-            else:
-                ckpt = file_path
-            self.model.load_weights(
-                str(ckpt).replace('.index', '')
-                ).expect_partial()
-            print('Checkpoint successfully loaded.')
-        except Exception as e:
-            print('Checkpoint not found.', e)
 
-    def change_input_to_array(self):
-        """
-        change input layers of model after loading checkpoint so that a file
-        can be predicted based on arrays rather than spectrograms, i.e.
-        reintegrate the spectrogram creation into the model. 
-
-        Args:
-            model (tf.keras.Sequential): keras model
-
-        Returns:
-            tf.keras.Sequential: model with new arrays as inputs
-        """
-        model_list = self.model.layers
-        model_list.insert(0, tf.keras.layers.Input([conf.CONTEXT_WIN]))
-        model_list.insert(1, tf.keras.layers.Lambda(
-                            lambda t: tf.expand_dims(t, -1)))
-        model_list.insert(2, front_end.MelSpectrogram())
-        self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
-
-class ModelHelper:
-    def load_ckpt(self, ckpt_path, ckpt_name='last'):
-        try:
-            file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
-            if not file_path.exists():
-                ckpts = list(Path(ckpt_path).glob('cp-*.index'))
-                ckpts.sort()
-                ckpt = ckpts[-1]
-            else:
-                ckpt = file_path
-            self.model.load_weights(
-                str(ckpt).replace('.index', '')
-                ).expect_partial()
-        except Exception as e:
-            print('Checkpoint not found.', e)
-
-    def change_input_to_array(self):
-        """
-        change input layers of model after loading checkpoint so that a file
-        can be predicted based on arrays rather than spectrograms, i.e.
-        reintegrate the spectrogram creation into the model. 
-
-        Args:
-            model (tf.keras.Sequential): keras model
-
-        Returns:
-            tf.keras.Sequential: model with new arrays as inputs
-        """
-        model_list = self.model.layers
-        model_list.insert(0, tf.keras.layers.Input([conf.CONTEXT_WIN]))
-        model_list.insert(1, tf.keras.layers.Lambda(
-                            lambda t: tf.expand_dims(t, -1)))
-        model_list.insert(2, front_end.MelSpectrogram())
-        self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
-
-
-
-class EffNet(ModelHelper):
+class KerasAppModel(ModelHelper):
     def __init__(self, keras_mod_name='EfficientNetB0', **params) -> None:
         keras_model = getattr(tf.keras.applications, keras_mod_name)(
                 include_top=True,
@@ -192,3 +168,34 @@ class EffNet(ModelHelper):
                 [1 for _ in range(3)] + [3])),
             keras_model
         ])
+        
+
+def init_model(model_instance: type =ModelHelper, 
+               checkpoint_dir: str =None, 
+               input_specs=False, **kwargs) -> tf.keras.Sequential:
+    """
+    Initiate model instance, load weights. As the model is trained on 
+    spectrogram tensors but will now be used for inference on audio files
+    containing continuous audio arrays, the input shape of the model is 
+    changed after the model weights have been loaded. 
+
+    Parameters
+    ----------
+    model_instance : type
+        callable class to create model object
+    checkpoint_dir : str
+        checkpoint path
+
+    Returns
+    -------
+    tf.keras.Sequential
+        the sequential model with pretrained weights
+    """
+    mod_obj = model_instance(**kwargs)
+    if model_instance == ModelHelper:
+        mod_obj.load_model()
+    else:
+        mod_obj.load_ckpt(checkpoint_dir)
+    if not input_specs:
+        mod_obj.change_input_to_array()
+    return mod_obj.model

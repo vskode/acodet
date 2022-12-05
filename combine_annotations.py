@@ -184,7 +184,7 @@ def get_active_learning_files(files):
                                     [True for d in drop_cases if d in f.stem]]
     return final_cleanup
 
-def main(annotation_files, active_learning=False, **kwargs):
+def generate_final_annotations(annotation_files, active_learning=False, **kwargs):
     files = list(annotation_files)
     if active_learning:
         files = get_active_learning_files(files)
@@ -220,4 +220,4 @@ def main(annotation_files, active_learning=False, **kwargs):
     # save_ket_annot_only_existing_paths(df)
     
 if __name__ == '__main__':
-    main(annotation_files, active_learning=True, freq_time_crit=False)
+    generate_final_annotations(annotation_files, active_learning=True, freq_time_crit=False)

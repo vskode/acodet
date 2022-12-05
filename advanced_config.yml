@@ -47,3 +47,25 @@ annotation_df_fmax: 1000
 # dataset destination directory - save tfrecord dataset to this directory 
 # only change when really necessary
 tfrecords_destination_folder: '../Data/Datasets'
+
+model_name: 'Humpback_20221130'
+
+#######################  TRAINING  ###########################################
+
+ModelClassName: ResNET50 
+batch_size: 32
+epochs: 100
+load_ckpt_path: False
+load_g_ckpt: False
+keras_mod_name: False
+steps_per_epoch: 1000
+time_augs: True 
+mixup_augs: True
+spec_aug: True
+data_description: 'describe your dataset'
+init_lr: 5e-4
+final_lr: 5e-6
+pre_blocks: 9
+f_score_beta: 0.5
+f_score_thresh: 0.5
+unfreeze: False

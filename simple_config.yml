@@ -36,3 +36,18 @@ annotation_destination: '../combined_annotations/2022-11-27_02'
 # source path for your sound files (top most directory)
 sound_files_source: '/mnt/c/Documents and Settings/sa01vk/Documents/SAMOSAS/N1_2kHz_March-April'
 # sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
+
+
+###################### configure run #########################################
+
+# what would you like to do?
+# chose: 
+#     - 1 for annotate
+#     - 2 process annotations with other threshold
+#     - 3 generate train dataset from annotations
+#     - 4 for train (and evaluate)
+#     - 5 for evaluate
+
+run_config: 4
+
+plot: True

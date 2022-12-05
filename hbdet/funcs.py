@@ -1,5 +1,6 @@
 from email import generator
 import re
+import zipfile
 import datetime as dt
 import json
 import tensorflow as tf
@@ -364,33 +365,6 @@ def get_val_labels(val_data: tf.data.Dataset,
 
 ############### Model Evaluation helpers ####################################
 
-def init_model(model_instance: type, 
-               checkpoint_dir: str, 
-               input_specs=False, **kwargs) -> tf.keras.Sequential:
-    """
-    Initiate model instance, load weights. As the model is trained on 
-    spectrogram tensors but will now be used for inference on audio files
-    containing continuous audio arrays, the input shape of the model is 
-    changed after the model weights have been loaded. 
-
-    Parameters
-    ----------
-    model_instance : type
-        callable class to create model object
-    checkpoint_dir : str
-        checkpoint path
-
-    Returns
-    -------
-    tf.keras.Sequential
-        the sequential model with pretrained weights
-    """
-    mod_obj = model_instance(**kwargs)
-    mod_obj.load_ckpt(checkpoint_dir)
-    if not input_specs:
-        mod_obj.change_input_to_array()
-    return mod_obj.model
-
 def print_evaluation(val_data: tf.data.Dataset, 
                      model: tf.keras.Sequential, 
                      batch_size: int):
@@ -456,7 +430,8 @@ def get_labels_and_preds(model_instance: type,
     preds: mp.ndarray
         predictions
     """
-    model = init_model(model_instance, training_path, **kwArgs)
+    model = init_model(load_from_ckpt=True, model_instance=model_instance, 
+                       training_path=training_path, **kwArgs)
     preds = model.predict(x = val_data.batch(batch_size=32))
     labels = get_val_labels(val_data, len(preds))
     return labels, preds

@@ -74,6 +74,8 @@ ANNOTATION_SOURCE = simple['annotation_source']
 SOUND_FILES_SOURCE = simple['sound_files_source']
 # model directory
 MODEL_DIR = 'hbdet/files/models'
+# model name
+MODEL_NAME = advanced['model_name']
 
 #############  ANNOTATIONS  #####################################
 ANNOTATION_DF_FMIN = advanced['annotation_df_fmin']
@@ -81,3 +83,27 @@ ANNOTATION_DF_FMAX = advanced['annotation_df_fmax']
 ## Column Names
 # column name for annotation prediction values
 ANNOTATION_COLUMN = 'Prediction/Comments'
+
+
+#################### RUN CONFIGURATION  ######################################
+RUN_CONFIG = simple['run_config']
+
+#################### TRAINING CONFIG  ########################################
+
+MODELCLASSNAME = advanced['ModelClassName']
+BATCH_SIZE = advanced['batch_size']
+EPOCHS = advanced['epochs']
+LOAD_CKPT_PATH = advanced['load_ckpt_path']
+LOAD_G_CKPT = advanced['load_g_ckpt']
+KERAS_MOD_NAME = advanced['keras_mod_name']
+STEPS_PER_EPOCH = advanced['steps_per_epoch']
+TIME_AUGS = advanced['time_augs']
+MIXUP_AUGS = advanced['mixup_augs']
+SPEC_AUG = advanced['spec_aug']
+DATA_DESCRIPTION = advanced['data_description']
+INIT_LR = float(advanced['init_lr'])
+FINAL_LR = float(advanced['final_lr'])
+PRE_BLOCKS = advanced['pre_blocks']
+F_SCORE_BETA = advanced['f_score_beta']
+F_SCORE_THRESH = advanced['f_score_thresh']
+UNFREEZE = advanced['unfreeze']
