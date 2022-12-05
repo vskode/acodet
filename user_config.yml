@@ -20,9 +20,11 @@
 ## Model Parameters
 # threshold for predictions
 thresh: 0.5
+# number of predictions that get computed at once - should be in [20, 2000]
+# worth testing out different values to find whats fastest for your machine
+PRED_WIN_LIM: 1000
 
 ## Paths
-
 # source path for your annotations
 #   -> might be easier to just copy annotation files to default location
 annotation_source: '../generated_annotations/2022-11-27_02'

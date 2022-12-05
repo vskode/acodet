@@ -1,8 +1,6 @@
 import tensorflow as tf
 from keras_cv.layers import BaseImageAugmentationLayer
 from hbdet.plot_utils import plot_sample_spectrograms
-import numpy as np
-import yaml
 import tensorflow_io as tfio
 
 AUTOTUNE = tf.data.AUTOTUNE    
@@ -46,65 +44,14 @@ class CropAndFill(BaseImageAugmentationLayer):
                                 dtype=tf.int32)
         
         # for debugging purposes
-        # tf.print('time shift augmentation computed, val: ', beg)
+        # tf.print('time shift augmentation computed)
             
         return tf.roll(audio, shift=[beg], axis=[0])
     
-class MixCallAndNoise(BaseImageAugmentationLayer):
-    def __init__(self, noise_data: tf.data.Dataset, 
-                 noise_set_size: int, 
-                 seed: int=None, 
-                 alpha: float=0.2, 
-                 epochs: int=32, 
-                 **kwargs) -> None:
-        super().__init__()
-        self.seed = seed
-        self.alpha = alpha
-        self.noise_ds = noise_data
-        self.len = noise_set_size - 1 
-        self.epochs = epochs
-        
-        np.random.seed(self.seed)
-        
-        self.noise_ds = self.noise_ds.shuffle(self.len)
-        self.noise_ds = self.noise_ds.take(self.epochs)
-        
-        # self.noise_list = list(self.noise_ds)
-        # self.noise_audio = []
-        # for _ in range(epochs):
-        #     self.noise_audio.append(next(iter(self.noise_ds
-        #                                 .take(1)))[0])
-        self.noise_mixup = next(iter(self.noise_ds))[0]
-        
-    def call(self, train_sample: tf.Tensor):
-        # r = tf.random.uniform(shape = [], maxval=len(self.noise_list), 
-        #                         dtype=tf.int32)
-        # noise_mixup = next(iter(self.noise_ds))[0]
-        # tf.print(dir(r))
-        # noise_mixup = self.noise_list[self.index][0]
-        # self.index += 1
-        noise_mixup = self.noise_mixup
-        noise_alpha = self.alpha / tf.math.reduce_max(noise_mixup)
-        train_alpha = (1-self.alpha) / tf.math.reduce_max(train_sample) 
-        # tf.print(noise_mixup.shape, train_sample.shape)
-        return train_sample*train_alpha + noise_mixup*noise_alpha
-    
-    
-##############################################################################
-##############################################################################
-##############################################################################
 
 def time_shift():
     return tf.keras.Sequential([CropAndFill(64, 128)])
 
-def mix_up(noise_data, noise_set_size):
-    return tf.keras.Sequential([MixCallAndNoise(noise_set_size=noise_set_size,
-                                                noise_data=noise_data)])
-
-def augment(ds, aug_func=time_shift):
-    return ds.map(lambda x, y: (aug_func(x, training=True), y), 
-                num_parallel_calls=AUTOTUNE)  
-    
 def m_test(ds1, ds2, alpha=0.4):
     call, lab = ds1
     noise, l = ds2
@@ -121,6 +68,10 @@ def freq_mask(x, y, spec_param=10):
     # tf.print('performing freq_mask')
     return (tfio.audio.freq_mask(x, param=spec_param), y)
 
+##############################################################################
+##############################################################################
+##############################################################################
+
 def run_augment_pipeline(ds, noise_data, noise_set_size,
                          train_set_size, time_augs, mixup_augs,
                          seed=None, plot=False, time_start=None, 
@@ -129,6 +80,7 @@ def run_augment_pipeline(ds, noise_data, noise_set_size,
     if plot:
         plot_sample_spectrograms(ds, dir = time_start, name = 'train', 
                             seed=seed, ds_size=train_set_size, **kwargs)
+        
     if mixup_augs:
         ds_n = (noise_data.repeat(train_set_size//noise_set_size + 1))
         if plot:

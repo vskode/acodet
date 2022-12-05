@@ -203,6 +203,26 @@ def run_training(ModelClassName=ModelClassName,
                             plot_cm=True, data = data_description, 
                             keras_mod_name=keras_mod_name)
 
+def save_model(string, model, lr=5e-4, weight_clip=None, f_score_beta=0.5, 
+               f_score_thresh=0.5):
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
+        loss=tf.keras.losses.BinaryCrossentropy(),
+        metrics = [tf.keras.metrics.BinaryAccuracy(),
+                    tf.keras.metrics.Precision(),
+                    tf.keras.metrics.Recall(),
+                    tfa.metrics.FBetaScore(num_classes=1,
+                                            beta=f_score_beta,
+                                            threshold=f_score_thresh,
+                                            name='fbeta'),                               
+                    tfa.metrics.FBetaScore(num_classes=1,
+                                            beta=1.,
+                                            threshold=f_score_thresh,
+                                            name='fbeta1'),       
+        ]
+    )
+    model.save(f'hbdet/files/models/{string}')
+
 if __name__ == '__main__':
     for i in range(len(time_augs)):
         run_training(batch_size=batch_size[i],

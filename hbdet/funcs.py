@@ -102,12 +102,13 @@ def load_audio(file, **kwargs) -> np.ndarray:
         audio array
     """
     try:
-        if conf.SR == conf.DOWNSAMPLE_SR:
-            audio_flat, _ = lb.load(file, sr = conf.DOWNSAMPLE_SR, **kwargs)
-        else:
+        if conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
             audio_flat, _ = lb.load(file, sr = conf.DOWNSAMPLE_SR, **kwargs)
             audio_flat = lb.resample(audio_flat, orig_sr = conf.DOWNSAMPLE_SR, 
                                     target_sr = conf.SR)
+        else:
+            audio_flat, _ = lb.load(file, sr = conf.SR, **kwargs)
+            
         if len(audio_flat) == 0: return
         return audio_flat
     except:
@@ -544,8 +545,8 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     df['Begin Time (s)'] += (ind*conf.PRED_BATCH_SIZE)/conf.SR
     df['End Time (s)'] += (ind*conf.PRED_BATCH_SIZE)/conf.SR
     
-    df['High Freq (Hz)'] = conf.FMAX
-    df['Low Freq (Hz)'] = conf.FMIN
+    df['High Freq (Hz)'] = conf.ANNOTATION_DF_FMAX
+    df['Low Freq (Hz)'] = conf.ANNOTATION_DF_FMIN
     df[conf.ANNOTATION_COLUMN] = preds
 
     return df.iloc[preds.reshape([len(preds)]) > conf.THRESH]

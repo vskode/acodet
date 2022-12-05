@@ -1,0 +1,49 @@
+##############################################################################
+
+# THIS FILE IS ONLY MEANT TO BE EDITED IF YOU ARE SURE!
+
+# PROGRAM FAILURE IS LIKELY TO OCCUR IF YOU ARE UNSURE OF THE
+# CONSEQUENCES OF YOUR CHANGES.
+
+# IF YOU HAVE CHANGED VALUES AND ARE ENCOUNTERING ERRORS, 
+# STASH YOUR CHANGES ('git stash' in a git bash console in hbdet directory)
+
+##############################################################################
+    
+
+####################  AUDIO PROCESSING PARAMETERS  ###########################
+#!!! CHANGING THESE PARAMETERS WILL RESULT IN MODEL FAILURE, ONLY TO      !!!#
+#!!! BE CHANGED FOR TRAINING OF NEW MODEL ESPECIALY FOR DIFFERENT SPECIES !!!#
+## Global audio processing parameters
+# sample rate
+sample_rate: 2000
+# length of context window in seconds 
+# this is the audio segment length that the model is trained on
+context_window_in_seconds: 3.9
+
+## Mel-Spectrogram parameters
+# FFT window length
+stft_frame_len: 1024
+# number of fft bins for mel spectrogram
+number_of_frequency_bins: 128
+
+
+###################  TFRECORD CREATION PARAMETERS  ###########################
+## Settings for Creation of Tfrecord Dataset
+# limit of context windows in a tfrecords file
+tfrecs_limit_per_file: 600
+# train/test split
+train_ratio: 0.7
+# test/val split
+test_val_ratio: 0.7
+
+########################  ANNOTATIONS ########################################
+# minimum frequency of annotation boxes
+annotation_df_fmin: 50
+# maximum frequency of annotation boxes
+annotation_df_fmax: 1000
+
+########################  PATHS  #############################################
+# dataset destination directory - save tfrecord dataset to this directory 
+# only change when really necessary
+tfrecords_destination_folder: '../Data/Datasets'

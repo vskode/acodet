@@ -1,6 +1,7 @@
 from hbdet.plot_utils import (plot_evaluation_metric, 
                               plot_model_results, 
-                              plot_sample_spectrograms)
+                              plot_sample_spectrograms,
+                              plot_pr_curve)
 from hbdet import models
 from hbdet.funcs import get_labels_and_preds
 from hbdet.tfrec import run_data_pipeline, spec
@@ -102,7 +103,8 @@ def write_trainings_csv():
             
 
 
-def create_overview_plot(train_dates, val_set, display_keys, plot_metrics=True):
+def create_overview_plot(train_dates, val_set, display_keys, plot_metrics=True,
+                         titles=None):
     
     df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
     df.index = df['training_date']
@@ -146,7 +148,7 @@ def create_overview_plot(train_dates, val_set, display_keys, plot_metrics=True):
     time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
     
     if plot_metrics:
-        fig = plt.figure(constrained_layout=True, figsize=(15, 15))
+        fig = plt.figure(constrained_layout=True, figsize=(6, 6))
         subfigs = fig.subfigures(2, 1)#, wspace=0.07, width_ratios=[1, 1])
         plot_model_results(train_dates, labels, fig=subfigs[0], legend=False)#, **info_dict)
         eval_fig = subfigs[1]
@@ -157,11 +159,20 @@ def create_overview_plot(train_dates, val_set, display_keys, plot_metrics=True):
         table_df=df.loc[train_dates, display_keys]
         table_df.iloc[-1] = 'GoogleModel'
         # titles = [t[0] for t in table_df.values]
-        titles = [f'config {i}' for i in range(1, 9)]
+        # titles = [f'config {i}' for i in range(1, 9)]
     plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
-                            fig = eval_fig, plot_pr=False, plot_cm=True, titles=titles,
+                            fig = eval_fig, plot_pr=True, plot_cm=False, titles=titles,
                             train_dates=train_dates, label=None, legend=False, 
                             keras_mod_name=keras_mod_name)
+    # TODO bei zeit noch pr-curves erstellen 
+    # df = pd.read_csv('../Data/location_df.csv')
+
+    # regions = [list(df.loc[df['Region'] == region]['dirs'].values) \
+    #                                 for region in np.unique(df.Region)]
+    # region_paths = [[s for s in tfrec_path if s.stem in l] for l in regions]
+    # for i, paths in enumerate(region_paths):
+    #     labels, preds = get_labels_and_preds(model_class, training_runs[0], paths)     
+    #     ax_pr = plot_pr_curve(labels, preds, ax_pr, training_runs[0], plot_labels=titles)
 
     fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png', dpi=150)
 
@@ -227,7 +238,14 @@ def create_table():
 #             ['bool_SpecAug', 'bool_time_shift', 'bool_MixUps']].values[0]) for d in train_dates]
 # plot_model_results(train_dates, legend=False)
 # create_table()
-create_overview_plot(train_dates, tfrec_path, display_keys, plot_metrics=False)
+df = pd.read_csv('../Data/location_df.csv')
+
+regions = [list(df.loc[df['Region'] == region]['dirs'].values) \
+                                for region in np.unique(df.Region)]
+region_paths = [[s for s in tfrec_path if s.stem in l] for l in regions]
+for i, paths in enumerate(region_paths):
+    create_overview_plot(train_dates, tfrec_path, display_keys, plot_metrics=False,
+                            titles=['all_data'])
     # except:
     #     print(path, 'not working')
     #     continue

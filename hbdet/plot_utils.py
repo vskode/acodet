@@ -215,6 +215,8 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
     
     
 def plot_conf_matr(labels, preds, ax, iteration, title, **kwargs):
+    plt.rc('axes', titlesize=40)
+    plt.rc('font', size=32)
     bin_preds = list(map(lambda x: 1 if x >= conf.THRESH else 0, preds))
     heat = tf.math.confusion_matrix(labels, bin_preds).numpy()
     rearrange = lambda x:  np.array([[x[1, 1], x[1, 0]], 
@@ -233,13 +235,14 @@ def plot_conf_matr(labels, preds, ax, iteration, title, **kwargs):
     
     ax = sns.heatmap(rearranged_heat, annot=rearranged_annot, fmt='', 
                      cbar=False, ax=ax, xticklabels=False, yticklabels=False)
-    ax.set_yticks([0.5, 1.5], labels=['TP', 'TN'])
-    ax.set_xticks([1.5, 0.5], labels=['pred. N', 'pred.P'])
+    ax.set_yticks([0.5, 1.5], labels=['TP', 'TN'], fontsize=32)
+    ax.set_xticks([1.5, 0.5], labels=['pred. N', 'pred.P'], fontsize=32)
     color = list(sns.color_palette())[iteration]
     ax.set_title(title, color=color)
     return ax
 
-def plot_pr_curve(labels, preds, ax, training_path, iteration=0, legend=True, **kwargs):
+def plot_pr_curve(labels, preds, ax, training_path, 
+                  iteration=0, legend=True, **kwargs):
     m = dict()
     for met in ('Recall', 'Precision'):
         threshs = list(np.linspace(0, 1, num=200)[:-1])
@@ -280,7 +283,7 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
                            **kwargs):
     r = plot_cm+plot_pr
     c = len(training_runs)
-    if c < 2: c = 2
+    # if c < 2: c = 2
     gs = GridSpec(r, c, figure=fig)
     if plot_pr:
         ax_pr = fig.add_subplot(gs[0, :])

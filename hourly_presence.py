@@ -144,7 +144,7 @@ def plot_counts_per_hour(path, lim, thresh):
     plt.tight_layout()
     path = Path(path).joinpath(f'analysis/{time_start}_hourly_counts_plots')
     path.mkdir(parents=True, exist_ok=True)
-    plt.savefig(Path(path).joinpath('hourly_counts_plot.png'))
+    plt.savefig(Path(path).joinpath(f'hourly_counts_plot_{thresh:.2f}_{lim:.0f}.png'))
     plt.close()
 
 def plot_hourly_presence(path, lim, thresh):
@@ -158,7 +158,7 @@ def plot_hourly_presence(path, lim, thresh):
     plt.tight_layout()
     path = Path(path).joinpath(f'analysis/{time_start}_hourly_pres_plots')
     path.mkdir(parents=True, exist_ok=True)
-    plt.savefig(Path(path).joinpath('hourly_presence_plot.png'))
+    plt.savefig(Path(path).joinpath(f'hourly_presence_plot_{thresh:.2f}_{lim:.0f}.png'))
     plt.close()
 
 def plot_counts_per_hour_sc(path, lim, thresh):
@@ -172,7 +172,7 @@ def plot_counts_per_hour_sc(path, lim, thresh):
     plt.tight_layout()
     path = Path(path).joinpath(f'analysis/{time_start}_hourly_counts_plots_sc')
     path.mkdir(parents=True, exist_ok=True)
-    plt.savefig(Path(path).joinpath('hourly_counts_sc_plot.png'))
+    plt.savefig(Path(path).joinpath(f'hourly_counts_sc_plot_{thresh:.2f}_{lim:.0f}.png'))
     plt.close()
 
 def plot_hourly_presence_sc(path, lim, thresh):
@@ -186,7 +186,7 @@ def plot_hourly_presence_sc(path, lim, thresh):
     plt.tight_layout()
     path = Path(path).joinpath(f'analysis/{time_start}_hourly_pres_plots_sc')
     path.mkdir(parents=True, exist_ok=True)
-    plt.savefig(Path(path).joinpath('hourly_presence_sc_plot.png'))
+    plt.savefig(Path(path).joinpath(f'hourly_presence_sc_plot_{thresh:.2f}_{lim:.0f}.png'))
     plt.close()
     
 def plot_validation(path):
@@ -212,7 +212,7 @@ def plot_comparison(pred, val, thresh, lim):
     FPr = np.sum(np.sum(abs(df_c[df_c == 1])))/(df_c.shape[0]*df_c.shape[1])
     print(prec)
     plt.figure()
-    plt.title(f'Difference in Hourly Presence, FNr={abs(FNr):.2f}, FPr={FPr:.2f}')
+    plt.title(f'Difference in Hourly Presence\nthreshold={thresh:.2f}, limit={lim:.0f}, FNr={abs(FNr):.2f}, FPr={FPr:.2f}')
     sns.heatmap(df_c.T, vmin=-1, vmax=1, cmap='crest')
     plt.ylabel('hour of day')
     plt.tight_layout()
@@ -232,7 +232,7 @@ def plot_comparison_sc(pred, val, thresh, lim):
     FPr = np.sum(np.sum(df_c[df_c == 1]))/(df_c.shape[0]*df_c.shape[1])
     print(prec)
     plt.figure()
-    plt.title(f'Difference in Hourly Presence, FNr={abs(FNr):.2f}, FPr={FPr:.2f}')
+    plt.title(f'Difference in Hourly Presence\nthreshold={thresh:.2f}, limit={lim:.0f}, FNr={abs(FNr):.2f}, FPr={FPr:.2f}')
     sns.heatmap(df_c.T, vmin=-1, vmax=1, cmap='crest')
     plt.ylabel('hour of day')
     plt.tight_layout()
@@ -241,7 +241,6 @@ def plot_comparison_sc(pred, val, thresh, lim):
     plt.savefig(path.joinpath(f'{prec:.2f}_diff_hourly_presence_sc_{thresh:.2f}_{lim:.0f}.png'))
     plt.close()
     
-# TODO csv mit negativen und ohne machen und dann ein plot wo di differenz 
 # zwischen val und preds gezeigt wird - auch noch für N1 und S1
 # plot_counts_per_hour('../generated_annotations/2022-12-01_13_EL1')
 # plot_hourly_presence('../generated_annotations/2022-12-01_13_EL1')
@@ -251,16 +250,16 @@ def plot_comparison_sc(pred, val, thresh, lim):
 
 # for thresh_sc in np.linspace(0.89, 0.95, 7):
 #     for lim_sc in np.linspace(4, 8, 5):
-for thresh, thresh_sc in zip(np.linspace(0.83, 0.95, 7), np.linspace(0.83, 0.95, 7)):
-    for lim, lim_sc in zip(np.linspace(6, 36, 5), np.linspace(3, 7, 5)):
-        for s in ['S1', 'EL1', 'N1']:
-            main(f'../generated_annotations/2022-11-30_11_{s}', thresh_sc=thresh_sc, lim_sc=lim_sc,
-                                                                thresh=thresh, lim=lim)
-            plot_comparison(f'../generated_annotations/2022-11-30_11_{s}', 
-                               f'../Data/SAMOSAS_val/{s}.csv', thresh, lim)
-            plot_comparison_sc(f'../generated_annotations/2022-11-30_11_{s}', 
-                            f'../Data/SAMOSAS_val/{s}.csv', thresh_sc, lim_sc)
-            plot_counts_per_hour(f'../generated_annotations/2022-11-30_11_{s}', lim, thresh)
-            plot_hourly_presence(f'../generated_annotations/2022-11-30_11_{s}', lim, thresh)
-            plot_counts_per_hour_sc(f'../generated_annotations/2022-11-30_11_{s}', lim_sc, thresh_sc)
-            plot_hourly_presence_sc(f'../generated_annotations/2022-11-30_11_{s}', lim_sc, thresh_sc)
+thresh, thresh_sc = 0.9, 0.9
+for lim, lim_sc in zip(np.linspace(10, 48, 20), np.linspace(1, 20, 20)):
+    for s in ['S1', 'EL1', 'N1']:
+        main(f'../generated_annotations/2022-11-30_11_{s}', thresh_sc=thresh_sc, lim_sc=lim_sc,
+                                                            thresh=thresh, lim=lim)
+        plot_comparison(f'../generated_annotations/2022-11-30_11_{s}', 
+                            f'../Data/SAMOSAS_val/{s}.csv', thresh, lim)
+        plot_comparison_sc(f'../generated_annotations/2022-11-30_11_{s}', 
+                        f'../Data/SAMOSAS_val/{s}.csv', thresh_sc, lim_sc)
+        plot_counts_per_hour(f'../generated_annotations/2022-11-30_11_{s}', lim, thresh)
+        plot_hourly_presence(f'../generated_annotations/2022-11-30_11_{s}', lim, thresh)
+        plot_counts_per_hour_sc(f'../generated_annotations/2022-11-30_11_{s}', lim_sc, thresh_sc)
+        plot_hourly_presence_sc(f'../generated_annotations/2022-11-30_11_{s}', lim_sc, thresh_sc)
