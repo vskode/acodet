@@ -1,4 +1,4 @@
 utils/__*
 *__pycache__*
 hbdet/_*
-# hbdet/files/models
+hbdet/files/models
