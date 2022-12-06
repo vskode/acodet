@@ -17,37 +17,55 @@
 ##############################################################################
 
 
-## Model Parameters
-# threshold for predictions
-thresh: 0.5
-# number of predictions that get computed at once - should be in [20, 2000]
-# worth testing out different values to find whats fastest for your machine
-prediction_window_limit: 1000
+
+
+###################### 1. DEFINE YOUR RUN ####################################
+
+# what would you like to do?
+# chose the run configuration: 
+#     - 1 generate annotations
+#     - 2 generate new training data from reviewed annotations
+#     - 3 train (and evaluate)
+run_config: 1
+
+# depending on the main task, chose your predefined settings:
+# for generation of annotations, chose:
+#     - 1 generate new annotations
+#     - 2 filter existing annotations with different threshold
+#     - 3 filter existing annotations with sequence criterion
+#     - 4 generate hourly predictions
+#     - 5 generate hourly predictions with varying limits
+#     - 0 all of the above
+# for generation of new training data, chose:
+#     - 1 generate new training data from reviewed annotations
+#     - 2 generate new training data from reviewed annotations 
+#       and fill space between annotations with noise annotations
+# for training, chose:
+#     - 1 continue training on existing model and save model in the end
+#     - 2 evaluate saved model
+#     - 3 evaluate model checkpoint
+predefined_settings: 0
+
+####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
 # source path for your annotations
 #   -> might be easier to just copy annotation files to default location
-annotation_source: '../generated_annotations/2022-11-27_02'
+reviewed_annotation_source: '../generated_annotations/2022-11-27_02'
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
+generated_annotation_source: '../generated_annotations/2022-12-04_13_50'
 
 # destination path for automatically generated annotations
 annotation_destination: '../combined_annotations/2022-11-27_02'
 
 # source path for your sound files (top most directory)
-sound_files_source: '/mnt/c/Documents and Settings/sa01vk/Documents/SAMOSAS/N1_2kHz_March-April'
-# sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated/resampled_2kHz'
+sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated/resampled_2kHz/BERCHOK_SAMANA_200901_4'
 
+####################### 3. DEFINE YOUR PARAMETERS  ###########################
 
-###################### configure run #########################################
-
-# what would you like to do?
-# chose: 
-#     - 1 for annotate
-#     - 2 process annotations with other threshold
-#     - 3 generate train dataset from annotations
-#     - 4 for train (and evaluate)
-#     - 5 for evaluate
-
-run_config: 4
-
-plot: True
+## Model Parameters
+# threshold for predictions
+thresh: 0.9
+# number of predictions that get computed at once - should be in [20, 2000]
+# worth testing out different values to find whats fastest for your machine
+prediction_window_limit: 1000

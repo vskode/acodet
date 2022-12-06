@@ -69,9 +69,11 @@ PRED_BATCH_SIZE = PRED_WIN_LIM * CONTEXT_WIN
            
 ## Paths
 TFREC_DESTINATION = advanced['tfrecords_destination_folder']
-ANNOTATION_DESTINATION = simple['annotation_destination']
-ANNOTATION_SOURCE = simple['annotation_source']
+ANNOT_DEST = simple['annotation_destination']
+REV_ANNOT_SRC = simple['reviewed_annotation_source']
+GEN_ANNOT_SRC = simple['generated_annotation_source']
 SOUND_FILES_SOURCE = simple['sound_files_source']
+GEN_ANNOTS_DIR = advanced['generated_annotations_folder']
 # model directory
 MODEL_DIR = 'hbdet/files/models'
 # model name
@@ -87,6 +89,7 @@ ANNOTATION_COLUMN = 'Prediction/Comments'
 
 #################### RUN CONFIGURATION  ######################################
 RUN_CONFIG = simple['run_config']
+PRESET = simple['predefined_settings']
 
 #################### TRAINING CONFIG  ########################################
 
@@ -107,3 +110,17 @@ PRE_BLOCKS = advanced['pre_blocks']
 F_SCORE_BETA = advanced['f_score_beta']
 F_SCORE_THRESH = advanced['f_score_thresh']
 UNFREEZE = advanced['unfreeze']
+
+
+##################### HOURLY PRESENCE DIR AND FILE NAMES #####################
+
+HR_CNTS_SL = 'hourly_annotation_simple_limit'
+HR_PRS_SL = 'hourly_presence_simple_limit'
+HR_CNTS_SC = 'hourly_annotations_sequence_crit'
+HR_PRS_SC = 'hourly_pres_sequ_crit'
+
+# column name for daily annotations (cumulative counts)
+HR_DA_COL = 'daily_annotations'
+# column name for daily presence (binary)
+HR_DP_COL = 'Daily_Presence'
+

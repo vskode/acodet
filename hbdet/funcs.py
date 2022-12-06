@@ -438,7 +438,7 @@ def get_labels_and_preds(model_instance: type,
 
 ############## Generate Model Annotations helpers ############################
 
-def get_files(*, location: str='generated_annotations/src', 
+def get_files(*, location: str=f'{conf.GEN_ANNOTS_DIR}', 
               search_str: str='*.wav') -> generator:
     """
     Find all files corresponding to given search string within a specified 
@@ -524,7 +524,7 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     df['Low Freq (Hz)'] = conf.ANNOTATION_DF_FMIN
     df[conf.ANNOTATION_COLUMN] = preds
 
-    return df.iloc[preds.reshape([len(preds)]) > conf.THRESH]
+    return df#.iloc[preds.reshape([len(preds)]) > conf.THRESH] # TODO rausnehmen
     
 def create_annotation_df(audio_batches: np.ndarray, 
                          model: tf.keras.Sequential) -> pd.DataFrame:
@@ -606,10 +606,15 @@ def gen_annotations(file, model: tf.keras.Model,
     
     annotation_df = create_annotation_df(audio_batches, model)
     
-    save_path = (Path(f'../generated_annotations/{time_start}')
-                 .joinpath(file.parent.stem))
-    save_path.mkdir(exist_ok=True, parents=True)
 
+    parent_dirs = file.relative_to(conf.SOUND_FILES_SOURCE).parent
+    if str(parent_dirs) == '.':
+        parent_dirs = file.parent.stem
+    
+    save_path = (Path(conf.GEN_ANNOTS_DIR).joinpath(time_start)
+                 .joinpath('thresh_0.5')
+                 .joinpath(parent_dirs))
+    save_path.mkdir(exist_ok=True, parents=True)
     annotation_df.to_csv(save_path
                          .joinpath(f'{file.stem}_annot_{mod_label}.txt'),
                 sep='\t')

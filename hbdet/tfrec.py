@@ -1,6 +1,7 @@
 from tokenize import Intnumber
 from functools import partial
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from . import funcs
 import random
@@ -260,6 +261,29 @@ def get_tfrecords_writer(num, fold, save_dir, **kwargs):
     Path(path.joinpath(fold)).mkdir(parents = True, exist_ok = True)
     return tf.io.TFRecordWriter(str(path.joinpath(fold).joinpath(
                                 "file_%.2i.tfrec" % num)))
+
+def write_tfrec_dataset(annot_dir=None, active_learning=True):
+    if not annot_dir:
+        annot_dir = conf.ANNOT_DEST
+
+    annotation_files = list(Path(annot_dir).glob('**/*.csv'))
+    if active_learning:
+        inbetween_noise = False
+    else:
+        inbetween_noise = True
+    
+    for file in annotation_files:
+        annots = pd.read_csv(file)
+        if 'explicit_noise' in file.stem:
+            all_noise = True
+        else:
+            all_noise = False
+
+        save_dir = (Path(conf.TFREC_DESTINATION)
+                    .joinpath(list(file.relative_to(annot_dir).parents)[-2]))
+        
+        write_tfrecords(annots, save_dir, all_noise=all_noise, 
+                        inbetween_noise=inbetween_noise)
 
 
 ########################################################

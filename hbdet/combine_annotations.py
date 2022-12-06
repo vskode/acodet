@@ -2,14 +2,12 @@ import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
 import glob
 from pathlib import Path
-from hbdet.funcs import remove_str_flags_from_predictions
+from hbdet.funcs import remove_str_flags_from_predictions, get_files
 import os
 import numpy as np
 import hbdet.global_config as conf
 
-annotation_files = list(Path(conf.ANNOTATION_SOURCE).glob('**/*.txt'))
-if len(annotation_files) == 0:
-    annotation_files = list(Path(conf.ANNOTATION_SOURCE).glob('*.txt'))
+
 # TODO aufraeumen
 # annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
 # annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
@@ -60,7 +58,7 @@ def get_corresponding_sound_file(file):
         return 'empty'
         
     if len(file_path) > 1:
-        p_dir = list(file.relative_to(conf.ANNOTATION_SOURCE).parents)[-2]
+        p_dir = list(file.relative_to(conf.REV_ANNOT_SRC).parents)[-2]
         p_dir_main = str(p_dir).split('_')[0]
         for path in file_path:
             if p_dir_main in path:
@@ -184,15 +182,19 @@ def get_active_learning_files(files):
                                     [True for d in drop_cases if d in f.stem]]
     return final_cleanup
 
-def generate_final_annotations(annotation_files, active_learning=False, **kwargs):
+def generate_final_annotations(annotation_files=None, active_learning=True, 
+                               **kwargs):
+    if not annotation_files:
+        annotation_files = get_files(location=conf.REV_ANNOT_SRC,
+                                     search_str='**/*.txt')
     files = list(annotation_files)
     if active_learning:
         files = get_active_learning_files(files)
-    folders, counts = np.unique([list(f.relative_to(conf.ANNOTATION_SOURCE)
+    folders, counts = np.unique([list(f.relative_to(conf.REV_ANNOT_SRC)
                                 .parents) for f in files],
                         return_counts=True)
     if len(folders)>1:
-        folders, counts = np.unique([list(f.relative_to(conf.ANNOTATION_SOURCE)
+        folders, counts = np.unique([list(f.relative_to(conf.REV_ANNOT_SRC)
                             .parents)[-2] for f in files],
                         return_counts=True)
     files.sort()
@@ -213,11 +215,14 @@ def generate_final_annotations(annotation_files, active_learning=False, **kwargs
             ind += 1
         
     # TODO include date in path by default
-        save_dir = Path(conf.ANNOTATION_DESTINATION).joinpath(folder)
+        save_dir = Path(conf.ANNOT_DEST).joinpath(folder)
         save_dir.mkdir(exist_ok=True, parents=True)
         df_t.to_csv(save_dir.joinpath('combined_annotations.csv'))
         df_n.to_csv(save_dir.joinpath('explicit_noise.csv'))
     # save_ket_annot_only_existing_paths(df)
     
 if __name__ == '__main__':
+    annotation_files = list(Path(conf.REV_ANNOT_SRC).glob('**/*.txt'))
+    if len(annotation_files) == 0:
+        annotation_files = list(Path(conf.REV_ANNOT_SRC).glob('*.txt'))
     generate_final_annotations(annotation_files, active_learning=True, freq_time_crit=False)

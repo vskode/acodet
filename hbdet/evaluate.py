@@ -13,50 +13,8 @@ import time
 import numpy as np
 from hbdet.humpback_model_dir import front_end
 import hbdet.global_config as conf
-tfrec_path =list(Path(conf.TFREC_DESTINATION).iterdir())
 
-train_dates = [
-    # '2022-11-22_03', 
-    # '2022-11-22_06', 
-    # '2022-11-22_11', 
-    # '2022-11-22_17', 
-    # # '2022-11-23_12', 
-    # # '2022-11-23_17', 
-    # # '2022-11-23_20', 
-    # # '2022-11-24_00', 
-    # '2022-11-24_02', 
-    # '2022-11-24_10', 
-    # # '2022-11-24_13', 
-    # # '2022-11-24_14', 
-    # '2022-11-24_16', 
-    # '2022-11-25_00', 
-    # '2022-11-24_12', 
-    # '2022-11-24_17'
-    # '2022-11-29_13',
-    # '2022-11-29_17',
-    # '2022-11-29_19',
-    # '2022-11-29_21',
-    # '2022-11-29_22',
-    # '2022-11-30_11',
-    # '2022-11-30_20',
-    # '2022-11-30_13',
-    # '2022-11-30_17',
-    # '2022-12-01_02',
-    # '2022-11-30_22',
-    # '2022-12-01_00',
-    '2022-11-30_01'
-    ]
-
-display_keys = [
-    # 'data_path', 
-    # 'batch_size', 
-    'Model', 
-    'keras_mod_name', 
-    'epochs', 
-    'init_lr', 
-    'final_lr',    
-    # 'weight_clipping', 
-    ]
+# TODO aufräumen !
 
 def get_info(date):
     keys = ['data_path', 'batch_size', 'epochs', 'Model',
@@ -108,22 +66,17 @@ def create_overview_plot(train_dates, val_set, display_keys, plot_metrics=True,
     
     df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
     df.index = df['training_date']
-    # info_dicts = [get_info(date) for date in train_dates]
-
-    # val_s = ''.join([Path(s).stem.split('_2khz')[0]+';' for s in val_set])
+    
     if isinstance(val_set, list):
         val_label = 'all'
     else:
         val_label = Path(val_set).stem
-    string = str(
-        # 'batch:{}; ' 
+    string = str( 
         'Model:{}; ' 
         'keras_mod_name:{}; ' 
         'epochs:{}; ' 
-        # 'training_date:{}; ' 
         'init_lr:{}; ' 
         'lr_end:{}; ' 
-        # 'clip:{} ; '
         f'val: {val_label}')
     if conf.THRESH != 0.5:
         string += f' thr: {conf.THRESH}'
@@ -158,22 +111,11 @@ def create_overview_plot(train_dates, val_set, display_keys, plot_metrics=True,
         display_keys = ['keras_mod_name']
         table_df=df.loc[train_dates, display_keys]
         table_df.iloc[-1] = 'GoogleModel'
-        # titles = [t[0] for t in table_df.values]
-        # titles = [f'config {i}' for i in range(1, 9)]
     plot_evaluation_metric(model_class, training_runs, val_data, plot_labels=labels,
                             fig = eval_fig, plot_pr=True, plot_cm=False, titles=titles,
                             train_dates=train_dates, label=None, legend=False, 
                             keras_mod_name=keras_mod_name)
     # TODO bei zeit noch pr-curves erstellen 
-    # df = pd.read_csv('../Data/location_df.csv')
-
-    # regions = [list(df.loc[df['Region'] == region]['dirs'].values) \
-    #                                 for region in np.unique(df.Region)]
-    # region_paths = [[s for s in tfrec_path if s.stem in l] for l in regions]
-    # for i, paths in enumerate(region_paths):
-    #     labels, preds = get_labels_and_preds(model_class, training_runs[0], paths)     
-    #     ax_pr = plot_pr_curve(labels, preds, ax_pr, training_runs[0], plot_labels=titles)
-
     fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png', dpi=150)
 
 def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwargs):
@@ -204,12 +146,10 @@ def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwarg
     plot_sample_spectrograms(fp, dir = train_date,
                     name=f'False_Positive', plot_meta=True, **kwargs)
    
-def create_table():
+def create_table_plot():
     time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
     df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
     df.index = df['training_date']
-    # display_keys = ['bool_SpecAug', 'bool_time_shift', 'bool_MixUps']
-    # col_labels = ['Spec Aug', 'time shift', 'MixUp']
     display_keys = ['keras_mod_name']
     col_labels = ['model name']
     table_df=df.loc[train_dates, display_keys]
@@ -228,24 +168,19 @@ def create_table():
     f.tight_layout()
     f.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_table.png', dpi=150)
 
-# create_incorrect_prd_plot(GoogleMod, train_dates[0], tfrec_path)
-# for path in tfrec_path:
-# write_trainings_csv()
-    # try:
-# df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
-# string = str('bool_SpecAug:{}; ' 'bool_time_shift:{}; ' 'bool_MixUps:{}; ')
-# labels = [string.format(*df.loc[df['training_date'] == d, 
-#             ['bool_SpecAug', 'bool_time_shift', 'bool_MixUps']].values[0]) for d in train_dates]
-# plot_model_results(train_dates, legend=False)
-# create_table()
-df = pd.read_csv('../Data/location_df.csv')
+if __name__ == '__main__':
+    tfrec_path =list(Path(conf.TFREC_DESTINATION).iterdir())
+    train_dates = [
+        '2022-11-30_01'
+        ]
 
-regions = [list(df.loc[df['Region'] == region]['dirs'].values) \
-                                for region in np.unique(df.Region)]
-region_paths = [[s for s in tfrec_path if s.stem in l] for l in regions]
-for i, paths in enumerate(region_paths):
+    display_keys = [
+        'Model', 
+        'keras_mod_name', 
+        'epochs', 
+        'init_lr', 
+        'final_lr'
+        ]
+
     create_overview_plot(train_dates, tfrec_path, display_keys, plot_metrics=False,
                             titles=['all_data'])
-    # except:
-    #     print(path, 'not working')
-    #     continue

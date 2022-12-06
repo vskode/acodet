@@ -39,10 +39,11 @@ class MetaData:
         self.df.loc[f_ind, self.n_pred09_col] = len(df_clean.loc[df_clean[
                                                 conf.ANNOTATION_COLUMN]>0.9])
         self.df.loc[f_ind, self.time_per_file] = computing_time
-        self.df.to_csv(f'../generated_annotations/{time_start}/stats.csv')
+        self.df.to_csv(Path(conf.GEN_ANNOTS_DIR).joinpath(time_start)
+                       .joinpath('stats.csv'))
     
 def run_annotation(train_date=None):
-    time_start = time.strftime('%Y-%m-%d_%H_%M', time.gmtime())
+    time_start = time.strftime('%Y-%m-%d_%H-%M-%S', time.gmtime())
     files = get_files(location=conf.SOUND_FILES_SOURCE,
                       search_str='**/*wav')
     
@@ -71,19 +72,42 @@ def run_annotation(train_date=None):
                                           computing_time=computing_time)
 
         except Exception as e:
-            print(f"{file} couldn't be loaded, continuing with next file.\n", e)
+            print(f"{file} couldn't be loaded, continuing with next file.\n", 
+                  e)
             continue
+    return time_start    
+    
+def filter_annots_by_thresh(time_dir=None):
+    if not time_dir:
+        path = conf.GEN_ANNOT_SRC
+    else:
+        path = Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir)
+    files = get_files(location=path, search_str='**/*txt')
+    for i, file in enumerate(files):
+        try:
+            annot = pd.read_csv(file, sep='\t')        
+            annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
+            save_dir = (Path(path)
+                        .joinpath(f'thresh_{conf.THRESH}')
+                        .joinpath(file.relative_to(Path(path)
+                                                   .joinpath('thresh_0.5'))).parent)
+            save_dir.mkdir(exist_ok=True, parents=True)
+            annot.to_csv(save_dir.joinpath(file.stem+file.suffix))
+            print(f'Writing file {i+1}/{len(files)}')
+        except Exception as e:
+            print('Could not process file, maybe not an annotation file?', 
+                  'Error: ', e)
 
 def generate_stats():
-    files = get_files(location=conf.ANNOTATION_SOURCE, search_str='**/*txt')
+    files = get_files(location=conf.GEN_ANNOT_SRC, search_str='**/*txt')
     mdf = MetaData()
     f_ind = 0
     for i, file in enumerate(files):    
         f_ind += 1
         annot = pd.read_csv(file, sep='\t')
         mdf.append_and_save_meta_file(file, annot, f_ind, 
-                                        Path(conf.ANNOTATION_SOURCE).stem,
-                                        relativ_path=conf.ANNOTATION_SOURCE)
+                                        Path(conf.GEN_ANNOT_SRC).stem,
+                                        relativ_path=conf.GEN_ANNOT_SRC)
 
 if __name__ == '__main__':
     train_dates = [    
