@@ -44,7 +44,7 @@ run_config: 1
 #     - 1 continue training on existing model and save model in the end
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
-predefined_settings: 4
+predefined_settings: 0
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
@@ -59,7 +59,7 @@ generated_annotation_source: '../generated_annotations/2022-12-04_13_50'
 annotation_destination: '../combined_annotations/2022-11-27_02'
 
 # source path for your sound files (top most directory)
-sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated/resampled_2kHz/BERCHOK_SAMANA_200901_4'
+sound_files_source: '/mnt/d'
 
 ####################### 3. DEFINE YOUR PARAMETERS  ###########################
 

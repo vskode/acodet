@@ -36,4 +36,4 @@ elif conf.RUN_CONFIG == 3:
     elif conf.PRESET == 2:
         create_overview_plot()
     elif conf.PRESET == 3:
-        create_overview_plot(ckpt_path)
+        create_overview_plot('2022-05-00_00')

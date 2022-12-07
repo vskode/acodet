@@ -14,7 +14,7 @@ class ModelHelper:
         try:
             file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
             if not file_path.exists():
-                ckpts = list(Path(ckpt_path).glob('cp-*.index'))
+                ckpts = list(Path(ckpt_path).glob('cp-*.ckpt*'))
                 ckpts.sort()
                 ckpt = ckpts[-1]
             else:
@@ -59,7 +59,7 @@ class HumpBackNorthAtlantic(ModelHelper):
         self.model = tf.keras.models.load_model(Path(conf.MODEL_DIR)
                                    .joinpath(conf.MODEL_NAME))
 
-class ResNET50(ModelHelper):
+class GoogleMod(ModelHelper): # TODO change name
     def __init__(self, **params) -> None:
         """
         This class is the framework to load and flatten the model created
@@ -73,7 +73,7 @@ class ResNET50(ModelHelper):
         self.load_google_new(**params)
         self.load_flat_model(**params)
     
-    def load_google_new(self, load_g_ckpt=True, **_):
+    def load_google_new(self, load_g_ckpt=conf.LOAD_G_CKPT, **_):
         """
         Load google model architecture. By default the model weights are 
         initiated with the pretrained weights from the google checkpoint. 
@@ -176,7 +176,7 @@ class KerasAppModel(ModelHelper):
         
 
 def init_model(model_name: str ='HumpBackNorthAtlantic', 
-               checkpoint_dir: str =None, 
+               training_path: str =None, 
                input_specs=False, **kwargs) -> tf.keras.Sequential:
     """
     Initiate model instance, load weights. As the model is trained on 
@@ -188,7 +188,7 @@ def init_model(model_name: str ='HumpBackNorthAtlantic',
     ----------
     model_instance : type
         callable class to create model object
-    checkpoint_dir : str
+    training_path : str
         checkpoint path
 
     Returns
@@ -201,12 +201,12 @@ def init_model(model_name: str ='HumpBackNorthAtlantic',
     if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()
     else:
-        mod_obj.load_ckpt(checkpoint_dir)
+        mod_obj.load_ckpt(training_path)
     if not input_specs:
         mod_obj.change_input_to_array()
     return mod_obj.model
 
-def get_labels_and_preds(model_instance: type, 
+def get_labels_and_preds(model_name: str, 
                          training_path: str, 
                          val_data: tf.data.Dataset, 
                          **kwArgs) -> tuple:
@@ -230,7 +230,7 @@ def get_labels_and_preds(model_instance: type,
     preds: mp.ndarray
         predictions
     """
-    model = init_model(load_from_ckpt=True, model_instance=model_instance, 
+    model = init_model(load_from_ckpt=True, model_name=model_name, 
                        training_path=training_path, **kwArgs)
     preds = model.predict(x = val_data.batch(batch_size=32))
     labels = get_val_labels(val_data, len(preds))

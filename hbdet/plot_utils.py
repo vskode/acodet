@@ -10,6 +10,7 @@ import librosa as lb
 from . import global_config as conf
 from . import funcs
 from . import tfrec
+from . import models
 import tensorflow as tf
 drop_keyz = {'fbeta', 'val_fbeta'}
 sns.set_theme()
@@ -252,6 +253,7 @@ def plot_pr_curve(labels, preds, ax, training_path,
         m.update({curve: funcs.get_pr_arrays(labels, preds, 'AUC',
                                             curve=curve)})
     perform_str = f"; AUC_PR:{m['PR']:.2f}; AUC_ROC:{m['ROC']:.2f}"
+    print(perform_str)
     if 'plot_labels' in kwargs:
         if isinstance(kwargs['plot_labels'], list):
             label = kwargs['plot_labels'][iteration] + perform_str
@@ -266,38 +268,42 @@ def plot_pr_curve(labels, preds, ax, training_path,
         
     ax.plot(m['Recall'], m['Precision'], label=label)
         
-    ax.set_ylabel('precision')
-    ax.set_xlabel('recall')
-    ax.set_ylim([0.5, 1])
-    ax.set_xlim([0.7, 1])
+    ax.set_ylabel('precision', fontsize=32)
+    ax.set_xlabel('recall', fontsize=32)
+    ax.set_ylim([0, 1])
+    ax.set_xlim([0, 1])
+    ax.set_xticks([0, 0.3, 0.7, 1])
+    ax.set_yticks([0, 0.3, 0.7, 1])
+    ax.set_xticklabels(['0', '0.3', '0.7', '1'], fontsize=24)
+    ax.set_yticklabels(['0', '0.3', '0.7', '1'], fontsize=24)
     if legend:
         ax.legend()
     ax.grid(True)
-    ax.set_title('Precision and Recall Curves')
+    ax.set_title('PR Curve', fontsize=32)
     return ax
     
-def plot_evaluation_metric(model_instance, training_runs, val_data, 
+def plot_evaluation_metric(model_name, training_runs, val_data, 
                            fig, plot_pr=True, plot_cm=False, 
                            plot_untrained=False, titles=None, 
                            keras_mod_name=False, 
                            **kwargs):
     r = plot_cm+plot_pr
     c = len(training_runs)
-    # if c < 2: c = 2
+    if c < 1: c = 1
     gs = GridSpec(r, c, figure=fig)
     if plot_pr:
         ax_pr = fig.add_subplot(gs[0, :])
         
     for i, run in enumerate(training_runs):
-        if not isinstance(model_instance, list):
-            model_instance = [model_instance]
+        if not isinstance(model_name, list):
+            model_name = [model_name]
         if not isinstance(keras_mod_name, list):
             keras_mod_name = [keras_mod_name]
         if not isinstance(titles, list):
             title = Path(run).parent.stem + Path(run).stem.split('_')[-1]
         else:
             title = titles[i]
-        labels, preds = funcs.get_labels_and_preds(model_instance[i], run, 
+        labels, preds = models.get_labels_and_preds(model_name[i], run, 
                                                    val_data, 
                                                    keras_mod_name=keras_mod_name[i],
                                                    **kwargs)            
@@ -321,7 +327,7 @@ def plot_evaluation_metric(model_instance, training_runs, val_data,
         ax_pr.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     return fig
     
-def create_and_save_figure(model_instance, tfrec_path, batch_size, train_date,
+def create_and_save_figure(model_name, tfrec_path, batch_size, train_date,
                             debug=False, plot_pr=True, plot_cm=False, 
                             **kwargs):
     
@@ -330,7 +336,7 @@ def create_and_save_figure(model_instance, tfrec_path, batch_size, train_date,
     
     fig = plt.figure(constrained_layout=True)
 
-    plot_evaluation_metric(model_instance, training_runs, val_data, 
+    plot_evaluation_metric(model_name, training_runs, val_data, 
                            fig = fig, plot_pr=plot_pr, plot_cm=plot_cm, 
                            **kwargs)
     

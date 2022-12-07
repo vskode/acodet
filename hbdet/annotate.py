@@ -45,7 +45,7 @@ class MetaData:
 def run_annotation(train_date=None):
     time_start = time.strftime('%Y-%m-%d_%H-%M-%S', time.gmtime())
     files = get_files(location=conf.SOUND_FILES_SOURCE,
-                      search_str='**/*wav')
+                      search_str='**/*')
     
     if not train_date:
         model = models.init_model()
