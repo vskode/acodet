@@ -406,36 +406,6 @@ def get_pr_arrays(labels: np.ndarray, preds: np.ndarray,
     r.update_state(labels, preds.reshape(len(preds)))
     return r.result().numpy()
 
-def get_labels_and_preds(model_instance: type, 
-                         training_path: str, 
-                         val_data: tf.data.Dataset, 
-                         **kwArgs) -> tuple:
-    """
-    Retrieve labels and predictions of validation set and given model
-    checkpoint. 
-
-    Parameters
-    ----------
-    model_instance : type
-        model class
-    training_path : str
-        path to checkpoint
-    val_data : tf.data.Dataset
-        validation dataset
-
-    Returns
-    -------
-    labels: np.ndarray
-        labels
-    preds: mp.ndarray
-        predictions
-    """
-    model = init_model(load_from_ckpt=True, model_instance=model_instance, 
-                       training_path=training_path, **kwArgs)
-    preds = model.predict(x = val_data.batch(batch_size=32))
-    labels = get_val_labels(val_data, len(preds))
-    return labels, preds
-
 ############## Generate Model Annotations helpers ############################
 
 def get_files(*, location: str=f'{conf.GEN_ANNOTS_DIR}', 
@@ -524,7 +494,7 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     df['Low Freq (Hz)'] = conf.ANNOTATION_DF_FMIN
     df[conf.ANNOTATION_COLUMN] = preds
 
-    return df#.iloc[preds.reshape([len(preds)]) > conf.THRESH] # TODO rausnehmen
+    return df.iloc[preds.reshape([len(preds)]) > conf.DEFAULT_THRESH]
     
 def create_annotation_df(audio_batches: np.ndarray, 
                          model: tf.keras.Sequential) -> pd.DataFrame:

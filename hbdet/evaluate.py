@@ -3,7 +3,7 @@ from hbdet.plot_utils import (plot_evaluation_metric,
                               plot_sample_spectrograms,
                               plot_pr_curve)
 from hbdet import models
-from hbdet.funcs import get_labels_and_preds
+from hbdet.models import get_labels_and_preds
 from hbdet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors

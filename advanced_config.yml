@@ -38,6 +38,7 @@ train_ratio: 0.7
 test_val_ratio: 0.7
 
 ########################  ANNOTATIONS ########################################
+default_threshold: 0.5
 # minimum frequency of annotation boxes
 annotation_df_fmin: 50
 # maximum frequency of annotation boxes
@@ -54,7 +55,7 @@ model_name: 'Humpback_20221130'
 
 #######################  TRAINING  ###########################################
 
-ModelClassName: ResNET50 
+ModelClassName: 'HumpBackNorthAtlantic' 
 batch_size: 32
 epochs: 50
 load_ckpt_path: False

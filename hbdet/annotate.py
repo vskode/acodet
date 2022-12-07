@@ -48,24 +48,25 @@ def run_annotation(train_date=None):
                       search_str='**/*wav')
     
     if not train_date:
-            model = models.init_model()
+        model = models.init_model()
+        mod_label = conf.MODEL_NAME
     else:
         df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
         row = df.loc[df['training_date'] == train_date]
         model_name = row.Model.values[0]
         keras_mod_name = row.keras_mod_name.values[0]
-        model_class = getattr(models, model_name)
         
-        model = models.init_model(model_instance=model_class, 
+        model = models.init_model(model_instance=model_name, 
                         checkpoint_dir=f'../trainings/{train_date}/unfreeze_no-TF', 
                         keras_mod_name=keras_mod_name)
+        mod_label = train_date
     mdf = MetaData()
     f_ind = 0
     for i, file in enumerate(files):    
         try:
             f_ind += 1
             start = time.time()
-            annot = gen_annotations(file, model, mod_label=train_date, 
+            annot = gen_annotations(file, model, mod_label=mod_label, 
                                  time_start=time_start)
             computing_time = time.time() - start
             mdf.append_and_save_meta_file(file, annot, f_ind, time_start,
@@ -83,6 +84,7 @@ def filter_annots_by_thresh(time_dir=None):
     else:
         path = Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir)
     files = get_files(location=path, search_str='**/*txt')
+    files = [f for f in files if 'thresh_0.5' in str(f.parent)]
     for i, file in enumerate(files):
         try:
             annot = pd.read_csv(file, sep='\t')        
@@ -92,7 +94,10 @@ def filter_annots_by_thresh(time_dir=None):
                         .joinpath(file.relative_to(Path(path)
                                                    .joinpath('thresh_0.5'))).parent)
             save_dir.mkdir(exist_ok=True, parents=True)
-            annot.to_csv(save_dir.joinpath(file.stem+file.suffix))
+            
+            annot.index  = np.arange(1, len(annot)+1)
+            annot.index.name = 'Selection'
+            annot.to_csv(save_dir.joinpath(file.stem+file.suffix), sep='\t')
             print(f'Writing file {i+1}/{len(files)}')
         except Exception as e:
             print('Could not process file, maybe not an annotation file?', 

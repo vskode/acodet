@@ -80,6 +80,7 @@ MODEL_DIR = 'hbdet/files/models'
 MODEL_NAME = advanced['model_name']
 
 #############  ANNOTATIONS  #####################################
+DEFAULT_THRESH = advanced['default_threshold']
 ANNOTATION_DF_FMIN = advanced['annotation_df_fmin']
 ANNOTATION_DF_FMAX = advanced['annotation_df_fmax']
 ## Column Names

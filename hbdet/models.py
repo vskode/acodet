@@ -1,24 +1,15 @@
 import tensorflow as tf
 from pathlib import Path
 import zipfile
+import sys
 
+from hbdet.funcs import get_val_labels
 from . import global_config as conf
 from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
 
-class ModelHelper:
-    def load_model(self):
-        if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
-            for model_path in Path(conf.MODEL_DIR).iterdir():
-                if not model_path.suffix == '.zip':
-                    continue
-                else:
-                    with zipfile.ZipFile(model_path, 'r') as model_zip:
-                        model_zip.extractall(conf.MODEL_DIR)
-        self.model = tf.keras.models.load_model(Path(conf.MODEL_DIR)
-                                   .joinpath(conf.MODEL_NAME))
-    
+class ModelHelper:    
     def load_ckpt(self, ckpt_path, ckpt_name='last'):
         try:
             file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
@@ -53,6 +44,20 @@ class ModelHelper:
         model_list.insert(2, front_end.MelSpectrogram())
         self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
 
+class HumpBackNorthAtlantic(ModelHelper):
+    def __init__(self, **kwargs):
+        pass
+
+    def load_model(self, **kwargs):
+        if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
+            for model_path in Path(conf.MODEL_DIR).iterdir():
+                if not model_path.suffix == '.zip':
+                    continue
+                else:
+                    with zipfile.ZipFile(model_path, 'r') as model_zip:
+                        model_zip.extractall(conf.MODEL_DIR)
+        self.model = tf.keras.models.load_model(Path(conf.MODEL_DIR)
+                                   .joinpath(conf.MODEL_NAME))
 
 class ResNET50(ModelHelper):
     def __init__(self, **params) -> None:
@@ -170,7 +175,7 @@ class KerasAppModel(ModelHelper):
         ])
         
 
-def init_model(model_instance: type =ModelHelper, 
+def init_model(model_name: str ='HumpBackNorthAtlantic', 
                checkpoint_dir: str =None, 
                input_specs=False, **kwargs) -> tf.keras.Sequential:
     """
@@ -191,11 +196,42 @@ def init_model(model_instance: type =ModelHelper,
     tf.keras.Sequential
         the sequential model with pretrained weights
     """
-    mod_obj = model_instance(**kwargs)
-    if model_instance == ModelHelper:
+    model_class = getattr(sys.modules[__name__], model_name)
+    mod_obj = model_class(**kwargs)
+    if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()
     else:
         mod_obj.load_ckpt(checkpoint_dir)
     if not input_specs:
         mod_obj.change_input_to_array()
     return mod_obj.model
+
+def get_labels_and_preds(model_instance: type, 
+                         training_path: str, 
+                         val_data: tf.data.Dataset, 
+                         **kwArgs) -> tuple:
+    """
+    Retrieve labels and predictions of validation set and given model
+    checkpoint. 
+
+    Parameters
+    ----------
+    model_instance : type
+        model class
+    training_path : str
+        path to checkpoint
+    val_data : tf.data.Dataset
+        validation dataset
+
+    Returns
+    -------
+    labels: np.ndarray
+        labels
+    preds: mp.ndarray
+        predictions
+    """
+    model = init_model(load_from_ckpt=True, model_instance=model_instance, 
+                       training_path=training_path, **kwArgs)
+    preds = model.predict(x = val_data.batch(batch_size=32))
+    labels = get_val_labels(val_data, len(preds))
+    return labels, preds

@@ -67,7 +67,7 @@ def run_training(ModelClassName=conf.MODELCLASSNAME,
     
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
     time_start = time.strftime('%Y-%m-%d_%H', time.gmtime())
-    Path(f'../trainings/{time_start}').mkdir(exist_ok=True)
+    Path(f'../trainings/{time_start}').mkdir(exist_ok=True, parents=True)
 
     n_train, n_noise = get_train_set_size(data_dir)
     n_train_set = n_train*(1+time_augs + mixup_augs+spec_aug*2) #// batch_size
@@ -110,7 +110,6 @@ def run_training(ModelClassName=conf.MODELCLASSNAME,
                                 decay_rate = (final_lr/init_lr)**(1/epochs),
                                     staircase = True)
             
-    model_class = getattr(models, ModelClassName)
     model = models.init_model(model_instance=model_class, 
                 checkpoint_dir=f'../trainings/{load_ckpt_path}/unfreeze_no-TF', 
                 keras_mod_name=keras_mod_name, input_specs=True)

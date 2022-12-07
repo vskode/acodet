@@ -4,6 +4,7 @@ from hbdet.funcs import get_files, get_dt_filename
 import hbdet.global_config as conf
 from pathlib import Path
 import matplotlib.pyplot as plt
+import datetime as dt
 import seaborn as sns
 sns.set_theme()
 sns.set_style('white')
@@ -80,13 +81,51 @@ def compute_hourly_pres(time_dir=None, thresh=0.9, lim=7, thresh_sc=0.85,
             for _ in range(count):
                 annot_all = pd.concat([annot_all, pd.read_csv(files[file_ind], 
                                                             sep='\t')])
-                file_ind += 1        
-            annot = annot_all
+                file_ind += 1 
+                
+            if len(annot_all) == 0:
+                end = False
+            else:
+                end = int(annot_all['End Time (s)'].iloc[-1])       
+                
+            for h in range(0, end or 1, 3600):
+                annot = annot_all.loc[h < annot_all['Begin Time (s)']]
+                annot = annot.loc[annot['Begin Time (s)'] < h+3600]
+                if h > 0:
+                    new_dt = (dt.datetime.strptime(date+hour, '%Y-%m-%d%H:00')
+                              +dt.timedelta(hours=1))
+                    date = str(new_dt.date())
+                    hour = '%.2i:00' % new_dt.hour
+                    
+                        
             
-            annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh]
-            # TODO hourly presence für dateien die über eine stunde lang sind
-            if not date in df['Date'].values:
-                if not row == 0:
+                annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh]
+                # TODO hourly presence für dateien die über eine stunde lang sind
+                if not date in df['Date'].values:
+                    if not row == 0:
+                        df.loc[row, conf.HR_DP_COL] = daily_prs(df)
+                        
+                        df_counts.loc[row, conf.HR_DA_COL] = sum(
+                            df_counts.loc[len(df_counts), h_of_day_str()].values)
+                        
+                        if sc:
+                            df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
+                        
+                            df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
+                                df_sc_counts.loc[len(df_sc_counts), 
+                                                h_of_day_str()].values)
+                            
+                    row += 1
+                    df.loc[row, 'Date'] = date
+                    df_counts.loc[row, 'Date'] = date
+                    if sc:
+                        df_sc.loc[row, 'Date'] = date
+                        df_sc_counts.loc[row, 'Date'] = date
+                
+                df.loc[row, hour] = hourly_prs(annot, lim=lim)
+                df_counts.loc[row, hour] = len(annot)
+                
+                if file_ind == len(files):
                     df.loc[row, conf.HR_DP_COL] = daily_prs(df)
                     
                     df_counts.loc[row, conf.HR_DA_COL] = sum(
@@ -94,38 +133,15 @@ def compute_hourly_pres(time_dir=None, thresh=0.9, lim=7, thresh_sc=0.85,
                     
                     if sc:
                         df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
-                    
-                        df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                            df_sc_counts.loc[len(df_sc_counts), 
-                                            h_of_day_str()].values)
                         
-                row += 1
-                df.loc[row, 'Date'] = date
-                df_counts.loc[row, 'Date'] = date
-                if sc:
-                    df_sc.loc[row, 'Date'] = date
-                    df_sc_counts.loc[row, 'Date'] = date
-            
-            df.loc[row, hour] = hourly_prs(annot, lim=lim)
-            df_counts.loc[row, hour] = len(annot)
-            
-            if file_ind == len(files):
-                df.loc[row, conf.HR_DP_COL] = daily_prs(df)
-                
-                df_counts.loc[row, conf.HR_DA_COL] = sum(
-                    df_counts.loc[len(df_counts), h_of_day_str()].values)
-                
-                if sc:
-                    df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
+                        df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
+                            df_sc_counts.loc[len(df_sc_counts), h_of_day_str()].values)
                     
-                    df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                        df_sc_counts.loc[len(df_sc_counts), h_of_day_str()].values)
                 
-            
-            if sc:
-                df_sc_counts.loc[row, hour] = seq_crit(annot, thresh_sc=thresh_sc,
-                                                    n_exceed_thresh=lim_sc)
-                df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
+                if sc:
+                    df_sc_counts.loc[row, hour] = seq_crit(annot, thresh_sc=thresh_sc,
+                                                        n_exceed_thresh=lim_sc)
+                    df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
 
             print(f'{file_ind}/{len(files)}')
                     
