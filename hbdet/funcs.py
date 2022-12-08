@@ -580,6 +580,9 @@ def gen_annotations(file, model: tf.keras.Model,
     parent_dirs = file.relative_to(conf.SOUND_FILES_SOURCE).parent
     if str(parent_dirs) == '.':
         parent_dirs = file.parent.stem
+    if not parent_dirs == Path(conf.SOUND_FILES_SOURCE).stem:
+        parent_dirs = (Path(Path(conf.SOUND_FILES_SOURCE).stem)
+                       .joinpath(parent_dirs))
     
     save_path = (Path(conf.GEN_ANNOTS_DIR).joinpath(time_start)
                  .joinpath('thresh_0.5')

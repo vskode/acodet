@@ -63,8 +63,11 @@ def write_trainings_csv():
 
 def create_overview_plot(train_dates=[], val_set=None, display_keys=['Model'], plot_metrics=False,
                          titles=None):
+    if not train_dates:
+        train_dates = '2022-11-30_01'
     if not isinstance(train_dates, list):
         train_dates = [train_dates]
+    
     df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
     df.index = df['training_date']
     

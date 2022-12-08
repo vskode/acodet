@@ -62,6 +62,11 @@ class MelSpectrogram(tf.keras.layers.Layer):
     if config is None:
       config = Config()
     self.config = config
+    
+  def get_config(self):
+    config = super().get_config()
+    config.update({key: val for key, val in config.items()})
+    return config
 
   def build(self, input_shape):
     self._stft = tf.keras.layers.Lambda(

@@ -1,9 +1,10 @@
 from hbdet.annotate import run_annotation, filter_annots_by_thresh
-from hbdet.train import run_training
+from hbdet.train import run_training, save_model
 from hbdet.tfrec import write_tfrec_dataset
 from hbdet.hourly_presence import compute_hourly_pres
 from hbdet.evaluate import create_overview_plot
 from hbdet.combine_annotations import generate_final_annotations
+from hbdet.models import init_model
 import hbdet.global_config as conf
 
 if conf.RUN_CONFIG == 1:
@@ -37,3 +38,5 @@ elif conf.RUN_CONFIG == 3:
         create_overview_plot()
     elif conf.PRESET == 3:
         create_overview_plot('2022-05-00_00')
+    elif conf.PRESET == 4:
+        save_model('FlatHBNA', init_model())

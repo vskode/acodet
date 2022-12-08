@@ -198,6 +198,8 @@ def init_model(model_name: str ='HumpBackNorthAtlantic',
     """
     model_class = getattr(sys.modules[__name__], model_name)
     mod_obj = model_class(**kwargs)
+    if conf.MODEL_NAME == 'FlatHBNA':
+        input_specs = True
     if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()
     else:
