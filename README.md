@@ -76,3 +76,47 @@ If you have chosen option 4 (or 0) you will find a directory `analysis` within t
 
 ## Usecase 2: Generating new training data
 
+Either use manually created annotations -> option 2, or create new annotations by reviewing the automatically generated annotations -> option 1.
+
+For option 1, use Raven to open sound files alongside their automatically generated annotations. Edit the column `Predictions/Comments` by writing `n` for noise, `c` for call, or `u` for undefined. If the majority of the shown windows are calls, add the suffix `_allcalls` before the `.txt` ending so that the program will automatically label all of the windows as calls, unless specified as `n`, `c`, or `u`. The suffix `_allnoise` will do the same for noise. The suffix `_annotated` will label all unchanged windows as undefined - thereby essentially ignoring them for the created dataset.
+
+Once finished, insert the top-level directory path to the `reviewed_annotation_source` variable in **simple_config.yml**. 
+
+To generate new training data:
+- open the file **simple_config.yml** in any Editor (default is Notepad). 
+- change `run_config` to `2`
+- change `predefined_settings` to one of the following:
+    - `1` for generating training data from reviewed annotations
+    - `2` for generating training data from manually created training data (space in between annotations will be interpretted as noise)
+- change `sound_files_source` to the top level directory containing the dataset(s) containing the sound files
+
+- once finished, save the **simple_config.yml** file
+
+To start the program:
+- activate the virtual environment again:
+
+`source env_hbdet/Scripts/activate`
+
+- run the run.py script:
+
+`python hbdet/run.py`
+
+## Usecase 3: Training
+
+To train the model:
+- open the file **simple_config.yml** in any Editor (default is Notepad). 
+- change `run_config` to `3`
+- change `predefined_settings` to one of the following:
+    - `1` for generating training data from reviewed annotations
+
+- once finished, save the **simple_config.yml** file
+- more adcanced changes for model parameters can be done in **advanced_config.yml**
+
+To start the program:
+- activate the virtual environment again:
+
+`source env_hbdet/Scripts/activate`
+
+- run the run.py script:
+
+`python hbdet/run.py`
