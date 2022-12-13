@@ -11,10 +11,12 @@ from .humpback_model_dir import leaf_pcen
 
 class ModelHelper:    
     def load_ckpt(self, ckpt_path, ckpt_name='last'):
+        ckpt_path = (Path('../trainings').joinpath(ckpt_path)
+                     .joinpath('unfreeze_no-TF')) # TODO namen ändern
         try:
-            file_path = Path(ckpt_path).joinpath(f'cp-{ckpt_name}.ckpt.index')
+            file_path = (ckpt_path.joinpath(f'cp-{ckpt_name}.ckpt.index'))
             if not file_path.exists():
-                ckpts = list(Path(ckpt_path).glob('cp-*.ckpt*'))
+                ckpts = list(ckpt_path.glob('cp-*.ckpt*'))
                 ckpts.sort()
                 ckpt = ckpts[-1]
             else:
@@ -84,7 +86,7 @@ class GoogleMod(ModelHelper): # TODO change name
         """
         self.model = humpback_model.Model()
         if load_g_ckpt:
-            self.model.load_from_tf_hub()
+            self.model = self.model.load_from_tf_hub()
 
     def load_flat_model(self, input_tensors='spectrograms', **_):
         """
@@ -116,8 +118,10 @@ class GoogleMod(ModelHelper): # TODO change name
             model_list.append(tf.keras.layers.Input(
                 [conf.CONTEXT_WIN]))
             model_list.append(tf.keras.layers.Lambda(
-                lambda t: tf.expand_dims(t, -1)))
+                lambda t: tf.expand_dims(t, -1)
+                ))
             model_list.append(self.model.layers[0])
+            
         # add PCEN layer
         model_list.append(self.model.layers[1])
         # iterate through PreBlocks
@@ -175,8 +179,8 @@ class KerasAppModel(ModelHelper):
         ])
         
 
-def init_model(model_name: str ='HumpBackNorthAtlantic', 
-               training_path: str =None, 
+def init_model(model_name: str =conf.MODELCLASSNAME, 
+               training_path: str =conf.LOAD_CKPT_PATH, 
                input_specs=False, **kwargs) -> tf.keras.Sequential:
     """
     Initiate model instance, load weights. As the model is trained on 
