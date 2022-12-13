@@ -26,7 +26,7 @@
 #     - 1 generate annotations
 #     - 2 generate new training data from reviewed annotations
 #     - 3 train (and evaluate)
-run_config: 1
+run_config: 3
 
 # depending on the main task, chose your predefined settings:
 # for generation of annotations, chose:
@@ -45,14 +45,15 @@ run_config: 1
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 4
+predefined_settings: 1
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for option run_config: 1
-sound_files_source: '/mnt/d/NOAA/main'
+sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated'
+# sound_files_source: '/mnt/d/NOAA/main'
 
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 # relevant for options run_config: 1 and predifined_settings: 2 and 4
