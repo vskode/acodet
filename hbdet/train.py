@@ -109,8 +109,8 @@ def run_training(ModelClassName=conf.MODELCLASSNAME,
                     decay_steps = steps_per_epoch or n_train_set//batch_size,
                                 decay_rate = (final_lr/init_lr)**(1/epochs),
                                     staircase = True)
-            
-    model = models.init_model(model_instance=model_class, 
+    
+    model = models.init_model(model_instance=ModelClassName, 
                 checkpoint_dir=f'../trainings/{load_ckpt_path}/unfreeze_no-TF', 
                 keras_mod_name=keras_mod_name, input_specs=True)
     
