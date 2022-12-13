@@ -57,20 +57,41 @@ top_dir_name: 'main'
 
 #######################  TRAINING  ###########################################
 
+# Name of Model class, default is HumpBackNorthAtlantic, possible other classes
+# are GoogleMod for the modified ResNet-50 architecture, or KerasAppModel for 
+# any of the Keras application models (name will get specified under keras_mod_name)
 ModelClassName: 'HumpBackNorthAtlantic' 
+# batch size for training and evaluating purposes
 batch_size: 32
+# number of epochs to run the model
 epochs: 50
+# specify the path to your training checkpoint here to load a pretrained model
 load_ckpt_path: False
+# to run the google model, select True
 load_g_ckpt: False
+# specify the name of the keras application model that you want to run - select the
+# ModelClassName KerasAppModel for this
 keras_mod_name: False
+# number of steps per epoch
 steps_per_epoch: 1000
+# select True if you want your training data to be time shift augmented (recommended)
 time_augs: True 
+# select True if you want your training data to be MixUp augmented (recommended)
 mixup_augs: True
+# select True if you want your training data to be 
+# time and frequency masked augmented (recommended)
 spec_aug: True
+# specify a string to describe the dataset used for this model run (to later be able
+# to understand what was significant about this model training)
 data_description: 'describe your dataset'
+# starting learning rate
 init_lr: 5e-4
+# final learning rate
 final_lr: 5e-6
+# number of preliminary blocks in model (are kept frozen)
 pre_blocks: 9
+# threshold for f score beta
 f_score_beta: 0.5
 f_score_thresh: 0.5
+# number of layers to unfreeze, if False, the entire model is trainable
 unfreeze: False
