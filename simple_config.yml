@@ -50,24 +50,41 @@ predefined_settings: 0
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
-# source path for your annotations
-#   -> might be easier to just copy annotation files to default location
-reviewed_annotation_source: '../generated_annotations/2022-11-27_02'
+# source path for your sound files (top most directory)
+# relevant for option run_config: 1
+sound_files_source: '/mnt/d/NOAA/main'
+
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
+# relevant for options run_config: 1 and predifined_settings: 2 and 4
 generated_annotation_source: '../generated_annotations/2022-12-12_16-11-08'
 
+
+# source path for your annotations
+# relevant for option run_config: 2
+#   -> might be easier to just copy annotation files to default location
+reviewed_annotation_source: '../generated_annotations/2022-11-27_02'
 
 # destination path for automatically generated annotations
 annotation_destination: '../combined_annotations/2022-11-27_02'
 
-# source path for your sound files (top most directory)
-sound_files_source: '/mnt/d/NOAA/main'
+
+
 
 ####################### 3. DEFINE YOUR PARAMETERS  ###########################
 
 ## Model Parameters
 # threshold for predictions
-thresh: 0.85
+thresh: 0.9
+# number of annotations above threshold for hourly presence (default = 15)
+simple_limit: 15
+# threshold for sequence criterion (default = 0.9)
+sc_thresh: 0.9
+# number of annotations above threshold within 20 consecutive windows
+# for hourly presence (default = 3)
+sc_limit: 3
+# number of consecutive windows that sc_limit has to occur in (default = 20)
+sc_con_win: 20
+
 # number of predictions that get computed at once - should be in [20, 2000]
 # worth testing out different values to find whats fastest for your machine
 prediction_window_limit: 1000

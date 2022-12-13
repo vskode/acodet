@@ -28,7 +28,7 @@ def get_val(path):
     df = pd.read_csv(path)
     return df
 
-def seq_crit(annot, n_prec_preds=20, thresh_sc=0.9,
+def seq_crit(annot, n_prec_preds=conf.SC_CON_WIN, thresh_sc=0.9,
                        n_exceed_thresh=4):
     sequ_crit = 0
     annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh_sc]
@@ -46,8 +46,12 @@ def h_of_day_str():
     
 # TODO fall einbauen wenn datei über mehrere stundengrenzen geht
     # datei nach zeitstunden splitten
-def compute_hourly_pres(time_dir=None, thresh=0.9, lim=7, thresh_sc=0.85, 
-                        lim_sc=4, sc=False):
+def compute_hourly_pres(time_dir=None, 
+                        thresh=conf.THRESH, 
+                        lim=conf.SIMPLE_LIMIT, 
+                        thresh_sc=conf.SC_THRESH, 
+                        lim_sc=conf.SC_LIMIT, 
+                        sc=False):
     if not time_dir:
         path = Path(conf.GEN_ANNOT_SRC).joinpath('thresh_0.5')
     else:
@@ -143,7 +147,8 @@ def compute_hourly_pres(time_dir=None, thresh=0.9, lim=7, thresh_sc=0.85,
                                                         n_exceed_thresh=lim_sc)
                     df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
 
-            print(f'{file_ind}/{len(files)}')
+            print(f'Computing files in {dir}: '
+                  f'{file_ind}/{len(files)}', end='\r')
                     
         df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
         df_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SL))
@@ -152,6 +157,7 @@ def compute_hourly_pres(time_dir=None, thresh=0.9, lim=7, thresh_sc=0.85,
             df_sc_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SC))
         for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
             plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
+    print('\n')
 
 def get_path(path, metric): 
     save_path = Path(path).joinpath('analysis')

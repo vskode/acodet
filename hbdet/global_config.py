@@ -60,6 +60,14 @@ TEST_VAL_RATIO = advanced['test_val_ratio']
 ## Model Parameters
 # threshold for predictions
 THRESH = simple['thresh']
+# simple limit for hourly presence
+SIMPLE_LIMIT = simple['simple_limit']
+# sequence criterion threshold
+SC_THRESH = simple['sc_thresh']
+# sequence criterion limit
+SC_LIMIT = simple['sc_limit']
+# number of consecutive winodws for sequence criterion
+SC_CON_WIN = simple['sc_con_win']
 # prediction window limit
 PRED_WIN_LIM = simple['prediction_window_limit']
 
