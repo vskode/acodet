@@ -45,7 +45,7 @@ run_config: 1
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 0
+predefined_settings: 4
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
@@ -56,7 +56,7 @@ sound_files_source: '/mnt/d/NOAA/main'
 
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 # relevant for options run_config: 1 and predifined_settings: 2 and 4
-generated_annotation_source: '../generated_annotations/2022-12-12_16-11-08'
+generated_annotation_source: '../generated_annotations/2022-12-13_12-15-26'
 
 
 # source path for your annotations

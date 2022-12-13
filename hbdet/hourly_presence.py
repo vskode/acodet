@@ -147,7 +147,7 @@ def compute_hourly_pres(time_dir=None,
                                                         n_exceed_thresh=lim_sc)
                     df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
 
-            print(f'Computing files in {dir}: '
+            print(f'Computing files in {dir.stem}: '
                   f'{file_ind}/{len(files)}', end='\r')
                     
         df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
@@ -157,7 +157,7 @@ def compute_hourly_pres(time_dir=None,
             df_sc_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SC))
         for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
             plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
-    print('\n')
+        print('\n')
 
 def get_path(path, metric): 
     save_path = Path(path).joinpath('analysis')
