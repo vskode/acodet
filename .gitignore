@@ -3,3 +3,4 @@ utils/__*
 hbdet/_*
 hbdet/files/models
 _*
+.vscode*
