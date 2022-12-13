@@ -63,6 +63,8 @@ def run_annotation(train_date=None):
     mdf = MetaData()
     f_ind = 0
     for i, file in enumerate(files):    
+        if file.is_dir():
+            continue
         try:
             f_ind += 1
             start = time.time()
@@ -115,15 +117,7 @@ def generate_stats():
                                         relativ_path=conf.GEN_ANNOT_SRC)
 
 if __name__ == '__main__':
-    train_dates = [    
-        # '2022-11-30_11',
-        # '2022-12-01_02',
-        # '2022-11-30_22',
-        # '2022-11-30_01',
-        # '2022-11-29_17',
-        # '2022-11-29_19',
-        # '2022-11-29_21',
-        # '2022-11-29_22'
+    train_dates = [
         '2022-11-30_01'
         ]
 

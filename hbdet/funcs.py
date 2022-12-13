@@ -85,8 +85,15 @@ def get_dt_filename(file):
               'This will be prevent hourly prediction computation.\n',
               e)
         return 'ERROR'
+    
+def get_channel(dir):
+    if '_CH' in str(dir)[-5:]:
+        channel = int(re.findall('[0-9]+', str(dir)[-5:])[0])-1
+    else:
+        channel = 0
+    return channel
 
-def load_audio(file, **kwargs) -> np.ndarray:
+def load_audio(file, channel=0, **kwargs) -> np.ndarray:
     """
     Load audio file, print error if file is corrupted. If the sample rate
     specified in the config file is not the same as the downsample sample 
@@ -101,14 +108,21 @@ def load_audio(file, **kwargs) -> np.ndarray:
     -------
     audio_flat: np.ndarray
         audio array
-    """
+    """       
     try:
         if conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
-            audio_flat, _ = lb.load(file, sr = conf.DOWNSAMPLE_SR, **kwargs)
+            audio_flat, _ = lb.load(file, sr = conf.DOWNSAMPLE_SR, mono=False,
+                                    **kwargs)[channel]
+            if len(audio_flat.shape) > 1:
+                audio_flat = audio_flat[channel]
+            
             audio_flat = lb.resample(audio_flat, orig_sr = conf.DOWNSAMPLE_SR, 
                                     target_sr = conf.SR)
         else:
-            audio_flat, _ = lb.load(file, sr = conf.SR, **kwargs)
+            audio_flat, _ = lb.load(file, sr = conf.SR, mono=False, 
+                                    **kwargs)
+            if len(audio_flat.shape) > 1:
+                audio_flat = audio_flat[channel]
             
         if len(audio_flat) == 0: return
         return audio_flat
@@ -572,17 +586,18 @@ def gen_annotations(file, model: tf.keras.Model,
         date time string corresponding to the time the annotations were 
         computed
     """
-    audio_batches = batch_audio(load_audio(file))
-    
-    annotation_df = create_annotation_df(audio_batches, model)
-    
-
     parent_dirs = file.relative_to(conf.SOUND_FILES_SOURCE).parent
     if str(parent_dirs) == '.':
         parent_dirs = file.parent.stem
     if not parent_dirs == Path(conf.SOUND_FILES_SOURCE).stem:
-        parent_dirs = (Path(Path(conf.SOUND_FILES_SOURCE).stem)
-                       .joinpath(parent_dirs))
+        if not Path(conf.SOUND_FILES_SOURCE).stem == conf.TOP_DIR_NAME:
+            parent_dirs = (Path(Path(conf.SOUND_FILES_SOURCE).stem)
+                           .joinpath(parent_dirs))
+    channel = get_channel(list(parent_dirs.parents)[-2])
+    
+    audio_batches = batch_audio(load_audio(file, channel))
+    
+    annotation_df = create_annotation_df(audio_batches, model)
     
     save_path = (Path(conf.GEN_ANNOTS_DIR).joinpath(time_start)
                  .joinpath('thresh_0.5')
@@ -590,6 +605,6 @@ def gen_annotations(file, model: tf.keras.Model,
     save_path.mkdir(exist_ok=True, parents=True)
     annotation_df.to_csv(save_path
                          .joinpath(f'{file.stem}_annot_{mod_label}.txt'),
-                sep='\t')
+                         sep='\t')
     
     return annotation_df

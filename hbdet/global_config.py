@@ -78,6 +78,7 @@ GEN_ANNOTS_DIR = advanced['generated_annotations_folder']
 MODEL_DIR = 'hbdet/files/models'
 # model name
 MODEL_NAME = advanced['model_name']
+TOP_DIR_NAME = advanced['top_dir_name']
 
 #############  ANNOTATIONS  #####################################
 DEFAULT_THRESH = advanced['default_threshold']

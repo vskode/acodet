@@ -45,7 +45,7 @@ run_config: 1
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 1
+predefined_settings: 0
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
@@ -54,13 +54,14 @@ predefined_settings: 1
 #   -> might be easier to just copy annotation files to default location
 reviewed_annotation_source: '../generated_annotations/2022-11-27_02'
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
-generated_annotation_source: '../generated_annotations/2022-12-04_13_50'
+generated_annotation_source: '../generated_annotations/2022-12-12_16-11-08'
+
 
 # destination path for automatically generated annotations
 annotation_destination: '../combined_annotations/2022-11-27_02'
 
 # source path for your sound files (top most directory)
-sound_files_source: '/mnt/swap/Studium/Master/Masterarbeit/Daten/NEFSC_MA-RI_202001_NS02'
+sound_files_source: '/mnt/d/NOAA/main'
 
 ####################### 3. DEFINE YOUR PARAMETERS  ###########################
 

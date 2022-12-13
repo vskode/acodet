@@ -52,6 +52,8 @@ tfrecords_destination_folder: '../Data/Datasets'
 generated_annotations_folder: '../generated_annotations'
 # name of current North Atlantic humpback whale song model
 model_name: 'Humpback_20221130'
+# name of top level directory when annotating multiple datasets
+top_dir_name: 'main'
 
 #######################  TRAINING  ###########################################
 
