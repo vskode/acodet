@@ -565,6 +565,39 @@ def batch_audio(audio_flat: np.ndarray) -> np.ndarray:
                     range(0, len(audio_flat), conf.PRED_BATCH_SIZE)]
     return audio_batches
 
+def get_directory_structure_relative_to_config_path(file):
+    return file.relative_to(conf.SOUND_FILES_SOURCE).parent
+
+def get_top_dir_name_if_only_one_parent_dir(file, parent_dirs):
+    if str(parent_dirs) == '.':
+        parent_dirs = file.parent.stem
+    return parent_dirs
+
+def check_top_dir_crit(parent_dirs):
+    return Path(parent_dirs).parts[0] != Path(conf.SOUND_FILES_SOURCE).stem
+
+def check_no_subdir_crit(parent_dirs):
+    return len(list(Path(parent_dirs).parents)) == 1
+
+def check_top_dir_is_conf_top_dir():
+    return not Path(conf.SOUND_FILES_SOURCE).stem == conf.TOP_DIR_NAME
+
+def manage_dir_structure(file):
+    parent_dirs = get_directory_structure_relative_to_config_path(file)
+    parent_dirs = get_top_dir_name_if_only_one_parent_dir(file, parent_dirs)
+    
+    bool_top_dir_crit = check_top_dir_crit(parent_dirs)
+    bool_no_subdir = check_no_subdir_crit(parent_dirs)
+    bool_top_dir_is_conf = check_top_dir_is_conf_top_dir()
+    
+    if (bool_top_dir_crit and bool_no_subdir) and bool_top_dir_is_conf:
+        parent_dirs = (Path(Path(conf.SOUND_FILES_SOURCE).stem)
+                        .joinpath(parent_dirs))
+    return parent_dirs
+
+def get_top_dir(parent_dirs):
+    return str(parent_dirs).split('/')[0]
+
 def gen_annotations(file, model: tf.keras.Model,
                     mod_label: str, time_start: str):
     """
@@ -586,14 +619,9 @@ def gen_annotations(file, model: tf.keras.Model,
         date time string corresponding to the time the annotations were 
         computed
     """
-    parent_dirs = file.relative_to(conf.SOUND_FILES_SOURCE).parent
-    if str(parent_dirs) == '.':
-        parent_dirs = file.parent.stem
-    if not parent_dirs == Path(conf.SOUND_FILES_SOURCE).stem:
-        if not Path(conf.SOUND_FILES_SOURCE).stem == conf.TOP_DIR_NAME:
-            parent_dirs = (Path(Path(conf.SOUND_FILES_SOURCE).stem)
-                           .joinpath(parent_dirs))
-    channel = get_channel(list(parent_dirs.parents)[-2])
+    parent_dirs = manage_dir_structure(file)
+            
+    channel = get_channel(get_top_dir(parent_dirs))
     
     audio_batches = batch_audio(load_audio(file, channel))
     

@@ -69,10 +69,10 @@ def run_annotation(train_date=None):
             f_ind += 1
             start = time.time()
             annot = gen_annotations(file, model, mod_label=mod_label, 
-                                 time_start=time_start)
+                                    time_start=time_start)
             computing_time = time.time() - start
             mdf.append_and_save_meta_file(file, annot, f_ind, time_start,
-                                          computing_time=computing_time)
+                                            computing_time=computing_time)
 
         except Exception as e:
             print(f"{file} couldn't be loaded, continuing with next file.\n", 

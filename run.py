@@ -11,6 +11,7 @@ if conf.RUN_CONFIG == 1:
     if conf.PRESET == 1:
         run_annotation()
     elif conf.PRESET == 2:
+        
         filter_annots_by_thresh()
     elif conf.PRESET == 3:
         pass # TODO mit sequ crit filtern
