@@ -164,19 +164,31 @@ def get_path(path, metric):
     save_path.mkdir(exist_ok=True, parents=True)
     return save_path.joinpath(f'{metric}.csv')
 
+def get_title(metric):
+    if 'annotation' in metric:
+        return 'Annotation counts for each hour'
+    elif 'presence' in metric:
+        return 'Hourly presence'
+        
+
 def plot_hp(path, lim, thresh, metric):
     df = pd.read_csv(get_path(path, metric))
     h_pres = df.loc[:, h_of_day_str()]
     h_pres.index = df['Date']
-    plt.figure()
-    plt.title(f'Annotation counts for each hour, limit={lim:.0f}, '
+    plt.figure(figsize=[8, 6])
+    plt.title(f'{get_title(metric)}, limit={lim:.0f}, '
               f'threshold={thresh:.2f}')
-    sns.heatmap(h_pres.T, cmap='crest')
+    if 'presence' in metric:
+        d = {'vmin': 0, 'vmax': 1}
+    else:
+        d = {}
+    sns.heatmap(h_pres.T, cmap='crest', **d)
     plt.ylabel('hour of day')
     plt.tight_layout()
     path = Path(path).joinpath(f'analysis/{time_start}_{metric}_dir')
     path.mkdir(parents=True, exist_ok=True)
-    plt.savefig(Path(path).joinpath(f'{metric}_{thresh:.2f}_{lim:.0f}.png'))
+    plt.savefig(Path(path).joinpath(f'{metric}_{thresh:.2f}_{lim:.0f}.png'),
+                dpi = 150)
     plt.close()
 
 def plot_varying_limits(annotations_path=conf.ANNOT_DEST):
