@@ -23,11 +23,11 @@
 `git clone https://github.com/vskode/hbdet.git`
 - Install virtualenv (copy and paste in Git Bash console):
 
-`C:\Users\%username%\AppData\Local\Programs\Python\Python38\python -m pip install virtualenv`
+`$HOME/AppData/Local/Programs/Python/Python38/python -m pip install virtualenv`
 
 - Create a new virtual environment (default name env_hbdet can be changed):
 
- `C:\Users\%username%\AppData\Local\Programs\Python\Python38\python -m virtualenv env_hbdet`
+ `$HOME/AppData/Local/Programs/Python/Python38/python -m virtualenv env_hbdet`
 
 - activate newly created virtual environment (change env_hbdet if necessary):
 
