@@ -28,8 +28,8 @@ elif conf.RUN_CONFIG == 2:
         generate_final_annotations()
         write_tfrec_dataset()
     elif conf.PRESET == 2:
-        generate_final_annotations()
         generate_final_annotations(active_learning=False)
+        write_tfrec_dataset(active_learning=False)
         
 elif conf.RUN_CONFIG == 3:
     if conf.PRESET == 1:

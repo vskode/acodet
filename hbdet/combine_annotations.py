@@ -6,6 +6,9 @@ from hbdet.funcs import remove_str_flags_from_predictions, get_files
 import os
 import numpy as np
 import hbdet.global_config as conf
+import json
+with open('hbdet/annotation_mappers.json', 'r') as m:
+    mappers = json.load(m)
 
 
 # TODO aufraeumen
@@ -137,6 +140,8 @@ def standardize(df, *, mapper, filename_col='filename',
                 selection_col='Selection'):
     keep_cols = ['label', 'start', 'end', 'freq_min', 'freq_max']
     df = df.rename(columns=mapper)
+    if not 'end' in df.columns:
+        df['end'] = df.start + (df['End Time (s)'] - df['Begin Time (s)'])
     out_df = df[keep_cols]
     out_df.index = pd.MultiIndex.from_arrays(arrays=(df[filename_col], 
                                                      df[selection_col]))
@@ -155,19 +160,20 @@ def finalize_annotation(file, freq_time_crit=False, **kwargs):
     #     print(f'corresponding sound file for annotations file: {file} not found')
         
     ann = get_labels(file, ann, **kwargs)
-    map_to_ketos_annot_std = {'Begin Time (s)': 'start', 
-                              'End Time (s)': 'end',
-                              'Low Freq (Hz)' : 'freq_min', 
-                              'High Freq (Hz)' : 'freq_max',} 
+    if 'File Offset (s)' in ann.columns:
+        mapper = mappers['file_offset_mapper']
+    else:
+        mapper = mappers['default_mapper']
+
     if freq_time_crit:
         ann = filter_out_high_freq_and_high_transient(ann)
         
     ann_explicit_noise = ann.loc[ann['label']=='explicit 0', :]
     ann_explicit_noise['label'] = 0
     ann = ann.drop(ann.loc[ann['label']=='explicit 0'].index)
-    std_annot_train = standardize(ann, mapper=map_to_ketos_annot_std)
+    std_annot_train = standardize(ann, mapper=mapper)
     std_annot_enoise = standardize(ann_explicit_noise, 
-                                   mapper=map_to_ketos_annot_std)
+                                   mapper=mapper)
     
     return std_annot_train, std_annot_enoise
         

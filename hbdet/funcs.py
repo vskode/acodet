@@ -202,23 +202,27 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
     times_n
         time list for noise
     """
-    duration = annotations['start'].iloc[-1] + conf.CONTEXT_WIN/conf.SR
+    duration = annotations['end'].iloc[-1] + conf.CONTEXT_WIN/conf.SR
     audio = load_audio(file, duration=duration)
     
     segs, times = [], []
-    for _, row in annotations.iterrows():
-        beg = int((row.start)*conf.SR)
-        end = int((row.start)*conf.SR + conf.CONTEXT_WIN)
-        
-        if len(audio[beg:end]) == conf.CONTEXT_WIN:
-            segs.append(audio[beg:end])
-            times.append(beg)
-        else:
-            end = len(audio)
-            beg = end - conf.CONTEXT_WIN
-            segs.append(audio[beg:end])
-            times.append(beg)
-            break
+    for _, row in annotations.iterrows(): 
+        num_windows = round((row.end-row.start)/(conf.CONTEXT_WIN/conf.SR) - 1)
+        num_windows = num_windows or 1
+        for i in range(num_windows):# TODO fuer grosse annotationen mehrere fenster erzeugen
+            start = row.start + i*(conf.CONTEXT_WIN/conf.SR)
+            beg = int(start*conf.SR)
+            end = int(start*conf.SR + conf.CONTEXT_WIN)
+            
+            if len(audio[beg:end]) == conf.CONTEXT_WIN:
+                segs.append(audio[beg:end])
+                times.append(beg)
+            else:
+                end = len(audio)
+                beg = end - conf.CONTEXT_WIN
+                segs.append(audio[beg:end])
+                times.append(beg)
+                break
         
     segs = np.array(segs, dtype='float32')
     times = np.array(times, dtype='float32')
@@ -226,8 +230,12 @@ def cntxt_wndw_arr(annotations: pd.DataFrame, file,
     # TODO docstrings aufraumen
     if len(segs)-len(annotations) < 0:
         annotations = annotations.drop(annotations.index[len(segs)-len(annotations):])
-    seg_ar = np.array(segs[annotations['label']==1], dtype='float32')
-    times_c = np.array(times[annotations['label']==1], dtype='float32')
+    if not inbetween_noise: # TODO mismatch in lengths, allow longer active learning annots
+        seg_ar = np.array(segs[annotations['label']==1], dtype='float32')
+        times_c = np.array(times[annotations['label']==1], dtype='float32')
+    else:
+        seg_ar = segs
+        times_c = times
     if inbetween_noise:
         noise_ar, times_n = return_inbetween_noise_arrays(audio, annotations)
     elif len(annotations.loc[annotations['label']==0]) > 0:

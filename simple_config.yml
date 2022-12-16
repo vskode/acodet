@@ -52,18 +52,18 @@ predefined_settings: 1
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for option run_config: 1
-sound_files_source: '../Data/for_manual_annotation/src_to_be_annotated'
+sound_files_source: '/mnt/e/SAMOSAS'
 # sound_files_source: '/mnt/d/NOAA/main'
 
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 # relevant for options run_config: 1 and predifined_settings: 2 and 4
-generated_annotation_source: '../generated_annotations/2022-12-13_12-15-26'
+generated_annotation_source: '/mnt/d/Minke_detector/Detections'
 
 
 # source path for your annotations
 # relevant for option run_config: 2
 #   -> might be easier to just copy annotation files to default location
-reviewed_annotation_source: '../generated_annotations/2022-11-27_02'
+reviewed_annotation_source: '/mnt/d/Minke_detector/Detections'
 
 # destination path for automatically generated annotations
 annotation_destination: '../combined_annotations/2022-11-27_02'
