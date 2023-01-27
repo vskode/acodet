@@ -1,21 +1,29 @@
 # HBDet - **H**ump**b**ack Whale **Det**ector
 
-## Features:
+<!-- ## Features:
 ## · Generate raven annotation tables
 ## · Hourly presence spreadsheets or visualizations
 ## · Generate new training data
-## · Train models
+## · Train models -->
 
+- [Installation Instructions for Windows](#installation-instructions-for-windows)
+    - [Preliminary software installations](#preliminary-software-installations)
+    - [Installation](#installation)
+- [hbdet Usage](#hbdet-usage)
+    - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
+    - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
+    - [Usecase 3: Training](#usecase-3-training)
+- [FAQ](#faq)
 ----------------------------------------------------
 
 # Installation Instructions for Windows
-### Necessary software installations:
+### Preliminary software installations:
 - install python 3.8: (standard install, no admin privileges needed)
 <https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
 - install git bash: (default install)
 <https://github.com/git-for-windows/git/releases/download/v2.38.1.windows.1/Git-2.38.1-64-bit.exe>
 
-### Set up installation
+### Installation
 - create project directory in location of your choice
 - open git bash in project directory (right click, Git Bash here)
 - clone the repository:
@@ -120,3 +128,7 @@ To start the program:
 - run the run.py script:
 
 `python hbdet/run.py`
+
+# FAQ
+
+At the moment installation on the Apple M1 and M2 processors still produce installation errors, this is a known issue and will hopefully be fixed soon.
