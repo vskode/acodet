@@ -68,7 +68,8 @@ def find_thresh05_path_in_dir(time_dir):
     if not time_dir:
         path = root.joinpath('thresh_0.5')
     else:
-        path = root.joinpath(time_dir).joinpath('thresh_0.5')
+        path = (Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir)
+                .joinpath('thresh_0.5'))
     return path
     
 # TODO fall einbauen wenn datei über mehrere stundengrenzen geht

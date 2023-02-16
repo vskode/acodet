@@ -21,7 +21,7 @@ if conf.RUN_CONFIG == 1:
     elif conf.PRESET == 0:
         time_start = run_annotation()
         filter_annots_by_thresh(time_start)
-        compute_hourly_pres(time_start)
+        compute_hourly_pres(time_start, sc=True)
     
 elif conf.RUN_CONFIG == 2:
     if conf.PRESET == 1:

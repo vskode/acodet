@@ -48,7 +48,12 @@ def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
     return annots[annots.filename == file].sort_values('start')
 
 
-def get_dt_filename(stem):
+def get_dt_filename(file):
+    if isinstance(file, Path):
+        stem = file.stem
+    else:
+        stem = file
+        
     if '_annot_' in stem:
         stem = stem.split('_annot_')[0]
     
