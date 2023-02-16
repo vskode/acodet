@@ -87,7 +87,7 @@ The program will create a directory called `generated_annotatoins` in the projec
 
 If you have chosen option 2 (or 0) you will also find a directory `thresh_0.x` where the x stands for the custom threshold you specified in the **simple_config.yml** file. Within the `thresh` directories you will find the name of your dataset. 
 
-If you have chosen option 4 (or 0) you will find a directory `analysis` within the dataset directory. In that directory you will find spreadsheets for hourly presence and hourly counts, as well as folders containing visualizations of the hourly presence and hourly counts. The folder name starts with the date and time that they were computed.
+If you have chosen option 3, 4 or 0 you will find a directory `analysis` within the dataset directory. In that directory you will find spreadsheets for hourly presence and hourly counts, as well as visualizations of the hourly presence and hourly counts.
 
 ## Usecase 2: Generating new training data
 
