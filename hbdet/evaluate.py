@@ -57,22 +57,25 @@ def write_trainings_csv():
             i += 1
         except Exception as e:
             print(e)
-        df.to_csv('../trainings/20221124_meta_trainings.csv')
+        df.to_csv('../trainings/20230207_meta_trainings.csv')
             
 
 
-def create_overview_plot(train_dates=[], val_set=None, display_keys=['Model'], plot_metrics=False,
-                         titles=None):
+def create_overview_plot(train_dates=[], val_set=None, display_keys=['Model'], 
+                         plot_metrics=False, titles=None):
     if not train_dates:
         train_dates = '2022-11-30_01'
     if not isinstance(train_dates, list):
         train_dates = [train_dates]
     
-    df = pd.read_csv('../trainings/20221124_meta_trainings.csv')
+    df = pd.read_csv('../trainings/20230207_meta_trainings.csv')
     df.index = df['training_date']
     
     if not val_set:
         val_set = list(Path(conf.TFREC_DESTINATION).iterdir())
+        if 'dataset_meta_train' in [f.stem for f in val_set]:
+            val_set = val_set[0].parent
+        
     
     if isinstance(val_set, list):
         val_label = 'all'
@@ -99,10 +102,10 @@ def create_overview_plot(train_dates=[], val_set=None, display_keys=['Model'], p
 
     training_runs = []
     for i, train in enumerate(train_dates):
-        training_runs += list(Path(f'../trainings/{train}').glob('unfreeze*'))
+        training_runs += [Path(f'../trainings/{train}')]
         for _ in range(len(list(Path(f'../trainings/{train}').glob('unfreeze*')))):
             labels += labels[i]
-    val_data = run_data_pipeline(val_set, 'val', return_spec=False)
+    val_data = run_data_pipeline(val_set, 'val', return_spec=False, return_meta=True)
 
 
     model_name = [df.loc[df['training_date'] == d, 'Model'].values[0] for d in train_dates]

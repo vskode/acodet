@@ -261,10 +261,31 @@ def get_tfrecords_writer(num, fold, save_dir, **kwargs):
     Path(path.joinpath(fold)).mkdir(parents = True, exist_ok = True)
     return tf.io.TFRecordWriter(str(path.joinpath(fold).joinpath(
                                 "file_%.2i.tfrec" % num)))
+    
+def get_src_dir_structure(file, annot_dir):
+    """
+    Return the directory structure of a file relative to the annotation 
+    directory. This enables the caller to build a directory structure
+    identical to the directory structure of the source files.
 
-def write_tfrec_dataset(annot_dir=None, active_learning=True):
-    if not annot_dir:
-        annot_dir = conf.ANNOT_DEST
+    Parameters
+    ----------
+    file : pathlib.Path
+        file path
+    annot_dir : str
+        path to annotation directory
+
+    Returns
+    -------
+    pathlike
+        directory structure
+    """
+    if len(list(file.relative_to(annot_dir).parents)) == 1:
+        return file.relative_to(annot_dir).parent
+    else:
+        return list(file.relative_to(annot_dir).parents)[-2]
+
+def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
 
     annotation_files = list(Path(annot_dir).glob('**/*.csv'))
     if active_learning:
@@ -280,7 +301,7 @@ def write_tfrec_dataset(annot_dir=None, active_learning=True):
             all_noise = False
 
         save_dir = (Path(conf.TFREC_DESTINATION)
-                    .joinpath(list(file.relative_to(annot_dir).parents)[-2]))
+                    .joinpath(get_src_dir_structure(file, annot_dir)))
         
         write_tfrecords(annots, save_dir, all_noise=all_noise, 
                         inbetween_noise=inbetween_noise)

@@ -26,14 +26,14 @@
 #     - 1 generate annotations
 #     - 2 generate new training data from reviewed annotations
 #     - 3 train (and evaluate)
-run_config: 3
+run_config: 1
 
 # depending on the main task, chose your predefined settings:
 # for generation of annotations, chose:
 #     - 1 generate new annotations
 #     - 2 filter existing annotations with different threshold
-#     - 3 filter existing annotations with sequence criterion - n.i.
-#     - 4 generate hourly predictions
+#     - 3 generate hourly predictions (simple limit and sequence criterion)
+#     - 4 generate hourly predictions (only simple limit)
 #     - 5 generate hourly predictions with varying limits - n.i.
 #     - 0 all of the above
 # for generation of new training data, chose:
@@ -45,28 +45,27 @@ run_config: 3
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 1
+predefined_settings: 3
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for option run_config: 1
-sound_files_source: '/mnt/e/SAMOSAS'
-# sound_files_source: '/mnt/d/NOAA/main'
+sound_files_source: 'path to your sound files'
 
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 # relevant for options run_config: 1 and predifined_settings: 2 and 4
-generated_annotation_source: '/mnt/d/Minke_detector/Detections'
+generated_annotation_source: '../Cathy/HBW_detector'
 
 
 # source path for your annotations
 # relevant for option run_config: 2
 #   -> might be easier to just copy annotation files to default location
-reviewed_annotation_source: '/mnt/d/Minke_detector/Detections'
+reviewed_annotation_source: '../annotations'
 
 # destination path for automatically generated annotations
-annotation_destination: '../combined_annotations/2022-11-27_02'
+annotation_destination: '../combined_annotations'
 
 
 
@@ -85,6 +84,9 @@ sc_thresh: 0.9
 sc_limit: 3
 # number of consecutive windows that sc_limit has to occur in (default = 20)
 sc_con_win: 20
+# number of annotations that correspond to the upper limit of color bar in 
+# hourly annotations plots
+max_annots_per_hour: 150
 
 # number of predictions that get computed at once - should be in [20, 2000]
 # worth testing out different values to find whats fastest for your machine

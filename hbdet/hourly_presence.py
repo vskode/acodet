@@ -43,6 +43,33 @@ def seq_crit(annot, n_prec_preds=conf.SC_CON_WIN, thresh_sc=0.9,
             
 def h_of_day_str():
     return ['%.2i:00' % i for i in np.arange(24)]
+
+def find_thresh05_path_in_dir(time_dir):
+    """
+    Get corrects paths leading to thresh_0.5 directory contatining annotations.
+    Correct for incorrect paths, that already contain the thresh_0.5 path.
+
+    Parameters
+    ----------
+    time_dir : str
+        if run.py is run directly, a path to a specific timestamp can be passed
+
+    Returns
+    -------
+    pathlib.Path
+        correct path leading to thresh_0.5 directory
+    """
+    root = Path(conf.GEN_ANNOT_SRC)
+    if root.parts[-1] == 'thresh_0.5':
+        root = root.parent
+    elif root.parts[-1] == 'thresh_0.9':
+        root = root.parent
+        
+    if not time_dir:
+        path = root.joinpath('thresh_0.5')
+    else:
+        path = root.joinpath(time_dir).joinpath('thresh_0.5')
+    return path
     
 # TODO fall einbauen wenn datei über mehrere stundengrenzen geht
     # datei nach zeitstunden splitten
@@ -52,11 +79,7 @@ def compute_hourly_pres(time_dir=None,
                         thresh_sc=conf.SC_THRESH, 
                         lim_sc=conf.SC_LIMIT, 
                         sc=False):
-    if not time_dir:
-        path = Path(conf.GEN_ANNOT_SRC).joinpath('thresh_0.5')
-    else:
-        path = (Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir)
-                .joinpath('thresh_0.5'))
+    path = find_thresh05_path_in_dir(time_dir)
     
     for dir in path.iterdir():
         if not dir.is_dir():
@@ -152,11 +175,14 @@ def compute_hourly_pres(time_dir=None,
                     
         df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
         df_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SL))
+        for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
+            plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
+            
         if sc:
             df_sc.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SC))
             df_sc_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SC))
-        for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
-            plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
+            for metric in (conf.HR_CNTS_SC, conf.HR_PRS_SC):
+                plot_hp(path.joinpath(dir.stem), lim_sc, thresh_sc, metric)
         print('\n')
 
 def get_path(path, metric): 
@@ -181,13 +207,12 @@ def plot_hp(path, lim, thresh, metric):
     if 'presence' in metric:
         d = {'vmin': 0, 'vmax': 1}
     else:
-        d = {}
+        d = {'vmax': conf.HR_CNTS_VMAX}
     sns.heatmap(h_pres.T, cmap='crest', **d)
     plt.ylabel('hour of day')
     plt.tight_layout()
-    path = Path(path).joinpath(f'analysis/{time_start}_{metric}_dir')
-    path.mkdir(parents=True, exist_ok=True)
-    plt.savefig(Path(path).joinpath(f'{metric}_{thresh:.2f}_{lim:.0f}.png'),
+    path = Path(path).joinpath('analysis')
+    plt.savefig(path.joinpath(f'{metric}_{thresh:.2f}_{lim:.0f}.png'),
                 dpi = 150)
     plt.close()
 

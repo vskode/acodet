@@ -68,6 +68,8 @@ SC_THRESH = simple['sc_thresh']
 SC_LIMIT = simple['sc_limit']
 # number of consecutive winodws for sequence criterion
 SC_CON_WIN = simple['sc_con_win']
+# limit for colorbar for hourly annotations
+HR_CNTS_VMAX = simple['max_annots_per_hour']
 # prediction window limit
 PRED_WIN_LIM = simple['prediction_window_limit']
 
@@ -127,7 +129,8 @@ UNFREEZE = advanced['unfreeze']
 HR_CNTS_SL = 'hourly_annotation_simple_limit'
 HR_PRS_SL = 'hourly_presence_simple_limit'
 HR_CNTS_SC = 'hourly_annotations_sequence_crit'
-HR_PRS_SC = 'hourly_pres_sequ_crit'
+HR_PRS_SC = 'hourly_presence_sequence_crit'
+
 
 # column name for daily annotations (cumulative counts)
 HR_DA_COL = 'daily_annotations'

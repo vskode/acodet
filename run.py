@@ -13,7 +13,7 @@ if conf.RUN_CONFIG == 1:
     elif conf.PRESET == 2:
         filter_annots_by_thresh()
     elif conf.PRESET == 3:
-        pass # TODO mit sequ crit filtern
+        compute_hourly_pres(sc=True)
     elif conf.PRESET == 4:
         compute_hourly_pres()
     elif conf.PRESET == 5:

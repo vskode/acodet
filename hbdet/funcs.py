@@ -48,9 +48,7 @@ def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
     return annots[annots.filename == file].sort_values('start')
 
 
-def get_dt_filename(file):
-    stem = Path(file).stem
-    
+def get_dt_filename(stem):
     if '_annot_' in stem:
         stem = stem.split('_annot_')[0]
     
@@ -59,6 +57,9 @@ def get_dt_filename(file):
     
     i, datetime = 1, ''
     while len(datetime) < 12:
+        if i > 1000:
+            raise NameError("Time stamp Error: time stamp in filename "
+                            "doesn't fit any known pattern.")
         datetime = ''.join(numbs[-i:])
         i += 1
         
@@ -447,7 +448,7 @@ def get_files(*, location: str=f'{conf.GEN_ANNOTS_DIR}',
     Returns
     -------
     generator
-        generator object containing pathlib.Path objects of all files fitting 
+        list containing pathlib.Path objects of all files fitting 
         the pattern
     """
     folder = Path(location)

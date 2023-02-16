@@ -11,6 +11,8 @@ from .humpback_model_dir import leaf_pcen
 
 class ModelHelper:    
     def load_ckpt(self, ckpt_path, ckpt_name='last'):
+        if isinstance(ckpt_path, Path):
+            ckpt_path = ckpt_path.stem
         ckpt_path = (Path('../trainings').joinpath(ckpt_path)
                      .joinpath('unfreeze_no-TF')) # TODO namen ändern
         try:
@@ -238,6 +240,28 @@ def get_labels_and_preds(model_name: str,
     """
     model = init_model(load_from_ckpt=True, model_name=model_name, 
                        training_path=training_path, **kwArgs)
-    preds = model.predict(x = val_data.batch(batch_size=32))
+    preds = model.predict(x = prep_ds_4_preds(val_data))
     labels = get_val_labels(val_data, len(preds))
     return labels, preds
+
+def prep_ds_4_preds(dataset):
+    """
+    Prepare dataset for prediction, by batching and ensuring that only
+    arrays and corresponding labels are passed (necessary because if 
+    data about the origin of the array is passed, i.e. the file path and
+    start time of the array within that file, model.predict fails.).
+
+    Parameters
+    ----------
+    dataset : TfRecordDataset
+        dataset
+
+    Returns
+    -------
+    TFRecordDataset
+        prepared dataset
+    """
+    if len(list(dataset.take(1))[0]) > 2:
+        return dataset.map(lambda x, y, z, w: (x, y)).batch(batch_size=32)
+    else:
+        return dataset.batch(batch_size=32)

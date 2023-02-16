@@ -253,6 +253,14 @@ def plot_pr_curve(labels, preds, ax, training_path,
         m.update({curve: funcs.get_pr_arrays(labels, preds, 'AUC',
                                             curve=curve)})
     perform_str = f"; AUC_PR:{m['PR']:.2f}; AUC_ROC:{m['ROC']:.2f}"
+    print('p_.5: ', m['Precision'][100], '\nr_.5: ', m['Recall'][100]
+          , '\nAUC-PR: ', m['PR'],'\nAUC-ROC: ', m['ROC'])
+    for k, i in m.items():
+        m[k] = i.astype(float)
+    m['Recall'] = list(m['Recall'])
+    m['Precision'] = list(m['Precision'])
+    with open(f'../perform_metrics_{training_path.stem}.json', 'w') as f:
+        json.dump(m, f)
     print(perform_str)
     if 'plot_labels' in kwargs:
         if isinstance(kwargs['plot_labels'], list):
