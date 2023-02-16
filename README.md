@@ -55,16 +55,16 @@ To generate annotations:
 - open the file **simple_config.yml** in any Editor (default is Notepad). 
 - change `run_config` to `1`
 - change `predefined_settings` to one of the following:
-    - `1 ` for generating annotations with a threshold of 0.5
-    - `2 ` for generating annotations with a custom threshold
+    - `1` for generating annotations with a threshold of 0.5
+    - `2` for generating annotations with a custom threshold
         - specify threshold (**thresh**) value in **simple_config.yml** (defaults to 0.9)
-    - `3 ` for generating hourly counts and presence spreadsheets and visualizations (using the sequence criterion and the simple limit)
+    - `3` for generating hourly counts and presence spreadsheets and visualizations (using the sequence criterion and the simple limit)
         - _simple limit_ and _sequence criterion_ are accumulation metrics aiming to deliver hourly presence information, while filtering out false positives
             - _simple limit_ -> only consider annotations if the number of annotations exceeding the **thresh** value is higher than the value for **simple_limit** in **simple_config.yml** (in a given hour in the dataset)
-            - _sequence criterion_ -> only consider annotations if the number of <u>consecutive</u> annotations within **sc_con_win** number of windows exceeding the **sc_thresh** value is higher than **sc_limit** (in a given hour in the dataset)
+            - _sequence criterion_ -> only consider annotations if the number of consecutive annotations within **sc_con_win** number of windows exceeding the **sc_thresh** value is higher than **sc_limit** (in a given hour in the dataset)
         - hourly counts gives the number of annotations according to the accumulation metrics
         - hourly presence gives a binary (0 -> no whale; 1 -> whale) corresponding to wheather the accumulation metrics are satisfied
-    - `4 `  for generating hourly counts and presence spreadsheets and visualizations (using only the simple limit)
+    - `4` for generating hourly counts and presence spreadsheets and visualizations (using only the simple limit)
     - or `0` to run all of the above in sequece
 - change `sound_files_source` to the top level directory containing the dataset(s) you want to annotate
 
