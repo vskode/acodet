@@ -1,7 +1,7 @@
 from hbdet.annotate import run_annotation, filter_annots_by_thresh
 from hbdet.train import run_training, save_model
 from hbdet.tfrec import write_tfrec_dataset
-from hbdet.hourly_presence import compute_hourly_pres
+from hbdet.hourly_presence import compute_hourly_pres, calc_val_diff
 from hbdet.evaluate import create_overview_plot
 from hbdet.combine_annotations import generate_final_annotations
 from hbdet.models import init_model
@@ -18,6 +18,8 @@ if conf.RUN_CONFIG == 1:
         compute_hourly_pres()
     elif conf.PRESET == 5:
         pass # TODO hourly preds mit varying limits
+    elif conf.PRESET == 6:
+        calc_val_diff()
     elif conf.PRESET == 0:
         time_start = run_annotation()
         filter_annots_by_thresh(time_start)

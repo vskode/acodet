@@ -87,6 +87,8 @@ sc_con_win: 20
 # number of annotations that correspond to the upper limit of color bar in 
 # hourly annotations plots
 max_annots_per_hour: 150
+# path to validation file of hourly presence dataset
+hourly_presence_validation_path: 'validation.csv'
 
 # number of predictions that get computed at once - should be in [20, 2000]
 # worth testing out different values to find whats fastest for your machine

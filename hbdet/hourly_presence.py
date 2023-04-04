@@ -29,7 +29,7 @@ def get_val(path):
     return df
 
 def seq_crit(annot, n_prec_preds=conf.SC_CON_WIN, thresh_sc=0.9,
-                       n_exceed_thresh=4):
+                       n_exceed_thresh=4, return_counts=True):
     sequ_crit = 0
     annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh_sc]
     for i, row in annot.iterrows():
@@ -39,6 +39,9 @@ def seq_crit(annot, n_prec_preds=conf.SC_CON_WIN, thresh_sc=0.9,
         prec_anns = annot.loc[bool1 * bool2]
         if len(prec_anns) > n_exceed_thresh:
             sequ_crit += 1
+            # this stops the function as soon as the limit is met once
+            if not return_counts: 
+                return 1
     return sequ_crit
             
 def h_of_day_str():
@@ -72,119 +75,170 @@ def find_thresh05_path_in_dir(time_dir):
                 .joinpath('thresh_0.5'))
     return path
     
-# TODO fall einbauen wenn datei über mehrere stundengrenzen geht
-    # datei nach zeitstunden splitten
+def init_date_tuple(files):
+    dates = list(map(lambda x: get_dt_filename(x.stem.split('_annot')[0]), 
+                     files))
+    date_hour_tuple = list(map(lambda x: (str(x.date()), 
+                                          '%.2i:00' % int(x.hour)), dates))
+    
+    return np.unique(date_hour_tuple, axis=0, return_counts=True)    
+    
 def compute_hourly_pres(time_dir=None, 
                         thresh=conf.THRESH, 
                         lim=conf.SIMPLE_LIMIT, 
                         thresh_sc=conf.SC_THRESH, 
                         lim_sc=conf.SC_LIMIT, 
-                        sc=False):
+                        sc=False,
+                        return_hourly_counts=True):
     path = find_thresh05_path_in_dir(time_dir)
     
     for dir in path.iterdir():
         if not dir.is_dir():
             continue
-        df = pd.DataFrame(columns=['Date', conf.HR_DP_COL, *h_of_day_str()])
-        df_sc = df.copy()
-        df_counts = pd.DataFrame(columns=['Date', conf.HR_DA_COL, 
-                                        *h_of_day_str()])
-        df_sc_counts = df_counts.copy()
 
         files = get_files(location=path.joinpath(dir.stem), search_str='**/*txt')
         files.sort()
         
-        dates = list(map(lambda x: get_dt_filename(x.stem.split('_annot')[0]), 
-                        files))
+        df_tuple = return_hourly_pres_df(files, thresh, thresh_sc, 
+                                         lim, lim_sc, sc, dir)
         
-        date_hour_tuple = list(map(lambda x: (str(x.date()), 
-                                            '%.2i:00' % int(x.hour)), dates))
+        df, df_sc, df_counts, df_sc_counts = df_tuple
         
-        tup, counts = np.unique(date_hour_tuple, axis=0, return_counts=True)
         
-        file_ind, row = 0, 0
-        for (date, hour), count in zip(tup, counts):
-            annot_all = pd.DataFrame()
-            
-            for _ in range(count):
-                annot_all = pd.concat([annot_all, pd.read_csv(files[file_ind], 
-                                                            sep='\t')])
-                file_ind += 1 
-                
-            if len(annot_all) == 0:
-                end = False
-            else:
-                end = int(annot_all['End Time (s)'].iloc[-1])       
-                
-            for h in range(0, end or 1, 3600):
-                annot = annot_all.loc[h < annot_all['Begin Time (s)']]
-                annot = annot.loc[annot['Begin Time (s)'] < h+3600]
-                if h > 0:
-                    new_dt = (dt.datetime.strptime(date+hour, '%Y-%m-%d%H:00')
-                              +dt.timedelta(hours=1))
-                    date = str(new_dt.date())
-                    hour = '%.2i:00' % new_dt.hour
-                    
-                        
-            
-                annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh]
-                # TODO hourly presence für dateien die über eine stunde lang sind
-                if not date in df['Date'].values:
-                    if not row == 0:
-                        df.loc[row, conf.HR_DP_COL] = daily_prs(df)
-                        
-                        df_counts.loc[row, conf.HR_DA_COL] = sum(
-                            df_counts.loc[len(df_counts), h_of_day_str()].values)
-                        
-                        if sc:
-                            df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
-                        
-                            df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                                df_sc_counts.loc[len(df_sc_counts), 
-                                                h_of_day_str()].values)
-                            
-                    row += 1
-                    df.loc[row, 'Date'] = date
-                    df_counts.loc[row, 'Date'] = date
-                    if sc:
-                        df_sc.loc[row, 'Date'] = date
-                        df_sc_counts.loc[row, 'Date'] = date
-                
-                df.loc[row, hour] = hourly_prs(annot, lim=lim)
-                df_counts.loc[row, hour] = len(annot)
-                
-                if file_ind == len(files):
-                    df.loc[row, conf.HR_DP_COL] = daily_prs(df)
-                    
-                    df_counts.loc[row, conf.HR_DA_COL] = sum(
-                        df_counts.loc[len(df_counts), h_of_day_str()].values)
-                    
-                    if sc:
-                        df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
-                        
-                        df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                            df_sc_counts.loc[len(df_sc_counts), h_of_day_str()].values)
-                    
-                
-                if sc:
-                    df_sc_counts.loc[row, hour] = seq_crit(annot, thresh_sc=thresh_sc,
-                                                        n_exceed_thresh=lim_sc)
-                    df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
-
-            print(f'Computing files in {dir.stem}: '
-                  f'{file_ind}/{len(files)}', end='\r')
-                    
         df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
-        df_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SL))
+        df_counts.to_csv(get_path(path.joinpath(dir.stem), 
+                                      conf.HR_CNTS_SL))
         for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
             plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
             
         if sc:
             df_sc.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SC))
-            df_sc_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SC))
+            df_sc_counts.to_csv(get_path(path.joinpath(dir.stem), 
+                                             conf.HR_CNTS_SC))
             for metric in (conf.HR_CNTS_SC, conf.HR_PRS_SC):
                 plot_hp(path.joinpath(dir.stem), lim_sc, thresh_sc, metric)
         print('\n')
+        
+def get_end_of_last_annotation(annotations):
+    """
+    Get number of seconds from beginning to the end of the last annotation.
+
+    Parameters
+    ----------
+    annotations : pd.DataFrame
+        annotation dataframe
+
+    Returns
+    -------
+    int or bool
+        False or number of seconds until last annotation
+    """
+    if len(annotations) == 0:
+        return False
+    else:
+        return int(annotations['End Time (s)'].iloc[-1])
+    
+def init_new_dt_if_exceeding_3600_s(h, date, hour):
+    """
+    Return new date and hour string if annotations exceed an hour. This
+    ensures that hour presence is still computed even if a recording 
+    exceeds an hour.
+
+    Parameters
+    ----------
+    h : int
+        number of hours
+    date : str
+        date string
+    hour : str
+        hour string
+
+    Returns
+    -------
+    tuple
+        date and hour string
+    """
+    if h > 0:
+        new_dt = (dt.datetime.strptime(date+hour, '%Y-%m-%d%H:00')
+                    +dt.timedelta(hours=1))
+        date = str(new_dt.date())
+        hour = '%.2i:00' % new_dt.hour
+    return date, hour
+
+def return_hourly_pres_df(files, thresh, thresh_sc, lim, lim_sc, 
+                          sc, path, return_counts=True):
+    if not isinstance(path, Path):
+        path = Path(path)
+    file_ind, row = 0, 0
+    df = pd.DataFrame(columns=['Date', conf.HR_DP_COL, *h_of_day_str()])
+    df_sc = df.copy()
+    df_counts = pd.DataFrame(columns=['Date', conf.HR_DA_COL, 
+                                          *h_of_day_str()])
+    df_sc_counts = df_counts.copy()
+    tup, counts = init_date_tuple(files)
+    for (date, hour), count in zip(tup, counts):
+        annot_all = pd.DataFrame()
+        
+        for _ in range(count):
+            annot_all = pd.concat([annot_all, 
+                                   pd.read_csv(files[file_ind], sep='\t')])
+            file_ind += 1 
+            
+        end = get_end_of_last_annotation(annot_all)     
+            
+        for h in range(0, end or 1, 3600):
+            annot = annot_all.loc[(h < annot_all['Begin Time (s)']) & 
+                                  (annot_all['Begin Time (s)'] < h+3600)]
+            date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
+                
+                    
+        
+            annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh]
+            if not date in df['Date'].values:
+                if not row == 0:
+                    df.loc[row, conf.HR_DP_COL] = daily_prs(df)
+                    df_counts.loc[row, conf.HR_DA_COL] = sum(
+                        df_counts.loc[len(df_counts), 
+                                      h_of_day_str()].values)
+                    
+                    if sc:
+                        df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
+                        df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
+                            df_sc_counts.loc[len(df_sc_counts), 
+                                             h_of_day_str()].values)
+                        
+                row += 1
+                df.loc[row, 'Date'] = date
+                df_counts.loc[row, 'Date'] = date
+                if sc:
+                    df_sc.loc[row, 'Date'] = date
+                    df_sc_counts.loc[row, 'Date'] = date
+            
+            df.loc[row, hour] = hourly_prs(annot, lim=lim)
+            df_counts.loc[row, hour] = len(annot)
+            
+            if file_ind == len(files):
+                df.loc[row, conf.HR_DP_COL] = daily_prs(df)
+                df_counts.loc[row, conf.HR_DA_COL] = sum(
+                    df_counts.loc[len(df_counts), h_of_day_str()].values)
+                
+                if sc:
+                    df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
+                    df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
+                        df_sc_counts.loc[len(df_sc_counts), 
+                                         h_of_day_str()].values)
+                
+            
+            if sc:
+                df_sc_counts.loc[row, hour] = seq_crit(annot, 
+                                                thresh_sc=thresh_sc,
+                                                n_exceed_thresh=lim_sc,
+                                                return_counts=return_counts)
+                df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
+
+        print(f'Computing files in {path.stem}: '
+                f'{file_ind}/{len(files)}', end='\r')
+    return df, df_sc, df_counts, df_sc_counts
 
 def get_path(path, metric): 
     save_path = Path(path).joinpath('analysis')
@@ -216,6 +270,63 @@ def plot_hp(path, lim, thresh, metric):
     plt.savefig(path.joinpath(f'{metric}_{thresh:.2f}_{lim:.0f}.png'),
                 dpi = 150)
     plt.close()
+    
+def calc_val_diff(time_dir=None, 
+                  thresh=conf.THRESH, 
+                  lim=conf.SIMPLE_LIMIT, 
+                  thresh_sc=conf.SC_THRESH, 
+                  lim_sc=conf.SC_LIMIT,
+                  sc=True):
+    
+    
+    path = find_thresh05_path_in_dir(time_dir)
+    for fold in path.iterdir():
+        if not fold.joinpath('analysis').joinpath(conf.HR_VAL_PATH).exists():
+            continue
+        
+        df_val = get_val(fold.joinpath('analysis').joinpath(conf.HR_VAL_PATH))
+        hours_of_day = ['%.2i:00' % i for i in np.arange(24)]
+        files = get_files(location=path.joinpath(fold.stem), search_str='**/*txt')
+        files.sort()
+        
+        df_tuple = return_hourly_pres_df(files, thresh, thresh_sc, 
+                                        lim, lim_sc, sc, fold, 
+                                        return_counts=False)
+        df, df_sc, _, _= df_tuple
+        
+        d, incorrect, df_diff = dict(), dict(), dict()
+        for agg_met, df_metric in zip(('sl', 'sq'), (df, df_sc)):
+            df_val.index = df_metric.index
+            df_diff.update({agg_met: df_val.loc[:, hours_of_day] \
+                                        - df_metric.loc[:, hours_of_day]})
+
+            results = np.unique(df_diff[agg_met])
+            d.update({agg_met: dict({'true': 0, 'false_pos': 0, 
+                                        'false_neg': 0})})
+            for met, val in zip(d[agg_met].keys(), (0, -1, 1)):
+                if val in results:
+                    d[agg_met][met] = len(np.where(df_diff[agg_met] == val)[0])
+            incorrect.update({agg_met: d[agg_met]['false_pos'] \
+                                        + d[agg_met]['false_neg']})
+        perf_df = pd.DataFrame(d)
+        
+        print('\n', 'l:', lim, 'th:', thresh, 
+            'incorrect:', incorrect['sl'], 
+            '%.2f' % (incorrect['sl']/(len(df_diff['sl'])*24)*100))
+        print('l:', lim_sc, 'th:', thresh_sc, 
+            'sc_incorrect:', incorrect['sq'], 
+            '%.2f' % (incorrect['sq']/(len(df_diff['sl'])*24)*100))
+        
+        df.to_csv(Path(fold).joinpath('analysis')
+            .joinpath(f'th{thresh}_l{lim}_hourly_presence.csv'))
+        df_sc.to_csv(Path(fold).joinpath('analysis')
+            .joinpath(f'th{thresh_sc}_l{lim_sc}_hourly_pres_sequ_crit.csv'))
+        df_diff['sl'].to_csv(Path(fold).joinpath('analysis')
+            .joinpath(f'th{thresh}_l{lim}_diff_hourly_presence.csv'))
+        df_diff['sq'].to_csv(Path(fold).joinpath('analysis')
+            .joinpath(f'th{thresh_sc}_l{lim_sc}_diff_hourly_pres_sequ_crit.csv'))
+        perf_df.to_csv(Path(fold).joinpath('analysis')
+            .joinpath(f'th{thresh_sc}_l{lim_sc}_diff_performance.csv'))
 
 def plot_varying_limits(annotations_path=conf.ANNOT_DEST):
     thresh_sl, thresh_sc = 0.9, 0.9

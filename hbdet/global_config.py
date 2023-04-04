@@ -130,7 +130,7 @@ HR_CNTS_SL = 'hourly_annotation_simple_limit'
 HR_PRS_SL = 'hourly_presence_simple_limit'
 HR_CNTS_SC = 'hourly_annotations_sequence_crit'
 HR_PRS_SC = 'hourly_presence_sequence_crit'
-
+HR_VAL_PATH = simple['hourly_presence_validation_path']
 
 # column name for daily annotations (cumulative counts)
 HR_DA_COL = 'daily_annotations'
