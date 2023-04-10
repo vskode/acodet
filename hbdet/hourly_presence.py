@@ -241,7 +241,10 @@ def return_hourly_pres_df(files, thresh, thresh_sc, lim, lim_sc,
     return df, df_sc, df_counts, df_sc_counts
 
 def get_path(path, metric): 
-    save_path = Path(path).joinpath('analysis')
+    if not path.stem == 'analysis':
+        save_path = Path(path).joinpath('analysis')
+    else:
+        save_path = path
     save_path.mkdir(exist_ok=True, parents=True)
     return save_path.joinpath(f'{metric}.csv')
 
@@ -253,6 +256,7 @@ def get_title(metric):
         
 
 def plot_hp(path, lim, thresh, metric):
+    path = Path(path).joinpath('analysis')
     df = pd.read_csv(get_path(path, metric))
     h_pres = df.loc[:, h_of_day_str()]
     h_pres.index = df['Date']
@@ -266,7 +270,6 @@ def plot_hp(path, lim, thresh, metric):
     sns.heatmap(h_pres.T, cmap='crest', **d)
     plt.ylabel('hour of day')
     plt.tight_layout()
-    path = Path(path).joinpath('analysis')
     plt.savefig(path.joinpath(f'{metric}_{thresh:.2f}_{lim:.0f}.png'),
                 dpi = 150)
     plt.close()
