@@ -26,6 +26,7 @@ if conf.RUN_CONFIG == 1:
         compute_hourly_pres(time_start, sc=True)
     
 elif conf.RUN_CONFIG == 2:
+    # TODO case für nur datensatz bauen, wenn es schon combined gibt
     if conf.PRESET == 1:
         generate_final_annotations()
         write_tfrec_dataset()

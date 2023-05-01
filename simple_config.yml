@@ -26,7 +26,7 @@
 #     - 1 generate annotations
 #     - 2 generate new training data from reviewed annotations
 #     - 3 train (and evaluate)
-run_config: 1
+run_config: 3
 
 # depending on the main task, chose your predefined settings:
 # for generation of annotations, chose:
@@ -45,14 +45,14 @@ run_config: 1
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 3
+predefined_settings: 1
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for option run_config: 1
-sound_files_source: 'path to your sound files'
+sound_files_source: '../Data/all_chosen_source_files'
 
 # annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
 # relevant for options run_config: 1 and predifined_settings: 2 and 4
@@ -62,10 +62,10 @@ generated_annotation_source: '../Cathy/HBW_detector'
 # source path for your annotations
 # relevant for option run_config: 2
 #   -> might be easier to just copy annotation files to default location
-reviewed_annotation_source: '../annotations'
+reviewed_annotation_source: '../generated_annotations/2022-11-27_02'
 
 # destination path for automatically generated annotations
-annotation_destination: '../combined_annotations'
+annotation_destination: '../combined_annotations/BERCHOK_SAMANA_200901_4'
 
 
 
