@@ -45,26 +45,30 @@ run_config: 1
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 3
+predefined_settings: 0
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
 # source path for your sound files (top most directory)
-# relevant for option run_config: 1
+# relevant for generation of new annotations (option run_config: 1)
 sound_files_source: 'path to your sound files'
 
-# annotation_source: '/mnt/f/Daten/20221019-Benoit/reviewed_annots'
-# relevant for options run_config: 1 and predifined_settings: 2 and 4
+# source path for automatically generated annotations
+# relevant for generation of hourly or daily presence, or recomputing
+# with a different threshold
+# (options run_config: 1 and predifined_settings: 2 and 4)
 generated_annotation_source: '../Cathy/HBW_detector'
 
 
-# source path for your annotations
-# relevant for option run_config: 2
+# source path for annotations created or reviewed by you
+# relevant for creation of new dataset (option run_config: 2)
 #   -> might be easier to just copy annotation files to default location
 reviewed_annotation_source: '../annotations'
 
-# destination path for automatically generated annotations
+# source path for automatically generated combined annotations 
+# Only relevant for creation of new dataset (option run_config: 2)
+# if unsure, leave unchanged. 
 annotation_destination: '../combined_annotations'
 
 

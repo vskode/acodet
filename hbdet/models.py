@@ -10,6 +10,9 @@ from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
 
 class ModelHelper:    
+    """
+    Helper class to provide checkpoint loading and changing of input shape.
+    """
     def load_ckpt(self, ckpt_path, ckpt_name='last'):
         if isinstance(ckpt_path, Path):
             ckpt_path = ckpt_path.stem
@@ -49,6 +52,17 @@ class ModelHelper:
         self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
 
 class HumpBackNorthAtlantic(ModelHelper):
+    """
+    Defualt class for North Atlantic Humpback Whale Song detection. If no new
+    training is performed this class is the default class. The model is 
+    currently included in the repository. The model will be extracted 
+    and made ready for use. 
+
+    Parameters
+    ----------
+    ModelHelper : class
+        helper class providing necessary functionalities
+    """
     def __init__(self, **kwargs):
         pass
 
@@ -151,6 +165,17 @@ class GoogleMod(ModelHelper): # TODO change name
             layers=[layer for layer in model_list])
 
 class KerasAppModel(ModelHelper):
+    """
+    Class providing functionalities for usage of standard keras application
+    models like EfficientNet. The keras application name is passed and
+    the helper class is then used in case existing checkpoints need to be 
+    loaded or the shape of the input array needs change. 
+
+    Parameters
+    ----------
+    ModelHelper : class
+        helper class providing necessary functionalities
+    """
     def __init__(self, keras_mod_name='EfficientNetB0', **params) -> None:
         keras_model = getattr(tf.keras.applications, keras_mod_name)(
                 include_top=True,

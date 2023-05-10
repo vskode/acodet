@@ -14,7 +14,6 @@ import numpy as np
 from hbdet.humpback_model_dir import front_end
 import hbdet.global_config as conf
 
-# TODO aufräumen !
 
 def get_info(date):
     keys = ['data_path', 'batch_size', 'epochs', 'Model',
@@ -83,17 +82,11 @@ def create_overview_plot(train_dates=[], val_set=None, display_keys=['Model'],
         val_label = Path(val_set).stem
     
     string = str( 
-        'Model:{}; ' 
-        # 'keras_mod_name:{}; ' 
-        # 'epochs:{}; ' 
-        # 'init_lr:{}; ' 
-        # 'lr_end:{}; ' 
+        'Model:{}; '
         f'val: {val_label}')
     if conf.THRESH != 0.5:
         string += f' thr: {conf.THRESH}'
 
-
-    # labels = [string.format(*[d[k] for k in display_keys]) for d in info_dicts]
     if not train_dates:
         labels = None
     else:
@@ -110,7 +103,6 @@ def create_overview_plot(train_dates=[], val_set=None, display_keys=['Model'],
 
     model_name = [df.loc[df['training_date'] == d, 'Model'].values[0] for d in train_dates]
     keras_mod_name = [df.loc[df['training_date'] == d, 'keras_mod_name'].values[0] for d in train_dates]
-    # model_class = list(map(lambda x: getattr(models, x), model_name))
 
     time_start = time.strftime('%Y%m%d_%H%M%S', time.gmtime())
     
@@ -130,9 +122,7 @@ def create_overview_plot(train_dates=[], val_set=None, display_keys=['Model'],
                             fig = eval_fig, plot_pr=True, plot_cm=False, titles=titles,
                             train_dates=train_dates, label=None, legend=False, 
                             keras_mod_name=keras_mod_name)
-    # TODO bei zeit noch pr-curves erstellen 
-    fig.savefig(f'../trainings/2022-11-30_01/{time_start}_results_combo.png', dpi=150) # TODO
-    # fig.savefig(f'../trainings/{train_dates[-1]}/{time_start}_results_combo.png', dpi=150)
+    fig.savefig(f'../trainings/2022-11-30_01/{time_start}_results_combo.png', dpi=150)
 
 def create_incorrect_prd_plot(model_instance, train_date, val_data_path, **kwargs):
     training_run = Path(f'../trainings/{train_date}').glob('unfreeze*')

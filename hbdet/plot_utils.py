@@ -15,7 +15,6 @@ import tensorflow as tf
 drop_keyz = {'fbeta', 'val_fbeta'}
 sns.set_theme()
 sns.set_style('white')
-# sns.despine(fig=None, ax=None, top=False, right=False, left=False, bottom=False, offset=None, trim=False)
 def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
     
     plt.rc('axes', labelsize=20)
@@ -91,10 +90,6 @@ def plot_model_results(datetimes, labels=None, fig=None, legend=True, **kwargs):
     for key, val in kwargs.items():
         info_string += f' | {key}: {val}'
     
-    today = time.ctime()
-    # fig.suptitle(f'Model Results{info_string}'
-    #             '\n'
-    #             f'{today}')
     ref_time = time.strftime('%Y%m%d', time.gmtime())
     if savefig:
         fig.tight_layout()
@@ -181,39 +176,7 @@ def simple_spec(signal, ax = None, fft_window_length=2**11, sr = 10000,
         fig_new.colorbar(img, ax=ax, format='%+2.0f dB')
         return fig_new, ax
     else:
-        return ax
-    
-# def plot_confusion_matrix(cm, classes,
-#                           normalize=False,
-#                           title='Confusion matrix',
-#                           cmap=plt.cm.Blues):
-#     """
-#     This function prints and plots the confusion matrix.
-#     Normalization can be applied by setting `normalize=True`.
-#     """
-#     plt.figure(figsize=(10, 10))
-#     plt.imshow(cm, interpolation='nearest', cmap=cmap)
-#     plt.title(title)
-#     tick_marks = np.arange(len(classes))
-#     plt.xticks(tick_marks, classes, rotation=45)
-#     plt.yticks(tick_marks, classes)
-
-#     if normalize:
-#         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-
-#     thresh = cm.max() / 2.
-#     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-#         plt.text(j, i, cm[i, j],
-#             horizontalalignment="center",
-#             color="white" if cm[i, j] > thresh else "black")
-
-#     plt.tight_layout()
-#     plt.ylabel('True label'), plt.xlabel('Predicted label')
-# # call confusion matrix
-# cm = tf.math.confusion_matrix(labels=y_test_true, predictions=y_test_pred)
-# cm = cm.numpy()
-# plot_confusion_matrix(cm, classes=config['classes'], normalize=False, title='Confusion matrix', cmap=plt.cm.Blues)
-    
+        return ax  
     
 def plot_conf_matr(labels, preds, ax, iteration, title, **kwargs):
     plt.rc('axes', titlesize=40)
