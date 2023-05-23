@@ -211,6 +211,7 @@ def generate_final_annotations(annotation_files=None, active_learning=True,
             if leading_underscore_in_parent_dirs(files[ind]):
                 print(files[ind], 
                       ' skipped due to leading underscore in parent dir.')
+                ind += 1
                 continue
             df_train, df_enoise = finalize_annotation(files[ind], 
                                                       all_noise=False, 

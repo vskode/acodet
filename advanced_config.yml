@@ -47,7 +47,7 @@ annotation_df_fmax: 1000
 ########################  PATHS  #############################################
 # dataset destination directory - save tfrecord dataset to this directory 
 # only change when really necessary
-tfrecords_destination_folder: '../Data/Datasets'
+tfrecords_destination_folder: 'tests/test_files/test_tfrecords'
 # default folder to store newly created annotations
 generated_annotations_folder: '../generated_annotations'
 # name of current North Atlantic humpback whale song model

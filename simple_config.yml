@@ -52,24 +52,24 @@ predefined_settings: 0
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for generation of new annotations (option run_config: 1)
-sound_files_source: 'path to your sound files'
+sound_files_source: 'tests/test_files/test_audio_files'
 
 # source path for automatically generated annotations
 # relevant for generation of hourly or daily presence, or recomputing
 # with a different threshold
 # (options run_config: 1 and predifined_settings: 2 and 4)
-generated_annotation_source: '../Cathy/HBW_detector'
+generated_annotation_source: 'tests/test_files/test_annotations'
 
 
 # source path for annotations created or reviewed by you
 # relevant for creation of new dataset (option run_config: 2)
 #   -> might be easier to just copy annotation files to default location
-reviewed_annotation_source: '../annotations'
+reviewed_annotation_source: 'tests/test_files/test_annotations'
 
 # source path for automatically generated combined annotations 
 # Only relevant for creation of new dataset (option run_config: 2)
 # if unsure, leave unchanged. 
-annotation_destination: '../combined_annotations'
+annotation_destination: '../combined_annotations/test_case'
 
 
 
