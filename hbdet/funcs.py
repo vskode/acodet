@@ -117,16 +117,17 @@ def load_audio(file, channel=0, **kwargs) -> np.ndarray:
     """       
     try:
         if conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
-            audio_flat, _ = lb.load(file, sr = conf.DOWNSAMPLE_SR, mono=False,
-                                    **kwargs)[channel]
+            with open(file, 'rb') as f:
+                audio_flat, _ = lb.load(f, sr = conf.DOWNSAMPLE_SR, mono=False,
+                                        **kwargs)[channel]
             if len(audio_flat.shape) > 1:
                 audio_flat = audio_flat[channel]
             
             audio_flat = lb.resample(audio_flat, orig_sr = conf.DOWNSAMPLE_SR, 
                                     target_sr = conf.SR)
         else:
-            audio_flat, _ = lb.load(file, sr = conf.SR, mono=False, 
-                                    **kwargs)
+            with open(file, 'rb') as f:
+                audio_flat, _ = lb.load(f, sr = conf.SR, mono=False, **kwargs)
             if len(audio_flat.shape) > 1:
                 audio_flat = audio_flat[channel]
             
@@ -320,11 +321,12 @@ def get_train_set_size(tfrec_path):
     for dataset_dir in tfrec_path:
         try:
             for dic in Path(dataset_dir).glob('**/*dataset*.json'):
-                data_dict = json.load(open(dic))
-                if 'noise' in str(dic):
-                    noise_set_size += data_dict['dataset']['size']['train']
-                elif 'train' in data_dict['dataset']['size']:
-                    train_set_size += data_dict['dataset']['size']['train']
+                with open(dic, 'r') as f:
+                    data_dict = json.load(f)
+                    if 'noise' in str(dic):
+                        noise_set_size += data_dict['dataset']['size']['train']
+                    elif 'train' in data_dict['dataset']['size']:
+                        train_set_size += data_dict['dataset']['size']['train']
         except:
             print('No dataset dictionary found, estimating dataset size.'
                 'WARNING: This might lead to incorrect learning rates!')
