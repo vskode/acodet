@@ -90,7 +90,7 @@ def run_training(ModelClassName=conf.MODELCLASSNAME,
     train_data = run_augment_pipeline(train_data, noise_data,
                                         n_noise, n_train, time_augs, 
                                         mixup_augs, seed, spec_aug=spec_aug,
-                                        time_start=time_start, plot=True,
+                                        time_start=time_start, plot=False,
                                         random=False)
     train_data = prepare(train_data, batch_size, shuffle=True, 
                         shuffle_buffer=n_train_set*3)
@@ -115,7 +115,7 @@ def run_training(ModelClassName=conf.MODELCLASSNAME,
                 keras_mod_name=keras_mod_name, input_specs=True)
     
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate = lr),
+        optimizer=tf.keras.optimizers.legacy.Adam(learning_rate = lr),
         loss=tf.keras.losses.BinaryCrossentropy(),
         metrics = [tf.keras.metrics.BinaryAccuracy(),
                     tf.keras.metrics.Precision(),
