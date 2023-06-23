@@ -1,0 +1,1 @@
+{"data_split": "within_file", "dataset": {"size": {"train": 19, "test": 6, "val": 8}, "noise": {"train": 19, "test": 6, "val": 8}, "calls": {"train": 0, "test": 0, "val": 0}}, "files": {"file_01_train": 0, "file_02_test": 0, "file_03_val": 0}}
