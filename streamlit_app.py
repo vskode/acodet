@@ -31,8 +31,9 @@ def annotate_options():
 
         # set the full path to be able to refer to it
         directory_path =  Path(path).joinpath(chosen_folder)
+        conf.SOUND_FILES_SOURCE = directory_path
 
-    return 
+    return preset_option
 
 def generate_data_options():
     preset_option = st.selectbox(
@@ -77,7 +78,10 @@ option = int(option[0])
 conf.RUN_CONFIG = option
 
 if option == 1:
-    conf.PRESET = annotate_options()
+    try:    
+        conf.PRESET = annotate_options()
+    except:
+        st.write('Folder does not exist, retrying.')
 elif option == 2:
     conf.PRESET = generate_data_options()
 if option == 3:
