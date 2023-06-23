@@ -15,7 +15,7 @@ def annotate_options():
     st.write('You selected:', preset_option)
     preset_option = int(preset_option[0])
     
-    if preset_option == 1:
+    if preset_option == 1 or preset_option == 0:
         # f = st.file_uploader("Choose a sound file", 
         #                      type=(["tsv","csv","txt","tab","xlsx","xls", "wav", "aif"]))
         # Folder picker button
