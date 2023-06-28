@@ -29,7 +29,7 @@ class MetaData:
                                   relativ_path = conf.SOUND_FILES_SOURCE,
                                   computing_time = 'not calculated'):
         self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
-        self.df.loc[f_ind, self.filename] = Path(file).relative_to(
+        self.df.loc[f_ind, self.filename] = Path(file).relative_to( #TODO relative_path muss noch dauerhaft geändert werden
                                                         relativ_path)
         self.df.loc[f_ind, self.n_pred_col] = len(annot)
         df_clean = remove_str_flags_from_predictions(annot)
