@@ -13,7 +13,8 @@ def annotate_options(key='annot'):
          '3 - generate hourly predictions (simple limit and sequence criterion)',
          '4 - generate hourly predictions (only simple limit)',
          '0 - all of the above'), key=key)
-    if not st.button('Next', key = 'button_' + key):
+    utils.next_button(hierarchy=1)
+    if not st.session_state.b1:
         pass
     preset_option = int(preset_option[0])
     
@@ -21,10 +22,34 @@ def annotate_options(key='annot'):
         path = st.text_input("Enter the path to your sound data:", '.')
         utils.open_folder_dialogue(path, key='folder_' + key)
         
-        if not st.button('Next', key = 'button_' + key):
-            pass
         st.text_input("Model threshold:", "0.9")
-        st.text_input("Model threshold:", "0.9")
+        st.title('Aggregation metrics parameters for hourly presence and hourly counts.')
+        st.header('Specify parameters for the simple limit.')
+        st.text_input("Number of annotations for simple limit:", "15", 
+                      max_chars=2)
+        st.text_input("Threshold for simple limit:", "0.9",
+                      max_chars=4)
+        st.header('Specify parameters for the sequence limit.')
+        st.text_input("Number of annotations for sequence limit:", "20",
+                      max_chars=2)
+        st.text_input("Threshold for sequence limit:", "0.9", 
+                      max_chars=4)
+    elif preset_option == 2:
+        path = st.text_input("Enter the path to your annotation data:", '.')
+        utils.open_folder_dialogue(path, key='folder_' + key)
+        st.text_input("Rerun annotations Model threshold:", "0.9")
+    else:
+        st.text('Aggregation metrics parameters for hourly presence and hourly counts.')
+        st.text('Specify parameters for the simple limit.')
+        st.text_input("Number of annotations for simple limit:", "15",
+                      max_chars=2)
+        st.text_input("Threshold for simple limit:", "0.9", 
+                      max_chars=4)
+        st.text('Specify parameters for the sequence limit.')
+        st.text_input("Number of annotations for sequence limit:", "20",
+                      max_chars=2)
+        st.text_input("Threshold for sequence limit:", "0.9", 
+                      max_chars=4)
     
     
     
@@ -37,7 +62,8 @@ def generate_data_options(key='gen_data'):
          '2 - generate new training data from reviewed annotations '
          'and fill space between annotations with noise annotations'),
         key = 'gen_data')
-    if not st.button('Next', key = 'button_' + key):
+    utils.next_button(hierarchy=2)
+    if not st.session_state.b1:
         pass
 
     st.write('You selected:', preset_option)
@@ -66,8 +92,12 @@ def train_options():
          '2 - evaluate saved model', 
          '3 - evaluate model checkpoint',
          '4 - save model specified in advanced config'))
+    utils.next_button(hierarchy=3)
+    if not st.session_state.b1:
+        pass
     preset_option = int(preset_option[0])
     return preset_option
+
 
 
 def select_preset(option):
@@ -96,7 +126,8 @@ option = st.selectbox(
      '3 - Train'), 
     key = 'main',
     help="you're being helped")
-if st.button('Next', key='button_main'):
+utils.next_button(hierarchy=0)
+if st.session_state.b0:
     select_preset(option)
 
     

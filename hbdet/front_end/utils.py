@@ -18,3 +18,10 @@ def open_folder_dialogue(path, key):
         
     except FileNotFoundError:
         st.write('Folder does not exist, retrying.')
+        
+def next_button(hierarchy):
+    if f'b{hierarchy}' not in st.session_state:
+        setattr(st.session_state, f'b{hierarchy}', False)
+    val = st.button('Next', key=f'button_{hierarchy}')
+    if val:
+        setattr(st.session_state, f'b{hierarchy}', True)
