@@ -2,102 +2,7 @@ import streamlit as st
 import run
 import hbdet.global_config as conf
 from pathlib import Path
-from hbdet.front_end import utils
-
-
-def annotate_options(key='annot'):
-    preset_option = st.selectbox(
-        'What predefined Settings would you like to run?',
-        ('1 - generate new annotations',
-         '2 - filter existing annotations with different threshold',
-         '3 - generate hourly predictions (simple limit and sequence criterion)',
-         '4 - generate hourly predictions (only simple limit)',
-         '0 - all of the above'), key=key)
-    utils.next_button(hierarchy=1)
-    if not st.session_state.b1:
-        pass
-    preset_option = int(preset_option[0])
-    
-    if preset_option == 1 or preset_option == 0:
-        path = st.text_input("Enter the path to your sound data:", '.')
-        utils.open_folder_dialogue(path, key='folder_' + key)
-        
-        st.text_input("Model threshold:", "0.9")
-        st.title('Aggregation metrics parameters for hourly presence and hourly counts.')
-        st.header('Specify parameters for the simple limit.')
-        st.text_input("Number of annotations for simple limit:", "15", 
-                      max_chars=2)
-        st.text_input("Threshold for simple limit:", "0.9",
-                      max_chars=4)
-        st.header('Specify parameters for the sequence limit.')
-        st.text_input("Number of annotations for sequence limit:", "20",
-                      max_chars=2)
-        st.text_input("Threshold for sequence limit:", "0.9", 
-                      max_chars=4)
-    elif preset_option == 2:
-        path = st.text_input("Enter the path to your annotation data:", '.')
-        utils.open_folder_dialogue(path, key='folder_' + key)
-        st.text_input("Rerun annotations Model threshold:", "0.9")
-    else:
-        st.text('Aggregation metrics parameters for hourly presence and hourly counts.')
-        st.text('Specify parameters for the simple limit.')
-        st.text_input("Number of annotations for simple limit:", "15",
-                      max_chars=2)
-        st.text_input("Threshold for simple limit:", "0.9", 
-                      max_chars=4)
-        st.text('Specify parameters for the sequence limit.')
-        st.text_input("Number of annotations for sequence limit:", "20",
-                      max_chars=2)
-        st.text_input("Threshold for sequence limit:", "0.9", 
-                      max_chars=4)
-    
-    
-    
-    return preset_option
-
-def generate_data_options(key='gen_data'):
-    preset_option = st.selectbox(
-        'How would you like run the program?',
-        ('1 - generate new training data from reviewed annotations',
-         '2 - generate new training data from reviewed annotations '
-         'and fill space between annotations with noise annotations'),
-        key = 'gen_data')
-    utils.next_button(hierarchy=2)
-    if not st.session_state.b1:
-        pass
-
-    st.write('You selected:', preset_option)
-    preset_option = int(preset_option[0])
-    
-    if preset_option == 1:
-        utils.open_folder_dialogue(st.text_input(
-            "Enter the path to your sound data:", '.'), 
-                            key='source_folder_' + key)
-        utils.open_folder_dialogue(st.text_input(
-            "Enter the path to your reviewed annotations:", '.'), 
-                            key='reviewed_annotations_folder' + key)
-    elif preset_option == 2:
-        utils.open_folder_dialogue(st.text_input(
-            "Enter the path to your sound data:", '.'), 
-                            key='source_folder_' + key)
-        utils.open_folder_dialogue(st.text_input(
-            "Enter the path to your reviewed annotations:", '.'), 
-                            key='reviewed_annotations_folder' + key)
-    return preset_option
-
-def train_options():
-    preset_option = st.selectbox(   
-        'How would you like run the program?',
-        ('1 - continue training on existing model and save model in the end',
-         '2 - evaluate saved model', 
-         '3 - evaluate model checkpoint',
-         '4 - save model specified in advanced config'))
-    utils.next_button(hierarchy=3)
-    if not st.session_state.b1:
-        pass
-    preset_option = int(preset_option[0])
-    return preset_option
-
+from hbdet.front_end import (utils, st_annotate, st_generate_data, st_train)
 
 
 def select_preset(option):
@@ -105,11 +10,11 @@ def select_preset(option):
     conf.RUN_CONFIG = option
 
     if option == 1:
-        conf.PRESET = annotate_options()
+        conf.PRESET = st_annotate.annotate_options()
     elif option == 2:
-        conf.PRESET = generate_data_options()
+        conf.PRESET = st_generate_data.generate_data_options()
     if option == 3:
-        conf.PRESET = train_options()
+        conf.PRESET = st_train.train_options()
 
 def run_computions():
     if not st.button('Run'):
@@ -126,7 +31,7 @@ option = st.selectbox(
      '3 - Train'), 
     key = 'main',
     help="you're being helped")
-utils.next_button(hierarchy=0)
+utils.next_button(id=0)
 if st.session_state.b0:
     select_preset(option)
 
