@@ -15,13 +15,15 @@ def select_preset(option):
         conf.PRESET = st_generate_data.generate_data_options()
     if option == 3:
         conf.PRESET = st_train.train_options()
+    run_computions()
 
 def run_computions():
     if not st.button('Run'):
         pass
-    st.write('Program started')
-    run.main()
-    st.stop()
+    else:
+        st.write('Program started')
+        run.main()
+        st.stop()
 
 
 option = st.selectbox(
