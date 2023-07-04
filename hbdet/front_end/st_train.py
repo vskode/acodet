@@ -34,15 +34,18 @@ def train_options():
         if not model_architecture == 'HumpBackNorthAtlantic':
             conf.KERAS_MOD_NAME = True
         st.markdown('#### Hyperparameters')
-        utils.user_input('batch size', '32')
-        utils.user_input('epochs', '50')
-        utils.user_input('steps per epoch', '1000')
-        utils.user_input('initial learning rate', '0.0005')
-        utils.user_input('final learning rate', '0.000005')
+        conf.BATCH_SIZE = int(utils.user_input('batch size', '32'))
+        conf.EPOCHS = int(utils.user_input('epochs', '50'))
+        conf.STEPS_PER_EPOCH = int(utils.user_input('steps per epoch', '1000'))
+        conf.INIT_LR = float(utils.user_input('initial learning rate', '0.0005'))
+        conf.FINAL_LR = float(utils.user_input('final learning rate', '0.000005'))
         st.markdown('#### Augmentations')
-        utils.user_dropdown('Use time-shift augmentation', ('True', 'False'))
-        utils.user_dropdown('Use mixup augmentation', ('True', 'False'))
-        utils.user_dropdown('Use specaugment augmentation', ('True', 'False'))
+        conf.TIME_AUGS = bool(utils.user_dropdown('Use time-shift augmentation', 
+                                             ('True', 'False')))
+        conf.MIXUP_AUGS = bool(utils.user_dropdown('Use mixup augmentation', 
+                                              ('True', 'False')))
+        conf.SPEC_AUG = bool(utils.user_dropdown('Use specaugment augmentation', 
+                                            ('True', 'False')))
 
     
     return preset_option
