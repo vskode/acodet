@@ -1,5 +1,5 @@
 import streamlit as st
-import hbdet.global_config as conf
+import AcoDet.global_config as conf
 
 def display_outputs():
     import numpy as np
