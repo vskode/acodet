@@ -1,5 +1,5 @@
 import unittest
-from hbdet.hbdet.models import GoogleMod
+from AcoDet.AcoDet.models import GoogleMod
 
 class TestModel(unittest.TestCase):
     def test_model_load(self):

@@ -1,6 +1,6 @@
 utils/__*
 *__pycache__*
-hbdet/_*
-hbdet/files/models
+AcoDet/_*
+AcoDet/files*
+tests/test_files/test_generated_annotations*
 _*
-.vsc*
