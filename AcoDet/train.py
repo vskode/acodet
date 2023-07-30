@@ -182,7 +182,7 @@ def save_model(string, model, lr=5e-4, weight_clip=None, f_score_beta=0.5,
                                             name='fbeta1'),       
         ]
     )
-    model.save(f'AcoDet/files/models/{string}')
+    model.save(f'AcoDet/src/models/{string}')
 
 
 ##############################################################################

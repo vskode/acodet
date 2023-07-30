@@ -10,5 +10,5 @@ def create_session_file():
         
     session = {**simple, **advanced}
 
-    with open('AcoDet/files/tmp_session.json', 'w') as f:
+    with open('AcoDet/src/tmp_session.json', 'w') as f:
         json.dump(session, f)

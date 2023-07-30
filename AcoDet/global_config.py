@@ -13,7 +13,7 @@
 
 import json
 
-with open('AcoDet/files/tmp_session.json', 'r') as f:
+with open('AcoDet/src/tmp_session.json', 'r') as f:
     session = json.load(f)
     
 ####################  AUDIO PROCESSING PARAMETERS  ###########################
@@ -82,7 +82,7 @@ GEN_ANNOT_SRC = session['generated_annotation_source']
 SOUND_FILES_SOURCE = session['sound_files_source']
 GEN_ANNOTS_DIR = session['generated_annotations_folder']
 # model directory
-MODEL_DIR = 'AcoDet/files/models'
+MODEL_DIR = 'AcoDet/src/models'
 # model name
 MODEL_NAME = session['model_name']
 TOP_DIR_NAME = session['top_dir_name']
