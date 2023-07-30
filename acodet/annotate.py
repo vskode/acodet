@@ -1,9 +1,9 @@
 import time
-from AcoDet import models
-from AcoDet.funcs import (get_files, gen_annotations, 
+from acodet import models
+from acodet.funcs import (get_files, gen_annotations, 
                          get_dt_filename, 
                          remove_str_flags_from_predictions)
-from AcoDet import global_config as conf
+from acodet import global_config as conf
 import pandas as pd
 import numpy as np
 from pathlib import Path

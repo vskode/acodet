@@ -1,4 +1,4 @@
-# AcoDet - **H**ump**b**ack Whale **Det**ector
+# acodet - **H**ump**b**ack Whale **Det**ector
 
 <!-- ## Features:
 ## · Generate raven annotation tables
@@ -9,7 +9,7 @@
 - [Installation Instructions for Windows](#installation-instructions-for-windows)
     - [Preliminary software installations](#preliminary-software-installations)
     - [Installation instructions](#installation-instructions)
-- [AcoDet Usage](#AcoDet-usage)
+- [acodet Usage](#acodet-usage)
     - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
     - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
     - [Usecase 3: Training](#usecase-3-training)
@@ -28,27 +28,27 @@
 - open git bash in project directory (right click, Git Bash here)
 - clone the repository:
 
-`git clone https://github.com/vskode/AcoDet.git`
+`git clone https://github.com/vskode/acodet.git`
 - Install virtualenv (copy and paste in Git Bash console):
 
 `$HOME/AppData/Local/Programs/Python/Python38/python -m pip install virtualenv`
 
-- Create a new virtual environment (default name env_AcoDet can be changed):
+- Create a new virtual environment (default name env_acodet can be changed):
 
- `$HOME/AppData/Local/Programs/Python/Python38/python -m virtualenv env_AcoDet`
+ `$HOME/AppData/Local/Programs/Python/Python38/python -m virtualenv env_acodet`
 
-- activate newly created virtual environment (change env_AcoDet if necessary):
+- activate newly created virtual environment (change env_acodet if necessary):
 
-`source env_AcoDet/Scripts/activate`
+`source env_acodet/Scripts/activate`
 
 - Install required packages:
 
-`pip install -r AcoDet/requirements.txt`
+`pip install -r acodet/requirements.txt`
 
 -------------------------
 
-# AcoDet Usage
-Users only need to change the files **simple_congif.yml** and **advanced_config.yml** to use AcoDet. Once the config files are changed, users can run the program by running the command `python run.py` inside the **AcoDet** directory.
+# acodet Usage
+Users only need to change the files **simple_congif.yml** and **advanced_config.yml** to use acodet. Once the config files are changed, users can run the program by running the command `python run.py` inside the **acodet** directory.
 
 ## Usecase 1: Generating annotations
 To generate annotations:
@@ -73,11 +73,11 @@ To generate annotations:
 To start the program:
 - activate the virtual environment again:
 
-`source env_AcoDet/Scripts/activate`
+`source env_acodet/Scripts/activate`
 
 - run the run.py script:
 
-`python AcoDet/run.py`
+`python acodet/run.py`
 
 ## Output
 
@@ -110,11 +110,11 @@ To generate new training data:
 To start the program:
 - activate the virtual environment again:
 
-`source env_AcoDet/Scripts/activate`
+`source env_acodet/Scripts/activate`
 
 - run the run.py script:
 
-`python AcoDet/run.py`
+`python acodet/run.py`
 
 ## Usecase 3: Training
 
@@ -130,11 +130,11 @@ To train the model:
 To start the program:
 - activate the virtual environment again:
 
-`source env_AcoDet/Scripts/activate`
+`source env_acodet/Scripts/activate`
 
 - run the run.py script:
 
-`python AcoDet/run.py`
+`python acodet/run.py`
 
 # FAQ
 

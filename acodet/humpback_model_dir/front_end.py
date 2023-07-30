@@ -25,7 +25,7 @@ from __future__ import print_function
 import collections
 
 import tensorflow as tf
-from AcoDet import global_config as conf
+from acodet import global_config as conf
 
 Config = collections.namedtuple("Config", [
     "stft_frame_length",

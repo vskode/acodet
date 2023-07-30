@@ -1,5 +1,5 @@
 import streamlit as st
-import AcoDet.global_config as conf
+import acodet.global_config as conf
 from pathlib import Path
 
 

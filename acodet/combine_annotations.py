@@ -2,12 +2,12 @@ import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
 import glob
 from pathlib import Path
-from AcoDet.funcs import remove_str_flags_from_predictions, get_files
+from acodet.funcs import remove_str_flags_from_predictions, get_files
 import os
 import numpy as np
-import AcoDet.global_config as conf
+import acodet.global_config as conf
 import json
-with open('AcoDet/annotation_mappers.json', 'r') as m:
+with open('acodet/annotation_mappers.json', 'r') as m:
     mappers = json.load(m)
 
 

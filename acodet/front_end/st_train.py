@@ -1,8 +1,8 @@
 import streamlit as st
 import run
-import AcoDet.global_config as conf
+import acodet.global_config as conf
 from pathlib import Path
-from AcoDet.front_end import utils
+from acodet.front_end import utils
 
 def train_options():
     preset_option = st.selectbox(   

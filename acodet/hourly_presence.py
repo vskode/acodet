@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from AcoDet.funcs import get_files, get_dt_filename
-import AcoDet.global_config as conf
+from acodet.funcs import get_files, get_dt_filename
+import acodet.global_config as conf
 from pathlib import Path
 import matplotlib.pyplot as plt
 import datetime as dt

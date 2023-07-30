@@ -1,6 +1,6 @@
 import tensorflow as tf
 from keras_cv.layers import BaseImageAugmentationLayer
-from AcoDet.plot_utils import plot_sample_spectrograms
+from acodet.plot_utils import plot_sample_spectrograms
 import tensorflow_io as tfio
 
 AUTOTUNE = tf.data.AUTOTUNE    

@@ -1,10 +1,10 @@
 import streamlit as st
 import run
-import AcoDet.global_config as conf
+import acodet.global_config as conf
 from pathlib import Path
-from AcoDet.front_end import utils
+from acodet.front_end import utils
 import json
-help_str = json.load(open("AcoDet/front_end/help_strings.json", 'rb'))
+help_str = json.load(open("acodet/front_end/help_strings.json", 'rb'))
 
 def generate_data_options(key='gen_data'):
     preset_option = st.selectbox(

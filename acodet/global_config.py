@@ -6,14 +6,14 @@
 # CONSEQUENCES OF YOUR CHANGES.
 
 # IF YOU HAVE CHANGED VALUES AND ARE ENCOUNTERING ERRORS, 
-# STASH YOUR CHANGES ('git stash' in a git bash console in AcoDet directory)
-# AND THEN PULL AGAIN ('git pull' in a git bash console in AcoDet directory)
+# STASH YOUR CHANGES ('git stash' in a git bash console in acodet directory)
+# AND THEN PULL AGAIN ('git pull' in a git bash console in acodet directory)
 
 ##############################################################################
 
 import json
 
-with open('AcoDet/src/tmp_session.json', 'r') as f:
+with open('acodet/src/tmp_session.json', 'r') as f:
     session = json.load(f)
     
 ####################  AUDIO PROCESSING PARAMETERS  ###########################
@@ -82,7 +82,7 @@ GEN_ANNOT_SRC = session['generated_annotation_source']
 SOUND_FILES_SOURCE = session['sound_files_source']
 GEN_ANNOTS_DIR = session['generated_annotations_folder']
 # model directory
-MODEL_DIR = 'AcoDet/src/models'
+MODEL_DIR = 'acodet/src/models'
 # model name
 MODEL_NAME = session['model_name']
 TOP_DIR_NAME = session['top_dir_name']

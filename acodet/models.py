@@ -3,7 +3,7 @@ from pathlib import Path
 import zipfile
 import sys
 
-from AcoDet.funcs import get_val_labels
+from acodet.funcs import get_val_labels
 from . import global_config as conf
 from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end

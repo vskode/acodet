@@ -1,18 +1,18 @@
-from AcoDet.plot_utils import (plot_evaluation_metric, 
+from acodet.plot_utils import (plot_evaluation_metric, 
                               plot_model_results, 
                               plot_sample_spectrograms,
                               plot_pr_curve)
-from AcoDet import models
-from AcoDet.models import get_labels_and_preds
-from AcoDet.tfrec import run_data_pipeline, spec
+from acodet import models
+from acodet.models import get_labels_and_preds
+from acodet.tfrec import run_data_pipeline, spec
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from pathlib import Path
 import pandas as pd
 import time
 import numpy as np
-from AcoDet.humpback_model_dir import front_end
-import AcoDet.global_config as conf
+from acodet.humpback_model_dir import front_end
+import acodet.global_config as conf
 
 
 def get_info(date):

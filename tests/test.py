@@ -5,10 +5,10 @@ import pandas as pd
 sys.path.insert(0, os.path.abspath("."))    
 
 ########### MODIFY SESSION SETTINGS BEFORE GLOBAL CONFIG IS IMPORTED #########
-from AcoDet.create_session_file import create_session_file
+from acodet.create_session_file import create_session_file
 create_session_file()
 import json
-with open('AcoDet/src/tmp_session.json', 'r') as f:
+with open('acodet/src/tmp_session.json', 'r') as f:
     session = json.load(f)
 session['sound_files_source'] = 'tests/test_files/test_audio_files'
 session['generated_annotation_source'] = 'tests/test_files/test_generated_annotations'
@@ -18,18 +18,18 @@ session['generated_annotations_folder'] = 'tests/test_files/test_generated_annot
 session['reviewed_annotation_source'] = 'tests/test_files/test_generated_annotations'
 session['tfrecords_destination_folder'] = 'tests/test_files/test_tfrecords'
 
-with open('AcoDet/src/tmp_session.json', 'w') as f:
+with open('acodet/src/tmp_session.json', 'w') as f:
     json.dump(session, f)
 ##############################################################################
 
 
-from AcoDet.annotate import run_annotation, filter_annots_by_thresh
-from AcoDet.funcs import return_windowed_file, get_train_set_size
-from AcoDet.models import GoogleMod
-from AcoDet.combine_annotations import generate_final_annotations
-from AcoDet.tfrec import write_tfrec_dataset
-from AcoDet.train import run_training
-from AcoDet import global_config as conf
+from acodet.annotate import run_annotation, filter_annots_by_thresh
+from acodet.funcs import return_windowed_file, get_train_set_size
+from acodet.models import GoogleMod
+from acodet.combine_annotations import generate_final_annotations
+from acodet.tfrec import write_tfrec_dataset
+from acodet.train import run_training
+from acodet import global_config as conf
 
 
 class TestTFRecordCreation(unittest.TestCase):

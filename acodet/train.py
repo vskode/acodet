@@ -5,12 +5,12 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from AcoDet.funcs import save_model_results, get_train_set_size
-from AcoDet import models
-from AcoDet.plot_utils import plot_model_results, create_and_save_figure
-from AcoDet.tfrec import run_data_pipeline, prepare
-from AcoDet.augmentation import run_augment_pipeline
-from AcoDet import global_config as conf
+from acodet.funcs import save_model_results, get_train_set_size
+from acodet import models
+from acodet.plot_utils import plot_model_results, create_and_save_figure
+from acodet.tfrec import run_data_pipeline, prepare
+from acodet.augmentation import run_augment_pipeline
+from acodet import global_config as conf
 
 AUTOTUNE = tf.data.AUTOTUNE
 
@@ -182,7 +182,7 @@ def save_model(string, model, lr=5e-4, weight_clip=None, f_score_beta=0.5,
                                             name='fbeta1'),       
         ]
     )
-    model.save(f'AcoDet/src/models/{string}')
+    model.save(f'acodet/src/models/{string}')
 
 
 ##############################################################################
