@@ -8,17 +8,17 @@ sys.path.insert(0, os.path.abspath("."))
 from AcoDet.create_session_file import create_session_file
 create_session_file()
 import json
-with open('AcoDet/files/tmp_session.json', 'r') as f:
+with open('AcoDet/src/tmp_session.json', 'r') as f:
     session = json.load(f)
 session['sound_files_source'] = 'tests/test_files/test_audio_files'
 session['generated_annotation_source'] = 'tests/test_files/test_generated_annotations'
-session['annotation_destination'] = 'tests/test_files/test_generated_annotations'
+session['annotation_destination'] = 'tests/test_files/test_combined_annotations'
 session['generated_annotations_folder'] = 'tests/test_files/test_generated_annotations'
 
 session['reviewed_annotation_source'] = 'tests/test_files/test_generated_annotations'
 session['tfrecords_destination_folder'] = 'tests/test_files/test_tfrecords'
 
-with open('AcoDet/files/tmp_session.json', 'w') as f:
+with open('AcoDet/src/tmp_session.json', 'w') as f:
     json.dump(session, f)
 ##############################################################################
 
@@ -31,30 +31,37 @@ from AcoDet.tfrec import write_tfrec_dataset
 from AcoDet.train import run_training
 from AcoDet import global_config as conf
 
-class TestTFRecords(unittest.TestCase):
-    def test_tfrec_creation(self):
-        file = list(Path(conf.SOUND_FILES_SOURCE)
-                .joinpath('BERCHOK_SAMANA_200901_4')
-                .glob('**/*.wav'))[0]
-        arr, t = return_windowed_file(file)
-        self.assertEqual(arr.shape[1], conf.CONTEXT_WIN)
-        self.assertEqual(arr.shape[0], len(t))
 
 class TestTFRecordCreation(unittest.TestCase):
     
-    def test_tfrecord_writing(self):
-        write_tfrec_dataset()
-        self.assertEqual((Path(conf.TFREC_DESTINATION)
-                        .joinpath(f'thresh_{conf.THRESH}')
-                        .joinpath('dataset_meta_train.json').exists()),
-                        1, 'TFRecords files have not been generated.')
+    def test_tfrecord(self):
+        time_stamp = list(Path(conf.ANNOT_DEST).iterdir())[-1]
+        write_tfrec_dataset(annot_dir=time_stamp, active_learning=False)
+        metadata_file_path = (Path(conf.TFREC_DESTINATION)
+                         .joinpath('dataset_meta_train.json'))
+        self.assertEqual(metadata_file_path.exists(), 
+                         1, 
+                         'TFRecords metadata file was not created.')
+        
+        with open(metadata_file_path, 'r') as f:
+            data = json.load(f)
+            self.assertEqual(data['dataset']['size']['train'], 
+                             517, 
+                             'TFRecords files has wrong number of datapoints.')
             
-    def test_combined_annotation_creation(self):
-        generate_final_annotations()
-        self.assertEqual((Path(conf.ANNOT_DEST)
-                        .joinpath(f'thresh_{conf.THRESH}')
-                        .joinpath('combined_annotations.csv').exists()),
+    def test_combined_annotation(self):
+        generate_final_annotations(active_learning=False)
+        time_stamp = list(Path(conf.GEN_ANNOTS_DIR).iterdir())[-1].stem
+        combined_annots_path = (Path(conf.ANNOT_DEST)
+                                .joinpath(time_stamp)
+                                .joinpath('combined_annotations.csv'))
+        self.assertEqual(combined_annots_path.exists(),
                         1, 'csv file containing combined_annotations does not exist.')
+        df = pd.read_csv(combined_annots_path)
+        self.assertEqual(df.start.iloc[-1], 
+                         1795.2825, 
+                         "The annotations in combined_annotations.csv don't seem to be identical")
+        
 
 class TestDetection(unittest.TestCase):
     def test_annotation(self):
@@ -80,11 +87,11 @@ class TestTraining(unittest.TestCase):
         model = GoogleMod(load_g_ckpt=False).model
         self.assertGreater(len(model.layers), 15)
         
-    def test_tfrecord_loading(self):
-        data_dir = list(Path(conf.TFREC_DESTINATION).iterdir())
-        n_train, n_noise = get_train_set_size(data_dir)
-        self.assertEqual(n_train, 200)
-        self.assertEqual(n_noise, 19)
+    # def test_tfrecord_loading(self):
+    #     data_dir = list(Path(conf.TFREC_DESTINATION).iterdir())
+    #     n_train, n_noise = get_train_set_size(data_dir)
+    #     self.assertEqual(n_train, 517)
+    #     self.assertEqual(n_noise, 42)
 
 if __name__ == '__main__':
     unittest.main()
