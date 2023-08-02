@@ -14,6 +14,7 @@ from . import global_config as conf
 
 
 def remove_str_flags_from_predictions(df):
+    # TODO wenn annotation_column nicht in columns ist fehler raisen
     n = df.loc[df[conf.ANNOTATION_COLUMN]=='n'].index
     n_ = df.loc[df[conf.ANNOTATION_COLUMN]=='n '].index
     u = df.loc[df[conf.ANNOTATION_COLUMN]=='u'].index

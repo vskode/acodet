@@ -55,9 +55,11 @@ def get_corresponding_sound_file(file):
     file_path = glob.glob(f'{hard_drive_path}/**/{file.stem}*wav',
                       recursive = True)
     if not file_path:
-        file_path = compensate_for_naming_inconsistencies(hard_drive_path, file)
+        file_path = compensate_for_naming_inconsistencies(hard_drive_path, 
+                                                          file)
         
     if not file_path:
+        # TODO fehler raisen, dass bringt so einfach nichts
         return 'empty'
         
     if len(file_path) > 1:
