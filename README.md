@@ -1,11 +1,18 @@
-# AcoDet - **H**ump**b**ack Whale **Det**ector
+# **AcoDet** - **Aco**ustic **Det**ector
+## Framework for the **usage** and **training** of acoustic species detectors based on machine learning using spectrogram images to detect animal vocalizations 
+
+
+- Supports Raven table format
+- automatic generation of presence/absence visualizations
+- variable thresholding
+---------------------------------------------------
 
 <!-- ## Features:
 ## · Generate raven annotation tables
 ## · Hourly presence spreadsheets or visualizations
 ## · Generate new training data
 ## · Train models -->
-
+## Table of Contents
 - [Installation Instructions for Windows](#installation-instructions-for-windows)
     - [Preliminary software installations](#preliminary-software-installations)
     - [Installation instructions](#installation-instructions)
