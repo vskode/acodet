@@ -1,13 +1,13 @@
-from hbdet.annotate import run_annotation, filter_annots_by_thresh
-from hbdet.train import run_training, save_model
-from hbdet.tfrec import write_tfrec_dataset
-from hbdet.hourly_presence import compute_hourly_pres, calc_val_diff
-from hbdet.evaluate import create_overview_plot
-from hbdet.combine_annotations import generate_final_annotations
-from hbdet.models import init_model
-import hbdet.global_config as conf
-
 def main():
+    from acodet.annotate import run_annotation, filter_annots_by_thresh
+    from acodet.train import run_training, save_model
+    from acodet.tfrec import write_tfrec_dataset
+    from acodet.hourly_presence import compute_hourly_pres, calc_val_diff
+    from acodet.evaluate import create_overview_plot
+    from acodet.combine_annotations import generate_final_annotations
+    from acodet.models import init_model
+    import acodet.global_config as conf
+    
     if conf.RUN_CONFIG == 1:
         if conf.PRESET == 1:
             run_annotation()
@@ -45,4 +45,6 @@ def main():
             save_model('FlatHBNA', init_model())
             
 if __name__ == '__main__':
+    from acodet.create_session_file import create_session_file
+    create_session_file()
     main()
