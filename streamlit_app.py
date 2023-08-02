@@ -1,10 +1,10 @@
 import streamlit as st
 import run
-from AcoDet.create_session_file import create_session_file
+from acodet.create_session_file import create_session_file
 create_session_file()
-import AcoDet.global_config as conf
+import acodet.global_config as conf
 from pathlib import Path
-from AcoDet.front_end import (utils, st_annotate, st_generate_data, st_train)
+from acodet.front_end import (utils, st_annotate, st_generate_data, st_train)
 
 
 def select_preset(option):

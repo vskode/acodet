@@ -1,6 +1,7 @@
 utils/__*
 *__pycache__*
-AcoDet/_*
-AcoDet/files*
-tests/test_files/test_generated_annotations*
+acodet/_*
+acodet/src/tmp_*
+acodet/src/models/Humpback_20221130/
+tests/test_files
 _*
