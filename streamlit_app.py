@@ -1,42 +1,41 @@
 import streamlit as st
-import run
 from acodet.create_session_file import create_session_file
-create_session_file()
-import acodet.global_config as conf
-from pathlib import Path
+if not 'session_started' in st.session_state:
+    st.session_state.session_started = True
+    create_session_file()
 from acodet.front_end import (utils, st_annotate, st_generate_data, st_train)
 
-
-def select_preset(option):
-    option = int(option[0])
-    conf.RUN_CONFIG = option
-
-    if option == 1:
-        conf.PRESET = st_annotate.annotate_options()
-    elif option == 2:
-        conf.PRESET = st_generate_data.generate_data_options()
-    if option == 3:
-        conf.PRESET = st_train.train_options()
-    run_computions()
+def select_preset(run_option):
+    run_option = int(run_option[0])
+    utils.write_to_session_file('run_config', run_option)
+    show_run_btn  = False
+    
+    if run_option == 1:
+        show_run_btn = st_annotate.annotate_options()
+    elif run_option == 2:
+        show_run_btn = st_generate_data.generate_data_options()
+    if run_option == 3:
+        show_run_btn = st_train.train_options()
+    if show_run_btn:
+        run_computions()
 
 def run_computions():
     if not st.button('Run'):
         pass
     else:
+        import run
         st.write('Program started')
         run.main()
+        print('finished')
         st.stop()
 
-
-option = st.selectbox(
+run_option = st.selectbox(
     'How would you like run the program?',
     ('1 - Annotate', 
      '2 - Generate new training data', 
      '3 - Train'), 
     key = 'main',
     help="you're being helped")
-utils.next_button(id=0)
-if st.session_state.b0:
-    select_preset(option)
+select_preset(run_option)
 
     

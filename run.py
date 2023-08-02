@@ -6,10 +6,9 @@ from acodet.evaluate import create_overview_plot
 from acodet.combine_annotations import generate_final_annotations
 from acodet.models import init_model
 from acodet.create_session_file import create_session_file
-create_session_file()
-import acodet.global_config as conf
 
 def main():
+    import acodet.global_config as conf
     if conf.RUN_CONFIG == 1:
         if conf.PRESET == 1:
             run_annotation()
@@ -47,4 +46,5 @@ def main():
             save_model('FlatHBNA', init_model())
             
 if __name__ == '__main__':
+    create_session_file()
     main()

@@ -5,3 +5,4 @@ acodet/src/tmp_*
 acodet/src/models/Humpback_20221130/
 tests/test_files
 _*
+.vscode/*
