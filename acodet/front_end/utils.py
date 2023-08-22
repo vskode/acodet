@@ -1,6 +1,7 @@
 import streamlit as st
 from pathlib import Path
 import json
+import keras
 
 def open_folder_dialogue(path, key):
     try:
@@ -68,4 +69,19 @@ def make_nested_btn_false_if_dropdown_changed(run_id, preset_id, btn_id):
     if not (session['run_config'] == run_id and \
         session['predefined_settings'] == preset_id):
             setattr(st.session_state, f'b{btn_id}', False)
-        
+            
+
+class CustomCallback(keras.callbacks.Callback):
+    # def __init__(self, )
+       
+    def on_predict_end(self, logs=None):
+        st.write("Prediction finished.")
+
+    def on_predict_begin(self, logs=None):
+        # st.write("Prediction started.")
+        self.pr_bar = st.progress(0, text="Predicting")
+
+    def on_predict_batch_begin(self, batch, logs=None):
+        # st.write("Predicting: start of batch {}".format(batch))
+        self.pr_bar.progress(batch/15, text="Predicting")
+   

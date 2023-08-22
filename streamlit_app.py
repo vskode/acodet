@@ -12,20 +12,23 @@ def select_preset(run_option):
     
     if run_option == 1:
         show_run_btn = st_annotate.annotate_options()
+        kwargs = {'callbacks': [utils.CustomCallback()]}
     elif run_option == 2:
         show_run_btn = st_generate_data.generate_data_options()
+        kwargs = dict()
     if run_option == 3:
         show_run_btn = st_train.train_options()
+        kwargs = dict()
     if show_run_btn:
-        run_computions()
+        run_computions(**kwargs)
 
-def run_computions():
+def run_computions(**kwargs):
     if not st.button('Run'):
         pass
     else:
         import run
         st.write('Program started')
-        run.main()
+        run.main(**kwargs)
         print('finished')
         st.stop()
 

@@ -9,6 +9,7 @@ import librosa as lb
 from pathlib import Path
 import pandas as pd
 from . import global_config as conf
+from acodet.front_end.utils import CustomCallback
 
 ############# ANNOTATION helpers ############################################
 
@@ -526,9 +527,11 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     df[conf.ANNOTATION_COLUMN] = preds
 
     return df.iloc[preds.reshape([len(preds)]) > conf.DEFAULT_THRESH]
-    
+     
+
 def create_annotation_df(audio_batches: np.ndarray, 
-                         model: tf.keras.Sequential) -> pd.DataFrame:
+                         model: tf.keras.Sequential,
+                         callbacks: None) -> pd.DataFrame:
     """
     Create a annotation dataframe containing all necessary information to
     be imported into a annotation program. The loaded audio batches are 
@@ -550,7 +553,8 @@ def create_annotation_df(audio_batches: np.ndarray,
     """
     annots = pd.DataFrame()
     for ind, audio in enumerate(audio_batches):
-        preds = model.predict(window_data_for_prediction(audio))
+        preds = model.predict(window_data_for_prediction(audio),
+                              callbacks=callbacks)
         df = create_Raven_annotation_df(preds, ind)
         annots = pd.concat([annots, df], ignore_index=True)
         
@@ -616,7 +620,8 @@ def get_top_dir(parent_dirs):
     return str(parent_dirs).split('/')[0]
 
 def gen_annotations(file, model: tf.keras.Model,
-                    mod_label: str, time_start: str):
+                    mod_label: str, time_start: str, 
+                    **kwargs):
     """
     Load audio file, instantiate model, use it to predict labels, fill a 
     dataframe with the predicted labels as well as necessary information to
@@ -642,7 +647,7 @@ def gen_annotations(file, model: tf.keras.Model,
     
     audio_batches = batch_audio(load_audio(file, channel))
     
-    annotation_df = create_annotation_df(audio_batches, model)
+    annotation_df = create_annotation_df(audio_batches, model, **kwargs)
     
     save_path = (Path(conf.GEN_ANNOTS_DIR).joinpath(time_start)
                  .joinpath('thresh_0.5')

@@ -42,7 +42,7 @@ class MetaData:
         self.df.to_csv(Path(conf.GEN_ANNOTS_DIR).joinpath(time_start)
                        .joinpath('stats.csv'))
     
-def run_annotation(train_date=None):
+def run_annotation(train_date=None, **kwargs):
     time_start = time.strftime('%Y-%m-%d_%H-%M-%S', time.gmtime())
     files = get_files(location=conf.SOUND_FILES_SOURCE,
                       search_str='**/*')
@@ -69,7 +69,7 @@ def run_annotation(train_date=None):
             f_ind += 1
             start = time.time()
             annot = gen_annotations(file, model, mod_label=mod_label, 
-                                    time_start=time_start)
+                                    time_start=time_start, **kwargs)
             computing_time = time.time() - start
             mdf.append_and_save_meta_file(file, annot, f_ind, time_start,
                                             computing_time=computing_time)
