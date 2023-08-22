@@ -531,7 +531,8 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
 
 def create_annotation_df(audio_batches: np.ndarray, 
                          model: tf.keras.Sequential,
-                         callbacks: None) -> pd.DataFrame:
+                         callbacks: None,
+                         **kwargs) -> pd.DataFrame:
     """
     Create a annotation dataframe containing all necessary information to
     be imported into a annotation program. The loaded audio batches are 
@@ -553,6 +554,8 @@ def create_annotation_df(audio_batches: np.ndarray,
     """
     annots = pd.DataFrame()
     for ind, audio in enumerate(audio_batches):
+        if callbacks is not None:
+            callbacks = callbacks(**kwargs)
         preds = model.predict(window_data_for_prediction(audio),
                               callbacks=callbacks)
         df = create_Raven_annotation_df(preds, ind)

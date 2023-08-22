@@ -62,22 +62,31 @@ def run_annotation(train_date=None, **kwargs):
         mod_label = train_date
     mdf = MetaData()
     f_ind = 0
+    
+    if conf.STREAMLIT is not None:
+        import streamlit as st
+        st.session_state.progbar1 = 0
     for i, file in enumerate(files):    
         if file.is_dir():
             continue
-        try:
-            f_ind += 1
-            start = time.time()
-            annot = gen_annotations(file, model, mod_label=mod_label, 
-                                    time_start=time_start, **kwargs)
-            computing_time = time.time() - start
-            mdf.append_and_save_meta_file(file, annot, f_ind, time_start,
-                                            computing_time=computing_time)
+        # try:
+        if conf.STREAMLIT is not None:
+            import streamlit as st
+            st.session_state.progbar1 += 1
+        f_ind += 1
+        start = time.time()
+        annot = gen_annotations(file, model, mod_label=mod_label, 
+                                time_start=time_start, 
+                                num_of_files = len(files),
+                                **kwargs)
+        computing_time = time.time() - start
+        mdf.append_and_save_meta_file(file, annot, f_ind, time_start,
+                                        computing_time=computing_time)
 
-        except Exception as e:
-            print(f"{file} couldn't be loaded, continuing with next file.\n", 
-                  e)
-            continue
+        # except Exception as e:
+        #     print(f"{file} couldn't be loaded, continuing with next file.\n", 
+        #           e)
+        #     continue
     return time_start    
 
 def check_for_multiple_time_dirs_error(path):

@@ -71,17 +71,20 @@ def make_nested_btn_false_if_dropdown_changed(run_id, preset_id, btn_id):
             setattr(st.session_state, f'b{btn_id}', False)
             
 
-class CustomCallback(keras.callbacks.Callback):
-    # def __init__(self, )
+class TFPredictProgressBar(keras.callbacks.Callback):
+    def __init__(self, num_of_files, progbar1, progbar2):
+        self.num_of_files = num_of_files
+        self.pr_bar1 = progbar1
+        self.pr_bar2 = progbar2
        
     def on_predict_end(self, logs=None):
-        st.write("Prediction finished.")
+        self.pr_bar2.progress(st.session_state.progbar1/self.num_of_files,
+                              text="Overall progress")
 
-    def on_predict_begin(self, logs=None):
-        # st.write("Prediction started.")
-        self.pr_bar = st.progress(0, text="Predicting")
+    # def on_predict_begin(self, logs=None):
 
     def on_predict_batch_begin(self, batch, logs=None):
-        # st.write("Predicting: start of batch {}".format(batch))
-        self.pr_bar.progress(batch/15, text="Predicting")
+        self.pr_bar1.progress(batch/(self.params['steps']-1), 
+                              text="Current file")
+
    

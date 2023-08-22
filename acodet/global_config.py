@@ -134,3 +134,4 @@ HR_DA_COL = 'daily_annotations'
 # column name for daily presence (binary)
 HR_DP_COL = 'Daily_Presence'
 
+STREAMLIT = False

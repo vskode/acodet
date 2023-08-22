@@ -3,7 +3,9 @@ from acodet.create_session_file import create_session_file
 if not 'session_started' in st.session_state:
     st.session_state.session_started = True
     create_session_file()
-from acodet.front_end import (utils, st_annotate, st_generate_data, st_train)
+from acodet.front_end import (utils, st_annotate, st_generate_data, st_train, visualization)
+
+utils.write_to_session_file('streamlit', True)
 
 def select_preset(run_option):
     run_option = int(run_option[0])
@@ -12,24 +14,26 @@ def select_preset(run_option):
     
     if run_option == 1:
         show_run_btn = st_annotate.annotate_options()
-        kwargs = {'callbacks': [utils.CustomCallback()]}
     elif run_option == 2:
         show_run_btn = st_generate_data.generate_data_options()
-        kwargs = dict()
     if run_option == 3:
         show_run_btn = st_train.train_options()
-        kwargs = dict()
     if show_run_btn:
-        run_computions(**kwargs)
+        run_computions(run_option)
 
-def run_computions(**kwargs):
+def run_computions(run_option, **kwargs):
     if not st.button('Run'):
         pass
     else:
         import run
-        st.write('Program started')
+        st.write('Computation started')
+        if run_option == 1:
+            kwargs = {'callbacks': utils.TFPredictProgressBar,
+                    'progbar1': st.progress(0, text="Current file"),
+                    'progbar2': st.progress(0, text="Overall progress"),}
         run.main(**kwargs)
-        print('finished')
+        st.write('Computation finished')
+        visualization.output()
         st.stop()
 
 run_option = st.selectbox(
