@@ -69,7 +69,7 @@ def run_annotation(train_date=None, **kwargs):
     for i, file in enumerate(files):    
         if file.is_dir():
             continue
-        # try:
+        
         if conf.STREAMLIT is not None:
             import streamlit as st
             st.session_state.progbar1 += 1
@@ -82,11 +82,6 @@ def run_annotation(train_date=None, **kwargs):
         computing_time = time.time() - start
         mdf.append_and_save_meta_file(file, annot, f_ind, time_start,
                                         computing_time=computing_time)
-
-        # except Exception as e:
-        #     print(f"{file} couldn't be loaded, continuing with next file.\n", 
-        #           e)
-        #     continue
     return time_start    
 
 def check_for_multiple_time_dirs_error(path):
@@ -96,7 +91,7 @@ def check_for_multiple_time_dirs_error(path):
     return path
     
     
-def filter_annots_by_thresh(time_dir=None):
+def filter_annots_by_thresh(time_dir=None, **kwargs):
     if not time_dir:
         path = Path(conf.GEN_ANNOT_SRC)
     else:
@@ -107,19 +102,23 @@ def filter_annots_by_thresh(time_dir=None):
     for i, file in enumerate(files):
         try:
             annot = pd.read_csv(file, sep='\t')        
-            annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
-            save_dir = (path.joinpath(f'thresh_{conf.THRESH}').joinpath(
-                    file.relative_to(path.joinpath('thresh_0.5'))
-                    ).parent)
-            save_dir.mkdir(exist_ok=True, parents=True)
-            
-            annot.index  = np.arange(1, len(annot)+1)
-            annot.index.name = 'Selection'
-            annot.to_csv(save_dir.joinpath(file.stem+file.suffix), sep='\t')
-            print(f'Writing file {i+1}/{len(files)}')
         except Exception as e:
             print('Could not process file, maybe not an annotation file?', 
                   'Error: ', e)
+        annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
+        save_dir = (path.joinpath(f'thresh_{conf.THRESH}').joinpath(
+                file.relative_to(path.joinpath('thresh_0.5'))
+                ).parent)
+        save_dir.mkdir(exist_ok=True, parents=True)
+        
+        if 'Selection' in annot.columns:
+            annot.index.name = 'Selection'
+            annot = annot.drop(columns=['Selection'])
+        else:
+            annot.index  = np.arange(1, len(annot)+1)
+            annot.index.name = 'Selection'
+        annot.to_csv(save_dir.joinpath(file.stem+file.suffix), sep='\t')
+        print(f'Writing file {i+1}/{len(files)}')
 
 def generate_stats():
     files = get_files(location=conf.GEN_ANNOT_SRC, search_str='**/*txt')

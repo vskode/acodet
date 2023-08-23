@@ -26,6 +26,7 @@ def main(**kwargs):
             time_start = run_annotation(**kwargs)
             filter_annots_by_thresh(time_start, **kwargs)
             compute_hourly_pres(time_start, sc=True, **kwargs)
+            return time_start
         
     elif conf.RUN_CONFIG == 2:
         if conf.PRESET == 1:

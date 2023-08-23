@@ -89,7 +89,8 @@ def compute_hourly_pres(time_dir=None,
                         thresh_sc=conf.SC_THRESH, 
                         lim_sc=conf.SC_LIMIT, 
                         sc=False,
-                        return_hourly_counts=True):
+                        return_hourly_counts=True,
+                        **kwargs):
     path = find_thresh05_path_in_dir(time_dir)
     
     for dir in path.iterdir():
@@ -279,7 +280,8 @@ def calc_val_diff(time_dir=None,
                   lim=conf.SIMPLE_LIMIT, 
                   thresh_sc=conf.SC_THRESH, 
                   lim_sc=conf.SC_LIMIT,
-                  sc=True):
+                  sc=True,
+                  **kwargs):
     
     
     path = find_thresh05_path_in_dir(time_dir)
