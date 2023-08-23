@@ -12,3 +12,8 @@ def create_session_file():
 
     with open('acodet/src/tmp_session.json', 'w') as f:
         json.dump(session, f)
+        
+def read_session_file():
+    with open('acodet/src/tmp_session.json', 'r') as f:
+        session = json.load(f)
+    return session

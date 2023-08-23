@@ -10,7 +10,8 @@ def main(**kwargs):
     
     if conf.RUN_CONFIG == 1:
         if conf.PRESET == 1:
-            run_annotation(**kwargs)
+            time_start = run_annotation(**kwargs)
+            return time_start
         elif conf.PRESET == 2:
             filter_annots_by_thresh(**kwargs)
         elif conf.PRESET == 3:
@@ -43,6 +44,7 @@ def main(**kwargs):
             create_overview_plot('2022-05-00_00', **kwargs)
         elif conf.PRESET == 4:
             save_model('FlatHBNA', init_model(), **kwargs)
+    
             
 if __name__ == '__main__':
     from acodet.create_session_file import create_session_file

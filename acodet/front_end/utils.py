@@ -19,10 +19,10 @@ def open_folder_dialogue(path, key):
     except FileNotFoundError:
         st.write('Folder does not exist, retrying.')
         
-def next_button(id, **kwargs):
+def next_button(id, text='Next', **kwargs):
     if f'b{id}' not in st.session_state:
         setattr(st.session_state, f'b{id}', False)
-    val = st.button('Next', key=f'button_{id}', **kwargs)
+    val = st.button(text, key=f'button_{id}', **kwargs)
     if val:
         setattr(st.session_state, f'b{id}', True)
         
@@ -69,7 +69,15 @@ def make_nested_btn_false_if_dropdown_changed(run_id, preset_id, btn_id):
     if not (session['run_config'] == run_id and \
         session['predefined_settings'] == preset_id):
             setattr(st.session_state, f'b{btn_id}', False)
-            
+
+def prepare_run():
+    st.markdown("""---""")
+    st.markdown('## Computation started, please wait.')
+    if st.session_state.run_option == 1:
+        kwargs = {'callbacks': TFPredictProgressBar,
+                'progbar1': st.progress(0, text="Current file"),
+                'progbar2': st.progress(0, text="Overall progress"),}
+    return kwargs
 
 class TFPredictProgressBar(keras.callbacks.Callback):
     def __init__(self, num_of_files, progbar1, progbar2):

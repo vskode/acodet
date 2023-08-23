@@ -7,34 +7,38 @@ from acodet.front_end import (utils, st_annotate, st_generate_data, st_train, vi
 
 utils.write_to_session_file('streamlit', True)
 
-def select_preset(run_option):
-    run_option = int(run_option[0])
-    utils.write_to_session_file('run_config', run_option)
+def select_preset():
+    utils.write_to_session_file('run_config', st.session_state.run_option)
     show_run_btn  = False
     
-    if run_option == 1:
+    if st.session_state.run_option == 1:
         show_run_btn = st_annotate.annotate_options()
-    elif run_option == 2:
+    elif st.session_state.run_option == 2:
         show_run_btn = st_generate_data.generate_data_options()
-    if run_option == 3:
+    if st.session_state.run_option == 3:
         show_run_btn = st_train.train_options()
     if show_run_btn:
-        run_computions(run_option)
+        run_computions()
 
-def run_computions(run_option, **kwargs):
-    if not st.button('Run'):
-        pass
+def run_computions(**kwargs):
+    utils.next_button(id=4, text='Run computations')
+    if not st.session_state.b4:
+        st.session_state.run_finished = False
     else:
-        import run
-        st.write('Computation started')
-        if run_option == 1:
-            kwargs = {'callbacks': utils.TFPredictProgressBar,
-                    'progbar1': st.progress(0, text="Current file"),
-                    'progbar2': st.progress(0, text="Overall progress"),}
-        run.main(**kwargs)
+        kwargs = utils.prepare_run()
+        if not st.session_state.run_finished:
+            import run
+            st.session_state.time_dir = run.main(**kwargs)
+            st.session_state.run_finished = True
+        
+    if st.session_state.run_finished:
         st.write('Computation finished')
-        visualization.output()
-        st.stop()
+        utils.next_button(id=5, text='Show results')
+        if not st.session_state.b5:
+            pass
+        else:
+            visualization.output()
+            st.stop()
 
 run_option = st.selectbox(
     'How would you like run the program?',
@@ -43,6 +47,8 @@ run_option = st.selectbox(
      '3 - Train'), 
     key = 'main',
     help="you're being helped")
-select_preset(run_option)
+
+st.session_state.run_option = int(run_option[0])
+select_preset()
 
     

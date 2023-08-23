@@ -10,6 +10,7 @@ def train_options(key='train'):
          '4 - evaluate model checkpoint',
          '5 - save model specified in advanced config'),
         key=key)[0])
+    st.session_state.preset_option = preset_option
     utils.make_nested_btn_false_if_dropdown_changed(3, preset_option, 3)
     utils.next_button(id=3)
     if not st.session_state.b3:

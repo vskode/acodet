@@ -9,7 +9,6 @@ import librosa as lb
 from pathlib import Path
 import pandas as pd
 from . import global_config as conf
-from acodet.front_end.utils import CustomCallback
 
 ############# ANNOTATION helpers ############################################
 
@@ -531,7 +530,7 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
 
 def create_annotation_df(audio_batches: np.ndarray, 
                          model: tf.keras.Sequential,
-                         callbacks: None,
+                         callbacks: None= None,
                          **kwargs) -> pd.DataFrame:
     """
     Create a annotation dataframe containing all necessary information to

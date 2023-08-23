@@ -11,6 +11,8 @@ def annotate_options(key='annot'):
          '4 - generate hourly predictions (only simple limit)',
          '0 - all of the above'), 
         key=key)[0])
+    
+    st.session_state.preset_option = preset_option
     utils.make_nested_btn_false_if_dropdown_changed(1, preset_option, 1)
     utils.next_button(id=1)
     if not st.session_state.b1:
