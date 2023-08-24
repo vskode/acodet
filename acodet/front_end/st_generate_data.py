@@ -12,6 +12,9 @@ def generate_data_options(key='gen_data'):
         key = key)[0])
     st.session_state.preset_option = preset_option
     utils.make_nested_btn_false_if_dropdown_changed(2, preset_option, 2)
+    utils.make_nested_btn_false_if_dropdown_changed(run_id=1, 
+                                                preset_id=preset_option, 
+                                                btn_id=4)
     utils.next_button(id=2)
     if not st.session_state.b2:
         pass

@@ -82,12 +82,12 @@ thresh: 0.9
 # number of annotations above threshold for hourly presence (default = 15)
 simple_limit: 15
 # threshold for sequence criterion (default = 0.9)
-sc_thresh: 0.9
+sequence_thresh: 0.9
 # number of annotations above threshold within 20 consecutive windows
 # for hourly presence (default = 3)
-sc_limit: 3
+sequence_limit: 3
 # number of consecutive windows that sc_limit has to occur in (default = 20)
-sc_con_win: 20
+sequence_con_win: 20
 # number of annotations that correspond to the upper limit of color bar in 
 # hourly annotations plots
 max_annots_per_hour: 150

@@ -118,7 +118,13 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
             annot.index  = np.arange(1, len(annot)+1)
             annot.index.name = 'Selection'
         annot.to_csv(save_dir.joinpath(file.stem+file.suffix), sep='\t')
-        print(f'Writing file {i+1}/{len(files)}')
+        if conf.STREAMLIT:
+            import streamlit as st
+            kwargs['progbar1'].progress((i+1)/len(files))
+        else:
+            print(f'Writing file {i+1}/{len(files)}')
+    if conf.STREAMLIT:
+        return path
 
 def generate_stats():
     files = get_files(location=conf.GEN_ANNOT_SRC, search_str='**/*txt')

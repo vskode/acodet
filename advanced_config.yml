@@ -95,3 +95,7 @@ f_score_beta: 0.5
 f_score_thresh: 0.5
 # number of layers to unfreeze, if False, the entire model is trainable
 unfreeze: False
+
+########################  Streamlit  #########################################
+# select True if you want to run the streamlit app
+streamlit: False

@@ -1,14 +1,26 @@
 import streamlit as st
 from pathlib import Path
+from acodet import create_session_file
+conf = create_session_file.read_session_file()
 import json
 import keras
 
-def open_folder_dialogue(path, key):
+def open_folder_dialogue(path=conf['generated_annotations_folder'], 
+                         key='folder', 
+                         label="Choose a folder",
+                         filter_existing_annotations=False):
     try:
-        foldernames_list = [x.stem for x in Path(path).iterdir()]
-
+        if not filter_existing_annotations:
+            foldernames_list = [f'{x.stem}{x.suffix}' for x in Path(path).iterdir()
+                                if x.is_dir()]
+            if f"thresh_{conf['default_threshold']}" in foldernames_list:
+                foldernames_list = [f"thresh_{conf['default_threshold']}"]
+        else:
+            foldernames_list = [f'{x.stem}{x.suffix}' for x in 
+                                Path(path).iterdir()
+                                if x.is_dir()][::-1]
         # create selectbox with the foldernames
-        chosen_folder = st.selectbox(label="Choose a folder", 
+        chosen_folder = st.selectbox(label=label, 
                                      options=foldernames_list,
                                      key = key)
 
@@ -74,9 +86,12 @@ def prepare_run():
     st.markdown("""---""")
     st.markdown('## Computation started, please wait.')
     if st.session_state.run_option == 1:
-        kwargs = {'callbacks': TFPredictProgressBar,
-                'progbar1': st.progress(0, text="Current file"),
-                'progbar2': st.progress(0, text="Overall progress"),}
+        if st.session_state.preset_option in [0, 1]:
+            kwargs = {'callbacks': TFPredictProgressBar,
+                    'progbar1': st.progress(0, text="Current file"),
+                    'progbar2': st.progress(0, text="Overall progress"),}
+        else:
+            kwargs = {'progbar1': st.progress(0, text="Progress")}
     return kwargs
 
 class TFPredictProgressBar(keras.callbacks.Callback):

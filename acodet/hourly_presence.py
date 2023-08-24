@@ -28,7 +28,7 @@ def get_val(path):
     df = pd.read_csv(path)
     return df
 
-def seq_crit(annot, n_prec_preds=conf.SC_CON_WIN, thresh_sc=0.9,
+def seq_crit(annot, n_prec_preds=conf.SEQUENCE_CON_WIN, thresh_sc=0.9,
                        n_exceed_thresh=4, return_counts=True):
     sequ_crit = 0
     annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh_sc]
@@ -86,11 +86,21 @@ def init_date_tuple(files):
 def compute_hourly_pres(time_dir=None, 
                         thresh=conf.THRESH, 
                         lim=conf.SIMPLE_LIMIT, 
-                        thresh_sc=conf.SC_THRESH, 
-                        lim_sc=conf.SC_LIMIT, 
+                        thresh_sc=conf.SEQUENCE_THRESH, 
+                        lim_sc=conf.SEQUENCE_LIMIT, 
                         sc=False,
                         return_hourly_counts=True,
+                        fetch_config_again=False,
                         **kwargs):
+    
+    if fetch_config_again:
+        import importlib
+        importlib.reload(conf)
+        thresh=conf.THRESH
+        lim=conf.SIMPLE_LIMIT
+        thresh_sc=conf.SEQUENCE_THRESH
+        lim_sc=conf.SEQUENCE_LIMIT
+        
     path = find_thresh05_path_in_dir(time_dir)
     
     for dir in path.iterdir():
@@ -109,15 +119,17 @@ def compute_hourly_pres(time_dir=None,
         df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
         df_counts.to_csv(get_path(path.joinpath(dir.stem), 
                                       conf.HR_CNTS_SL))
-        for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
-            plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
+        if not 'dont_save_plot' in kwargs.keys():
+            for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
+                plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
             
         if sc:
             df_sc.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SC))
             df_sc_counts.to_csv(get_path(path.joinpath(dir.stem), 
                                              conf.HR_CNTS_SC))
-            for metric in (conf.HR_CNTS_SC, conf.HR_PRS_SC):
-                plot_hp(path.joinpath(dir.stem), lim_sc, thresh_sc, metric)
+            if not 'dont_save_plot' in kwargs.keys():
+                for metric in (conf.HR_CNTS_SC, conf.HR_PRS_SC):
+                    plot_hp(path.joinpath(dir.stem), lim_sc, thresh_sc, metric)
         print('\n')
         
 def get_end_of_last_annotation(annotations):
@@ -278,8 +290,8 @@ def plot_hp(path, lim, thresh, metric):
 def calc_val_diff(time_dir=None, 
                   thresh=conf.THRESH, 
                   lim=conf.SIMPLE_LIMIT, 
-                  thresh_sc=conf.SC_THRESH, 
-                  lim_sc=conf.SC_LIMIT,
+                  thresh_sc=conf.SEQUENCE_THRESH, 
+                  lim_sc=conf.SEQUENCE_LIMIT,
                   sc=True,
                   **kwargs):
     

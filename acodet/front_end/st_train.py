@@ -12,6 +12,9 @@ def train_options(key='train'):
         key=key)[0])
     st.session_state.preset_option = preset_option
     utils.make_nested_btn_false_if_dropdown_changed(3, preset_option, 3)
+    utils.make_nested_btn_false_if_dropdown_changed(run_id=1, 
+                                                preset_id=preset_option, 
+                                                btn_id=4)
     utils.next_button(id=3)
     if not st.session_state.b3:
         pass

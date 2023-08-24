@@ -60,11 +60,11 @@ THRESH = session['thresh']
 # simple limit for hourly presence
 SIMPLE_LIMIT = session['simple_limit']
 # sequence criterion threshold
-SC_THRESH = session['sc_thresh']
+SEQUENCE_THRESH = session['sequence_thresh']
 # sequence criterion limit
-SC_LIMIT = session['sc_limit']
+SEQUENCE_LIMIT = session['sequence_limit']
 # number of consecutive winodws for sequence criterion
-SC_CON_WIN = session['sc_con_win']
+SEQUENCE_CON_WIN = session['sequence_con_win']
 # limit for colorbar for hourly annotations
 HR_CNTS_VMAX = session['max_annots_per_hour']
 # prediction window limit
@@ -125,8 +125,8 @@ UNFREEZE = session['unfreeze']
 
 HR_CNTS_SL = 'hourly_annotation_simple_limit'
 HR_PRS_SL = 'hourly_presence_simple_limit'
-HR_CNTS_SC = 'hourly_annotations_sequence_crit'
-HR_PRS_SC = 'hourly_presence_sequence_crit'
+HR_CNTS_SC = 'hourly_annotation_sequence_limit'
+HR_PRS_SC = 'hourly_presence_sequence_limit'
 HR_VAL_PATH = session['hourly_presence_validation_path']
 
 # column name for daily annotations (cumulative counts)
@@ -134,4 +134,4 @@ HR_DA_COL = 'daily_annotations'
 # column name for daily presence (binary)
 HR_DP_COL = 'Daily_Presence'
 
-STREAMLIT = False
+STREAMLIT = session['streamlit']

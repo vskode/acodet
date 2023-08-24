@@ -1,4 +1,4 @@
-def main(**kwargs):
+def main(sc=True, **kwargs):
     from acodet.annotate import run_annotation, filter_annots_by_thresh
     from acodet.train import run_training, save_model
     from acodet.tfrec import write_tfrec_dataset
@@ -7,15 +7,16 @@ def main(**kwargs):
     from acodet.combine_annotations import generate_final_annotations
     from acodet.models import init_model
     import acodet.global_config as conf
-    
+        
     if conf.RUN_CONFIG == 1:
         if conf.PRESET == 1:
             time_start = run_annotation(**kwargs)
             return time_start
         elif conf.PRESET == 2:
-            filter_annots_by_thresh(**kwargs)
+            new_thresh = filter_annots_by_thresh(**kwargs)
+            return new_thresh
         elif conf.PRESET == 3:
-            compute_hourly_pres(sc=True, **kwargs)
+            compute_hourly_pres(sc=sc, **kwargs)
         elif conf.PRESET == 4:
             compute_hourly_pres(**kwargs)
         elif conf.PRESET == 5:
@@ -25,7 +26,7 @@ def main(**kwargs):
         elif conf.PRESET == 0:
             time_start = run_annotation(**kwargs)
             filter_annots_by_thresh(time_start, **kwargs)
-            compute_hourly_pres(time_start, sc=True, **kwargs)
+            compute_hourly_pres(time_start, sc=sc, **kwargs)
             return time_start
         
     elif conf.RUN_CONFIG == 2:
