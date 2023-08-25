@@ -8,6 +8,7 @@ from acodet.create_session_file import read_session_file
 conf = read_session_file()
 
 def output():
+    conf = read_session_file()
     if st.session_state.run_option == 1:
         if st.session_state.preset_option == 0:
             disp = ShowAnnotationPredictions()
@@ -68,6 +69,8 @@ class ShowAnnotationPredictions():
             f"""Your annotations are saved in the folder: 
             `{self.annots_path.resolve().as_posix()}`
             """)
+        utils.write_to_session_file('generated_annotation_source', 
+                                    str(self.annots_path))
         
     def create_tabs(self, additional_headings=[]):    
         tabs = st.tabs(['Overall statistics', 
@@ -141,6 +144,7 @@ class PlotPresence():
         self.plot_tabs = plot_tabs
         self.tab = tab
         self.key = key
+        
         if key == 'binary':
             self.path_prefix = 'hourly_annotation'
             self.cbar_label = 'Number of annotations'
@@ -150,7 +154,6 @@ class PlotPresence():
             self.cbar_label = 'Presence'
             self.c_range = [0, 1]
         
-            
         if limit == 'Simple limit':
             self.limit = 'simple_limit'
             self.thresh = 'thresh'
@@ -200,6 +203,7 @@ class PlotPresence():
         if rerun:
             utils.write_to_session_file(self.thresh, thresh)
             utils.write_to_session_file(self.limit, limit)
+            utils.write_to_session_file('predefined_settings', 3)
             
             import run
             run.main(dont_save_plot= True, sc=self.sc, fetch_config_again=True)

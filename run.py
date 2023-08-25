@@ -7,6 +7,9 @@ def main(sc=True, **kwargs):
     from acodet.combine_annotations import generate_final_annotations
     from acodet.models import init_model
     import acodet.global_config as conf
+    if 'fetch_config_again' in kwargs:
+        import importlib
+        importlib.reload(conf)
         
     if conf.RUN_CONFIG == 1:
         if conf.PRESET == 1:

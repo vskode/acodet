@@ -21,7 +21,8 @@ def select_preset():
         run_computions()
 
 def run_computions(**kwargs):
-    if not st.session_state.preset_option == 3:
+    if (not st.session_state.preset_option == 3 
+        and not st.session_state.run_finished):
         utils.next_button(id=4, text='Run computations')
         if not st.session_state.b4:
             st.session_state.run_finished = False

@@ -8,5 +8,6 @@ seaborn==0.12.2
 streamlit==1.25.0
 tensorflow==2.12.0
 tensorflow_addons==0.20.0
-tensorflow_intel==2.12.0
+tensorflow_intel
 tensorflow_io==0.31.0
+plotly==5.16.1
