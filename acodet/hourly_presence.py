@@ -103,7 +103,7 @@ def compute_hourly_pres(time_dir=None,
         
     path = find_thresh05_path_in_dir(time_dir)
     
-    for dir in path.iterdir():
+    for ind, dir in enumerate(path.iterdir()):
         if not dir.is_dir():
             continue
 
@@ -111,7 +111,10 @@ def compute_hourly_pres(time_dir=None,
         files.sort()
         
         df_tuple = return_hourly_pres_df(files, thresh, thresh_sc, 
-                                         lim, lim_sc, sc, dir)
+                                         lim, lim_sc, sc, dir,
+                                         dir_ind=ind+1,
+                                         total_dirs=len(list(path.iterdir())),
+                                         **kwargs)
         
         df, df_sc, df_counts, df_sc_counts = df_tuple
         
@@ -179,7 +182,8 @@ def init_new_dt_if_exceeding_3600_s(h, date, hour):
     return date, hour
 
 def return_hourly_pres_df(files, thresh, thresh_sc, lim, lim_sc, 
-                          sc, path, return_counts=True):
+                          sc, path, total_dirs, dir_ind, 
+                          return_counts=True, **kwargs):
     if not isinstance(path, Path):
         path = Path(path)
     file_ind, row = 0, 0
@@ -251,6 +255,13 @@ def return_hourly_pres_df(files, thresh, thresh_sc, lim, lim_sc,
 
         print(f'Computing files in {path.stem}: '
                 f'{file_ind}/{len(files)}', end='\r')
+        if 'preset' in kwargs and conf.STREAMLIT:
+            import streamlit as st
+            st.session_state.progbar_update.progress(
+                file_ind/len(files)*dir_ind/total_dirs,
+                        text='Updating plot')
+            if file_ind/len(files)*dir_ind/total_dirs == 1:
+                st.write('Plot updated')
     return df, df_sc, df_counts, df_sc_counts
 
 def get_path(path, metric): 
@@ -297,7 +308,7 @@ def calc_val_diff(time_dir=None,
     
     
     path = find_thresh05_path_in_dir(time_dir)
-    for fold in path.iterdir():
+    for ind, fold in enumerate(path.iterdir()):
         if not fold.joinpath('analysis').joinpath(conf.HR_VAL_PATH).exists():
             continue
         
@@ -308,7 +319,10 @@ def calc_val_diff(time_dir=None,
         
         df_tuple = return_hourly_pres_df(files, thresh, thresh_sc, 
                                         lim, lim_sc, sc, fold, 
-                                        return_counts=False)
+                                        total_dirs=len(list(path.iterdir())), 
+                                        dir_ind=ind+1,
+                                        return_counts=False, 
+                                        **kwargs)
         df, df_sc, _, _= df_tuple
         
         d, incorrect, df_diff = dict(), dict(), dict()
