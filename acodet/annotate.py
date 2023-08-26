@@ -14,6 +14,10 @@ from pathlib import Path
 
 class MetaData:
     def __init__(self):
+        """
+        Initialize the MetaData class with the columns that will be used to
+        store the metadata of the generated annotations.
+        """
         self.filename = "filename"
         self.f_dt = "date from timestamp"
         self.n_pred_col = "number of predictions"
@@ -34,13 +38,32 @@ class MetaData:
 
     def append_and_save_meta_file(
         self,
-        file,
-        annot,
-        f_ind,
-        time_start,
-        relativ_path=conf.SOUND_FILES_SOURCE,
-        computing_time="not calculated",
+        file: Path,
+        annot: pd.DataFrame,
+        f_ind: int,
+        time_start: str,
+        relativ_path: str = conf.SOUND_FILES_SOURCE,
+        computing_time: str = "not calculated",
     ):
+        """
+        Append the metadata of the generated annotations to the dataframe and
+        save it to a csv file.
+
+        Parameters
+        ----------
+        file : Path
+            Path to the file that was annotated.
+        annot : pd.DataFrame
+            Dataframe containing the annotations.
+        f_ind : int
+            Index of the file.
+        time_start : str
+            Timestamp of the annotation run.
+        relativ_path : str, optional
+            Path of folder containing files , by default conf.SOUND_FILES_SOURCE
+        computing_time : str, optional
+            Amount of time that prediction took, by default "not calculated"
+        """
         self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
         self.df.loc[f_ind, self.filename] = Path(file).relative_to(
             relativ_path
