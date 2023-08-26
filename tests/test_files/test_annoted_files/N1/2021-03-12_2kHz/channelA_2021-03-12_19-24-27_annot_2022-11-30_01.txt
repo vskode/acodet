@@ -1,0 +1,2 @@
+Selection	Begin Time (s)	End Time (s)	High Freq (Hz)	Low Freq (Hz)	Prediction/Comments
+1	19.3875	23.265	1000	50	0.86481494
