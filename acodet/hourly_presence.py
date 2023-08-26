@@ -123,10 +123,9 @@ def compute_hourly_pres(
 
     path = find_thresh05_path_in_dir(time_dir)
 
-    for ind, dir in enumerate(path.iterdir()):
-        if not dir.is_dir():
-            continue
+    directories = [p for p in path.iterdir() if p.is_dir()]
 
+    for ind, dir in enumerate(directories):
         files = get_files(
             location=path.joinpath(dir.stem), search_str="**/*txt"
         )
@@ -141,7 +140,7 @@ def compute_hourly_pres(
             sc,
             dir,
             dir_ind=ind,
-            total_dirs=len(list(path.iterdir())),
+            total_dirs=len(directories),
             **kwargs,
         )
 
