@@ -42,11 +42,10 @@ class MetaData:
         computing_time="not calculated",
     ):
         self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
-        self.df.loc[f_ind, self.filename] = Path(
-            file
-        ).relative_to(  # TODO relative_path muss noch dauerhaft geändert werden
+        self.df.loc[f_ind, self.filename] = Path(file).relative_to(
             relativ_path
         )
+        # TODO relative_path muss noch dauerhaft geändert werden
         self.df.loc[f_ind, self.n_pred_col] = len(annot)
         df_clean = remove_str_flags_from_predictions(annot)
         self.df.loc[f_ind, self.avg_pred_col] = np.mean(
