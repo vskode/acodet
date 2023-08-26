@@ -1,6 +1,8 @@
 utils/__*
 *__pycache__*
-hbdet/_*
-hbdet/files/models
+acodet/_*
+acodet/src/tmp_*
+acodet/src/models/Humpback_20221130/
 _*
-.vsc*
+.vscode/*
+tests/test_files/analysi*
