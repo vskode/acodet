@@ -18,7 +18,9 @@ def open_folder_dialogue(path=conf['generated_annotations_folder'],
         else:
             foldernames_list = [f'{x.stem}{x.suffix}' for x in 
                                 Path(path).iterdir()
-                                if x.is_dir()][::-1]
+                                if x.is_dir()]
+            foldernames_list.sort()
+            foldernames_list.reverse()
         # create selectbox with the foldernames
         chosen_folder = st.selectbox(label=label, 
                                      options=foldernames_list,
@@ -37,6 +39,9 @@ def next_button(id, text='Next', **kwargs):
     val = st.button(text, key=f'button_{id}', **kwargs)
     if val:
         setattr(st.session_state, f'b{id}', True)
+        make_nested_btns_false_on_click(id)
+        if text in ['Run computations', 'Next']:
+            st.session_state.run_finished = False
         
 def user_input(label, val, **input_params):           
     c1, c2 = st.columns(2)
@@ -82,10 +87,15 @@ def make_nested_btn_false_if_dropdown_changed(run_id, preset_id, btn_id):
         session['predefined_settings'] == preset_id):
             setattr(st.session_state, f'b{btn_id}', False)
 
+def make_nested_btns_false_on_click(btn_id):
+    btns = [i for i in range(btn_id+1, 6)]
+    for btn in btns:
+        setattr(st.session_state, f'b{btn}', False)
+
 def prepare_run():
-    st.markdown("""---""")
-    st.markdown('## Computation started, please wait.')
     if st.session_state.run_option == 1:
+        st.markdown("""---""")
+        st.markdown('## Computation started, please wait.')
         if st.session_state.preset_option in [0, 1]:
             kwargs = {'callbacks': TFPredictProgressBar,
                     'progbar1': st.progress(0, text="Current file"),
@@ -95,7 +105,7 @@ def prepare_run():
     return kwargs
 
 class TFPredictProgressBar(keras.callbacks.Callback):
-    def __init__(self, num_of_files, progbar1, progbar2):
+    def __init__(self, num_of_files, progbar1, progbar2, **kwargs):
         self.num_of_files = num_of_files
         self.pr_bar1 = progbar1
         self.pr_bar2 = progbar2
@@ -103,8 +113,6 @@ class TFPredictProgressBar(keras.callbacks.Callback):
     def on_predict_end(self, logs=None):
         self.pr_bar2.progress(st.session_state.progbar1/self.num_of_files,
                               text="Overall progress")
-
-    # def on_predict_begin(self, logs=None):
 
     def on_predict_batch_begin(self, batch, logs=None):
         self.pr_bar1.progress(batch/(self.params['steps']-1), 

@@ -21,20 +21,15 @@ def select_preset():
         run_computions()
 
 def run_computions(**kwargs):
-    if (not st.session_state.preset_option == 3 
-        and not st.session_state.run_finished):
-        utils.next_button(id=4, text='Run computations')
-        if not st.session_state.b4:
-            st.session_state.run_finished = False
-        else:
-            kwargs = utils.prepare_run()
-            if not st.session_state.run_finished:
-                import run
-                st.session_state.save_dir = run.main(**kwargs)
-                st.session_state.run_finished = True
-    else:
-        st.session_state.run_finished = True
-        
+    utils.next_button(id=4, text='Run computations')
+    if st.session_state.b4:
+        display_not_implemented_text()
+        kwargs = utils.prepare_run()
+        if not st.session_state.run_finished:
+            import run
+            st.session_state.save_dir = run.main(fetch_config_again=True,
+                                                    **kwargs)
+            st.session_state.run_finished = True
     if st.session_state.run_finished:
         if not st.session_state.preset_option == 3:
             st.write('Computation finished')
@@ -50,6 +45,13 @@ def run_computions(**kwargs):
         else:
             visualization.output()
             st.stop()
+            
+def display_not_implemented_text():
+    if not st.session_state.run_option == 1:
+        st.write('''This option is not yet implemented for usage
+                    with the user interface. A headless version is
+                    available at https://github.com/vskode/acodet.''')
+        st.stop()
 
 if __name__ == '__main__':
     run_option = int(st.selectbox(

@@ -200,10 +200,13 @@ class PlotPresence():
                           key=f'limit_slider_{self.key}')
     
         rerun = st.button('Update plot', key=f'update_plot_{self.key}')
+        st.session_state.progbar_update = st.progress(
+                0, text="Updating plot"
+                )
         if rerun:
             utils.write_to_session_file(self.thresh, thresh)
             utils.write_to_session_file(self.limit, limit)
-            utils.write_to_session_file('predefined_settings', 3)
-            
+
             import run
-            run.main(dont_save_plot= True, sc=self.sc, fetch_config_again=True)
+            run.main(dont_save_plot= True, sc=self.sc, fetch_config_again=True,
+                     preset=3)
