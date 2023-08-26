@@ -17,9 +17,9 @@ def output():
             disp.show_annotation_predictions()
             disp.create_tabs(
                 additional_headings=[
-                    "Filtered annotation files",
-                    "Hourly annotations plots",
-                    "Hourly presence plots",
+                    "Filtered Files",
+                    "Annot. Plots",
+                    "Presence Plots",
                 ]
             )
             disp.show_stats()
@@ -50,8 +50,8 @@ def output():
             disp.show_annotation_predictions()
             disp.create_tabs(
                 additional_headings=[
-                    "Hourly annotations plots",
-                    "Hourly presence plots",
+                    "Annot. Plots",
+                    "Presence Plots",
                 ]
             )
             disp.show_stats()
@@ -84,8 +84,8 @@ class ShowAnnotationPredictions:
     def create_tabs(self, additional_headings=[]):
         tabs = st.tabs(
             [
-                "Overall statistics",
-                "Individual annotation files",
+                "Stats",
+                "Annot. Files",
                 *additional_headings,
             ]
         )
@@ -94,7 +94,13 @@ class ShowAnnotationPredictions:
 
     def show_stats(self):
         with self.tab0:
-            df = pd.read_csv(self.annots_path.joinpath("stats.csv"))
+            try:
+                df = pd.read_csv(self.annots_path.joinpath("stats.csv"))
+            except:
+                st.write(
+                    """No stats.csv file found. Please run predefined settings 0, or 1 first
+                    to view this tab."""
+                )
             if "Unnamed: 0" in df.columns:
                 df = df.drop(columns=["Unnamed: 0"])
             st.dataframe(df, hide_index=True)

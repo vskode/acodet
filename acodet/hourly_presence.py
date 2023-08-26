@@ -82,7 +82,10 @@ def find_thresh05_path_in_dir(time_dir):
         root = root.parent
 
     if not time_dir:
-        path = root.joinpath("thresh_0.5")
+        if root.joinpath("thresh_0.5").exists():
+            path = root.joinpath("thresh_0.5")
+        else:
+            path = root
     else:
         path = (
             Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir).joinpath("thresh_0.5")
