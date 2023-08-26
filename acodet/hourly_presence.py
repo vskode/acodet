@@ -317,14 +317,15 @@ def return_hourly_pres_df(
             if "preset" in kwargs:
                 st.session_state.progbar_update.progress(
                     counter,
-                    text="Updating plot",
+                    text="Progress",
                 )
                 if counter == 1:
                     st.write("Plot updated")
+                    st.button("Update plot")
             elif conf.PRESET == 3:
                 kwargs["progbar1"].progress(
                     counter,
-                    text="Updating plot",
+                    text="Progress",
                 )
     return df, df_sc, df_counts, df_sc_counts
 

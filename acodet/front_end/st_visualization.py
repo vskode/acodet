@@ -67,11 +67,11 @@ class ShowAnnotationPredictions:
             saved_annots_dir = saved_annots_dir.resolve().relative_to(
                 Path(conf["generated_annotations_folder"]).resolve()
             )
+            self.annots_path = Path(
+                conf["generated_annotations_folder"]
+            ).joinpath(saved_annots_dir)
         else:
-            saved_annots_dir = Path(saved_annots_dir).stem
-        self.annots_path = Path(conf["generated_annotations_folder"]).joinpath(
-            saved_annots_dir
-        )
+            self.annots_path = Path(saved_annots_dir)
         st.markdown(
             f"""Your annotations are saved in the folder: 
             `{self.annots_path.resolve().as_posix()}`
@@ -96,14 +96,14 @@ class ShowAnnotationPredictions:
         with self.tab0:
             try:
                 df = pd.read_csv(self.annots_path.joinpath("stats.csv"))
+                if "Unnamed: 0" in df.columns:
+                    df = df.drop(columns=["Unnamed: 0"])
+                st.dataframe(df, hide_index=True)
             except:
                 st.write(
                     """No stats.csv file found. Please run predefined settings 0, or 1 first
                     to view this tab."""
                 )
-            if "Unnamed: 0" in df.columns:
-                df = df.drop(columns=["Unnamed: 0"])
-            st.dataframe(df, hide_index=True)
 
     def show_individual_files(self, tab_number=1, thresh_path="thresh_0.5"):
         with getattr(self, f"tab{tab_number}"):
@@ -237,20 +237,22 @@ class PlotPresence:
             key=f"thresh_slider_{self.key}",
         )
 
-        limit = st.slider(
-            "Limit",
-            1,
-            self.limit_max,
-            conf[self.limit],
-            1,
-            key=f"limit_slider_{self.key}",
-        )
+        if self.sc:
+            limit = st.slider(
+                "Limit",
+                1,
+                self.limit_max,
+                conf[self.limit],
+                1,
+                key=f"limit_slider_{self.key}",
+            )
 
-        rerun = st.button("Update plot", key=f"update_plot_{self.key}")
+        rerun = st.button("Rerun computation", key=f"update_plot_{self.key}")
         st.session_state.progbar_update = st.progress(0, text="Updating plot")
         if rerun:
             utils.write_to_session_file(self.thresh, thresh)
-            utils.write_to_session_file(self.limit, limit)
+            if self.sc:
+                utils.write_to_session_file(self.limit, limit)
 
             import run
 
