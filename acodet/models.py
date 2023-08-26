@@ -9,34 +9,37 @@ from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
 
-class ModelHelper:    
+
+class ModelHelper:
     """
     Helper class to provide checkpoint loading and changing of input shape.
     """
-    def load_ckpt(self, ckpt_path, ckpt_name='last'):
+
+    def load_ckpt(self, ckpt_path, ckpt_name="last"):
         if isinstance(ckpt_path, Path):
             ckpt_path = ckpt_path.stem
-        ckpt_path = (Path('../trainings').joinpath(ckpt_path)
-                     .joinpath('unfreeze_no-TF')) # TODO namen ändern
+        ckpt_path = (
+            Path("../trainings").joinpath(ckpt_path).joinpath("unfreeze_no-TF")
+        )  # TODO namen ändern
         try:
-            file_path = (ckpt_path.joinpath(f'cp-{ckpt_name}.ckpt.index'))
+            file_path = ckpt_path.joinpath(f"cp-{ckpt_name}.ckpt.index")
             if not file_path.exists():
-                ckpts = list(ckpt_path.glob('cp-*.ckpt*'))
+                ckpts = list(ckpt_path.glob("cp-*.ckpt*"))
                 ckpts.sort()
                 ckpt = ckpts[-1]
             else:
                 ckpt = file_path
             self.model.load_weights(
-                str(ckpt).replace('.index', '')
-                ).expect_partial()
+                str(ckpt).replace(".index", "")
+            ).expect_partial()
         except Exception as e:
-            print('Checkpoint not found.', e)
+            print("Checkpoint not found.", e)
 
     def change_input_to_array(self):
         """
         change input layers of model after loading checkpoint so that a file
         can be predicted based on arrays rather than spectrograms, i.e.
-        reintegrate the spectrogram creation into the model. 
+        reintegrate the spectrogram creation into the model.
 
         Args:
             model (tf.keras.Sequential): keras model
@@ -46,55 +49,62 @@ class ModelHelper:
         """
         model_list = self.model.layers
         model_list.insert(0, tf.keras.layers.Input([conf.CONTEXT_WIN]))
-        model_list.insert(1, tf.keras.layers.Lambda(
-                            lambda t: tf.expand_dims(t, -1)))
+        model_list.insert(
+            1, tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1))
+        )
         model_list.insert(2, front_end.MelSpectrogram())
-        self.model = tf.keras.Sequential(layers=[layer for layer in model_list])
+        self.model = tf.keras.Sequential(
+            layers=[layer for layer in model_list]
+        )
+
 
 class HumpBackNorthAtlantic(ModelHelper):
     """
     Defualt class for North Atlantic Humpback Whale Song detection. If no new
-    training is performed this class is the default class. The model is 
-    currently included in the repository. The model will be extracted 
-    and made ready for use. 
+    training is performed this class is the default class. The model is
+    currently included in the repository. The model will be extracted
+    and made ready for use.
 
     Parameters
     ----------
     ModelHelper : class
         helper class providing necessary functionalities
     """
+
     def __init__(self, **kwargs):
         pass
 
     def load_model(self, **kwargs):
         if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
             for model_path in Path(conf.MODEL_DIR).iterdir():
-                if not model_path.suffix == '.zip':
+                if not model_path.suffix == ".zip":
                     continue
                 else:
-                    with zipfile.ZipFile(model_path, 'r') as model_zip:
+                    with zipfile.ZipFile(model_path, "r") as model_zip:
                         model_zip.extractall(conf.MODEL_DIR)
-        self.model = tf.keras.models.load_model(Path(conf.MODEL_DIR)
-                                   .joinpath(conf.MODEL_NAME))
+        self.model = tf.keras.models.load_model(
+            Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME)
+        )
 
-class GoogleMod(ModelHelper): # TODO change name
+
+class GoogleMod(ModelHelper):  # TODO change name
     def __init__(self, **params) -> None:
         """
         This class is the framework to load and flatten the model created
-        by Matthew Harvey in collaboration with Ann Allen for the 
-        PIFSC HARP data 
-        (https://www.frontiersin.org/article/10.3389/fmars.2021.607321). 
+        by Matthew Harvey in collaboration with Ann Allen for the
+        PIFSC HARP data
+        (https://www.frontiersin.org/article/10.3389/fmars.2021.607321).
 
         Args:
             params (dict): model parameters
         """
         self.load_google_new(**params)
         self.load_flat_model(**params)
-    
+
     def load_google_new(self, load_g_ckpt=conf.LOAD_G_CKPT, **_):
         """
-        Load google model architecture. By default the model weights are 
-        initiated with the pretrained weights from the google checkpoint. 
+        Load google model architecture. By default the model weights are
+        initiated with the pretrained weights from the google checkpoint.
 
         Args:
             load_g_ckpt (bool, optional): Initialize model weights with Google
@@ -104,40 +114,39 @@ class GoogleMod(ModelHelper): # TODO change name
         if load_g_ckpt:
             self.model = self.model.load_from_tf_hub()
 
-    def load_flat_model(self, input_tensors='spectrograms', **_):
+    def load_flat_model(self, input_tensors="spectrograms", **_):
         """
-        Take nested model architecture from Harvey Matthew and flatten it for 
-        ease of use. This way trainability of layers can be iteratively 
+        Take nested model architecture from Harvey Matthew and flatten it for
+        ease of use. This way trainability of layers can be iteratively
         defined. The model still has a nested structure. The ResNet blocks are
-        combined into layers of type Block, but because their trainability would 
+        combined into layers of type Block, but because their trainability would
         only be changed on the block level, this degree of nesting shouldn't
         complicate the usage of the model.
         By default the model is itiated with spectrograms of shape [128, 64] as
-        inputs. This means that spectrograms have to be precomputed. 
-        Alternatively if the argument input_tensors is set to something else, 
+        inputs. This means that spectrograms have to be precomputed.
+        Alternatively if the argument input_tensors is set to something else,
         inputs are assumed to be audio arrays of 39124 samples length.
-        As this process is very specific to the model ascertained from 
+        As this process is very specific to the model ascertained from
         Mr. Harvey, layer indices are hard coded.
 
         Args:
-            input_tensors (str): input type, if not spectrograms, they are 
-            assumed to be audio arrays of 39124 samples length. 
+            input_tensors (str): input type, if not spectrograms, they are
+            assumed to be audio arrays of 39124 samples length.
             Defaults to 'spectrograms'.
         """
         # create list which will contain all the layers
         model_list = []
-        if input_tensors == 'spectrograms':
+        if input_tensors == "spectrograms":
             # add Input layer
             model_list.append(tf.keras.layers.Input([128, 64]))
         else:
             # add MelSpectrogram layer
-            model_list.append(tf.keras.layers.Input(
-                [conf.CONTEXT_WIN]))
-            model_list.append(tf.keras.layers.Lambda(
-                lambda t: tf.expand_dims(t, -1)
-                ))
+            model_list.append(tf.keras.layers.Input([conf.CONTEXT_WIN]))
+            model_list.append(
+                tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1))
+            )
             model_list.append(self.model.layers[0])
-            
+
         # add PCEN layer
         model_list.append(self.model.layers[1])
         # iterate through PreBlocks
@@ -146,74 +155,84 @@ class GoogleMod(ModelHelper): # TODO change name
             model_list.append(layer)
         # change name, to make sure every layer has a unique name
         num_preproc_layers = len(model_list)
-        model_list[num_preproc_layers-1]._name = 'pool_pre_resnet'
+        model_list[num_preproc_layers - 1]._name = "pool_pre_resnet"
         # iterate over ResNet blocks
         c = 0
         for i, high_layer in enumerate(self.model.layers[2]._layers[2:6]):
             for j, layer in enumerate(high_layer._layers):
-                c+=1
+                c += 1
                 model_list.append(layer)
-                model_list[num_preproc_layers-1+c]._name += f'_{i}'
+                model_list[num_preproc_layers - 1 + c]._name += f"_{i}"
         # add final Dense layers
         model_list.append(self.model.layers[2]._layers[-1])
         model_list.append(self.model.layers[-1])
         # normalize results between 0 and 1
-        model_list.append(tf.keras.layers.Activation('sigmoid'))
-        
+        model_list.append(tf.keras.layers.Activation("sigmoid"))
+
         # generate new model
         self.model = tf.keras.Sequential(
-            layers=[layer for layer in model_list])
+            layers=[layer for layer in model_list]
+        )
+
 
 class KerasAppModel(ModelHelper):
     """
     Class providing functionalities for usage of standard keras application
     models like EfficientNet. The keras application name is passed and
-    the helper class is then used in case existing checkpoints need to be 
-    loaded or the shape of the input array needs change. 
+    the helper class is then used in case existing checkpoints need to be
+    loaded or the shape of the input array needs change.
 
     Parameters
     ----------
     ModelHelper : class
         helper class providing necessary functionalities
     """
-    def __init__(self, keras_mod_name='EfficientNetB0', **params) -> None:
-        keras_model = getattr(tf.keras.applications, keras_mod_name)(
-                include_top=True,
-                weights=None,
-                input_tensor=None,
-                input_shape=[128, 64, 3],
-                pooling=None,
-                classes=1,
-                classifier_activation="sigmoid"
-            )
-        
-        self.model = tf.keras.Sequential([
-            tf.keras.layers.Input([128, 64]),
-            leaf_pcen.PCEN(
-                alpha=0.98,
-                delta=2.0,
-                root=2.0,
-                smooth_coef=0.025,
-                floor=1e-6,
-                trainable=True,
-                name='pcen',
-            ),
-            # tf.keras.layers.Lambda(lambda t: 255. *t /tf.math.reduce_max(t)),
-            tf.keras.layers.Lambda(lambda t: tf.tile(
-                tf.expand_dims(t, -1),
-                [1 for _ in range(3)] + [3])),
-            keras_model
-        ])
-        
 
-def init_model(model_name: str =conf.MODELCLASSNAME, 
-               training_path: str =conf.LOAD_CKPT_PATH, 
-               input_specs=False, **kwargs) -> tf.keras.Sequential:
+    def __init__(self, keras_mod_name="EfficientNetB0", **params) -> None:
+        keras_model = getattr(tf.keras.applications, keras_mod_name)(
+            include_top=True,
+            weights=None,
+            input_tensor=None,
+            input_shape=[128, 64, 3],
+            pooling=None,
+            classes=1,
+            classifier_activation="sigmoid",
+        )
+
+        self.model = tf.keras.Sequential(
+            [
+                tf.keras.layers.Input([128, 64]),
+                leaf_pcen.PCEN(
+                    alpha=0.98,
+                    delta=2.0,
+                    root=2.0,
+                    smooth_coef=0.025,
+                    floor=1e-6,
+                    trainable=True,
+                    name="pcen",
+                ),
+                # tf.keras.layers.Lambda(lambda t: 255. *t /tf.math.reduce_max(t)),
+                tf.keras.layers.Lambda(
+                    lambda t: tf.tile(
+                        tf.expand_dims(t, -1), [1 for _ in range(3)] + [3]
+                    )
+                ),
+                keras_model,
+            ]
+        )
+
+
+def init_model(
+    model_name: str = conf.MODELCLASSNAME,
+    training_path: str = conf.LOAD_CKPT_PATH,
+    input_specs=False,
+    **kwargs,
+) -> tf.keras.Sequential:
     """
-    Initiate model instance, load weights. As the model is trained on 
+    Initiate model instance, load weights. As the model is trained on
     spectrogram tensors but will now be used for inference on audio files
-    containing continuous audio arrays, the input shape of the model is 
-    changed after the model weights have been loaded. 
+    containing continuous audio arrays, the input shape of the model is
+    changed after the model weights have been loaded.
 
     Parameters
     ----------
@@ -229,7 +248,7 @@ def init_model(model_name: str =conf.MODELCLASSNAME,
     """
     model_class = getattr(sys.modules[__name__], model_name)
     mod_obj = model_class(**kwargs)
-    if conf.MODEL_NAME == 'FlatHBNA':
+    if conf.MODEL_NAME == "FlatHBNA":
         input_specs = True
     if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()
@@ -239,13 +258,13 @@ def init_model(model_name: str =conf.MODELCLASSNAME,
         mod_obj.change_input_to_array()
     return mod_obj.model
 
-def get_labels_and_preds(model_name: str, 
-                         training_path: str, 
-                         val_data: tf.data.Dataset, 
-                         **kwArgs) -> tuple:
+
+def get_labels_and_preds(
+    model_name: str, training_path: str, val_data: tf.data.Dataset, **kwArgs
+) -> tuple:
     """
     Retrieve labels and predictions of validation set and given model
-    checkpoint. 
+    checkpoint.
 
     Parameters
     ----------
@@ -263,16 +282,21 @@ def get_labels_and_preds(model_name: str,
     preds: mp.ndarray
         predictions
     """
-    model = init_model(load_from_ckpt=True, model_name=model_name, 
-                       training_path=training_path, **kwArgs)
-    preds = model.predict(x = prep_ds_4_preds(val_data))
+    model = init_model(
+        load_from_ckpt=True,
+        model_name=model_name,
+        training_path=training_path,
+        **kwArgs,
+    )
+    preds = model.predict(x=prep_ds_4_preds(val_data))
     labels = get_val_labels(val_data, len(preds))
     return labels, preds
+
 
 def prep_ds_4_preds(dataset):
     """
     Prepare dataset for prediction, by batching and ensuring that only
-    arrays and corresponding labels are passed (necessary because if 
+    arrays and corresponding labels are passed (necessary because if
     data about the origin of the array is passed, i.e. the file path and
     start time of the array within that file, model.predict fails.).
 

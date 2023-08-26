@@ -27,14 +27,17 @@ import collections
 import tensorflow as tf
 from acodet import global_config as conf
 
-Config = collections.namedtuple("Config", [
-    "stft_frame_length",
-    "stft_frame_step",
-    "freq_bins",
-    "sample_rate",
-    "lower_f",
-    "upper_f",
-])
+Config = collections.namedtuple(
+    "Config",
+    [
+        "stft_frame_length",
+        "stft_frame_step",
+        "freq_bins",
+        "sample_rate",
+        "lower_f",
+        "upper_f",
+    ],
+)
 """Configuration for the front end.
 
 Attributes:
@@ -46,50 +49,57 @@ Attributes:
   upper_f: Upper boundary of mel bins in Hz.
 """
 
-Config.__new__.__defaults__ = (conf.STFT_FRAME_LEN, 
-                               conf.FFT_HOP, 
-                               64, 
-                               conf.SR, 
-                               0.0, 
-                               conf.SR/2)
+Config.__new__.__defaults__ = (
+    conf.STFT_FRAME_LEN,
+    conf.FFT_HOP,
+    64,
+    conf.SR,
+    0.0,
+    conf.SR / 2,
+)
 
 
 class MelSpectrogram(tf.keras.layers.Layer):
-  """Keras layer that converts a waveform to an amplitude mel spectrogram."""
+    """Keras layer that converts a waveform to an amplitude mel spectrogram."""
 
-  def __init__(self, config=None, name="mel_spectrogram"):
-    super(MelSpectrogram, self).__init__(name=name)
-    if config is None:
-      config = Config()
-    self.config = config
-    
-  def get_config(self):
-    config = super().get_config()
-    config.update({key: val for key, val in config.items()})
-    return config
+    def __init__(self, config=None, name="mel_spectrogram"):
+        super(MelSpectrogram, self).__init__(name=name)
+        if config is None:
+            config = Config()
+        self.config = config
 
-  def build(self, input_shape):
-    self._stft = tf.keras.layers.Lambda(
-        lambda t: tf.signal.stft(
-            tf.squeeze(t, 2),
-            frame_length=self.config.stft_frame_length,
-            frame_step=self.config.stft_frame_step),
-        name="stft",
-    )
-    num_spectrogram_bins = self._stft.compute_output_shape(input_shape)[-1]
-    self._bin = tf.keras.layers.Lambda(
-        lambda t: tf.square(
-            tf.tensordot(
-                tf.abs(t),
-                tf.signal.linear_to_mel_weight_matrix(
-                    num_mel_bins=self.config.freq_bins,
-                    num_spectrogram_bins=num_spectrogram_bins,
-                    sample_rate=self.config.sample_rate,
-                    lower_edge_hertz=self.config.lower_f,
-                    upper_edge_hertz=self.config.upper_f,
-                    name="matrix"), 1)),
-        name="mel_bins",
-    )
+    def get_config(self):
+        config = super().get_config()
+        config.update({key: val for key, val in config.items()})
+        return config
 
-  def call(self, inputs):
-    return self._bin(self._stft(inputs))
+    def build(self, input_shape):
+        self._stft = tf.keras.layers.Lambda(
+            lambda t: tf.signal.stft(
+                tf.squeeze(t, 2),
+                frame_length=self.config.stft_frame_length,
+                frame_step=self.config.stft_frame_step,
+            ),
+            name="stft",
+        )
+        num_spectrogram_bins = self._stft.compute_output_shape(input_shape)[-1]
+        self._bin = tf.keras.layers.Lambda(
+            lambda t: tf.square(
+                tf.tensordot(
+                    tf.abs(t),
+                    tf.signal.linear_to_mel_weight_matrix(
+                        num_mel_bins=self.config.freq_bins,
+                        num_spectrogram_bins=num_spectrogram_bins,
+                        sample_rate=self.config.sample_rate,
+                        lower_edge_hertz=self.config.lower_f,
+                        upper_edge_hertz=self.config.upper_f,
+                        name="matrix",
+                    ),
+                    1,
+                )
+            ),
+            name="mel_bins",
+        )
+
+    def call(self, inputs):
+        return self._bin(self._stft(inputs))
