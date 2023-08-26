@@ -9,7 +9,7 @@ from acodet.front_end import (
     st_annotate,
     st_generate_data,
     st_train,
-    visualization,
+    st_visualization,
 )
 
 utils.write_to_session_file("streamlit", True)
@@ -54,7 +54,7 @@ def run_computions(**kwargs):
         if not st.session_state.b5:
             pass
         else:
-            visualization.output()
+            st_visualization.output()
             st.stop()
 
 
