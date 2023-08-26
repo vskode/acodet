@@ -11,3 +11,5 @@ tensorflow_addons==0.20.0
 tensorflow_intel
 tensorflow_io==0.31.0
 plotly==5.16.1
+black==23.7.0
+pre-commit==3.3.3
