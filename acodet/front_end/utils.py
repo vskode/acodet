@@ -146,6 +146,8 @@ class TFPredictProgressBar(keras.callbacks.Callback):
         )
 
     def on_predict_batch_begin(self, batch, logs=None):
-        self.pr_bar1.progress(
-            batch / (self.params["steps"] - 1), text="Current file"
-        )
+        if self.params["steps"] == 1:
+            denominator = 1
+        else:
+            denominator = self.params["steps"] - 1
+        self.pr_bar1.progress(batch / denominator, text="Current file")

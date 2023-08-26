@@ -41,6 +41,7 @@ def run_computions(**kwargs):
                 fetch_config_again=True, **kwargs
             )
             st.session_state.run_finished = True
+
     if st.session_state.run_finished:
         if not st.session_state.preset_option == 3:
             st.write("Computation finished")

@@ -66,8 +66,11 @@ def get_dt_filename(file):
     while len(datetime) < 12:
         if i > 1000:
             raise NameError(
-                "Time stamp Error: time stamp in filename "
-                "doesn't fit any known pattern."
+                """Time stamp Error: time stamp in filename 
+                doesn't fit any known pattern. If you would
+                like to predict this file anyway, please
+                choose predefined settings option 1.
+                """
             )
         datetime = "".join(numbs[-i:])
         i += 1

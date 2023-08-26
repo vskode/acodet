@@ -140,7 +140,7 @@ def compute_hourly_pres(
             lim_sc,
             sc,
             dir,
-            dir_ind=ind + 1,
+            dir_ind=ind,
             total_dirs=len(list(path.iterdir())),
             **kwargs,
         )
@@ -305,15 +305,25 @@ def return_hourly_pres_df(
             f"Computing files in {path.stem}: " f"{file_ind}/{len(files)}",
             end="\r",
         )
-        if "preset" in kwargs and conf.STREAMLIT:
+        if "preset" in kwargs or conf.PRESET == 3 and conf.STREAMLIT:
             import streamlit as st
 
-            st.session_state.progbar_update.progress(
-                file_ind / len(files) * dir_ind / total_dirs,
-                text="Updating plot",
-            )
-            if file_ind / len(files) * dir_ind / total_dirs == 1:
-                st.write("Plot updated")
+            inner_counter = file_ind / len(files)
+            outer_couter = dir_ind / total_dirs
+            counter = inner_counter * 1 / total_dirs + outer_couter
+
+            if "preset" in kwargs:
+                st.session_state.progbar_update.progress(
+                    counter,
+                    text="Updating plot",
+                )
+                if counter == 1:
+                    st.write("Plot updated")
+            elif conf.PRESET == 3:
+                kwargs["progbar1"].progress(
+                    counter,
+                    text="Updating plot",
+                )
     return df, df_sc, df_counts, df_sc_counts
 
 
