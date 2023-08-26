@@ -10,44 +10,48 @@ def main(sc=True, **kwargs):
     if 'fetch_config_again' in kwargs:
         import importlib
         importlib.reload(conf)
+    if 'preset' in kwargs:
+        preset = kwargs['preset']
+    else:
+        preset = conf.PRESET
         
     if conf.RUN_CONFIG == 1:
-        if conf.PRESET == 1:
+        if preset == 1:
             time_start = run_annotation(**kwargs)
             return time_start
-        elif conf.PRESET == 2:
+        elif preset == 2:
             new_thresh = filter_annots_by_thresh(**kwargs)
             return new_thresh
-        elif conf.PRESET == 3:
+        elif preset == 3:
             compute_hourly_pres(sc=sc, **kwargs)
-        elif conf.PRESET == 4:
+        elif preset == 4:
             compute_hourly_pres(**kwargs)
-        elif conf.PRESET == 5:
+        elif preset == 5:
             pass # TODO hourly preds mit varying limits
-        elif conf.PRESET == 6:
+        elif preset == 6:
             calc_val_diff(**kwargs)
-        elif conf.PRESET == 0:
+        elif preset == 0:
             time_start = run_annotation(**kwargs)
             filter_annots_by_thresh(time_start, **kwargs)
             compute_hourly_pres(time_start, sc=sc, **kwargs)
             return time_start
         
     elif conf.RUN_CONFIG == 2:
-        if conf.PRESET == 1:
+        if preset == 1:
             generate_final_annotations(**kwargs)
             write_tfrec_dataset(**kwargs)
-        elif conf.PRESET == 2:
+        elif preset == 2:
             generate_final_annotations(active_learning=False, **kwargs)
             write_tfrec_dataset(active_learning=False, **kwargs)
             
     elif conf.RUN_CONFIG == 3:
-        if conf.PRESET == 1:
+        if preset == 1:
             run_training(**kwargs)
-        elif conf.PRESET == 2:
+        elif preset == 2:
             create_overview_plot(**kwargs)
-        elif conf.PRESET == 3:
+        elif preset == 3:
             create_overview_plot('2022-05-00_00', **kwargs)
-        elif conf.PRESET == 4:
+        elif preset == 4:
             save_model('FlatHBNA', init_model(), **kwargs)
     
             
