@@ -553,7 +553,7 @@ def create_annotation_df(audio_batches: np.ndarray,
     """
     annots = pd.DataFrame()
     for ind, audio in enumerate(audio_batches):
-        if callbacks is not None:
+        if callbacks is not None and ind == 0:
             callbacks = callbacks(**kwargs)
         preds = model.predict(window_data_for_prediction(audio),
                               callbacks=callbacks)
@@ -647,7 +647,12 @@ def gen_annotations(file, model: tf.keras.Model,
             
     channel = get_channel(get_top_dir(parent_dirs))
     
-    audio_batches = batch_audio(load_audio(file, channel))
+    audio = load_audio(file, channel)
+    if audio is None:
+        raise ImportError('Audio file cannot be loaded. Check if file has '
+                          'one of the supported endings '
+                          '(wav, mp3, flac, etc.))')
+    audio_batches = batch_audio(audio)
     
     annotation_df = create_annotation_df(audio_batches, model, **kwargs)
     
