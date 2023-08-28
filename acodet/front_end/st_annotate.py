@@ -33,7 +33,9 @@ def annotate_options(key="annot"):
         config["predefined_settings"] = preset_option
 
         if preset_option == 1 or preset_option == 0:
-            path = st.text_input("Enter the path to your sound data:", ".")
+            path = st.text_input(
+                "Enter the path to your sound data:", "tests/test_files"
+            )
             config["sound_files_source"] = utils.open_folder_dialogue(
                 path, key="folder_" + key
             )
@@ -58,7 +60,8 @@ def annotate_options(key="annot"):
                 )
             elif default_path == "No":
                 path = st.text_input(
-                    "Enter the path to your annotation data:", "."
+                    "Enter the path to your annotation data:",
+                    "tests/test_files",
                 )
                 config[
                     "generated_annotation_source"

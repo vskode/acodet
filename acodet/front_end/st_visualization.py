@@ -62,16 +62,13 @@ def output():
 
 class ShowAnnotationPredictions:
     def show_annotation_predictions(self):
-        saved_annots_dir = st.session_state.save_dir
-        if isinstance(saved_annots_dir, Path):
-            saved_annots_dir = saved_annots_dir.resolve().relative_to(
-                Path(conf["generated_annotations_folder"]).resolve()
-            )
+        saved_annots_dir = Path(st.session_state.save_dir)
+        if len(list(saved_annots_dir.parents)) > 1:
+            self.annots_path = saved_annots_dir
+        else:
             self.annots_path = Path(
                 conf["generated_annotations_folder"]
             ).joinpath(saved_annots_dir)
-        else:
-            self.annots_path = Path(saved_annots_dir)
         st.markdown(
             f"""Your annotations are saved in the folder: 
             `{self.annots_path.resolve().as_posix()}`
