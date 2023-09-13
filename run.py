@@ -1,4 +1,21 @@
 def main(sc=True, **kwargs):
+    """
+    Main function to run the whole pipeline. The function is called from the
+    streamlit app. The function is called with the preset option as an argument.
+    The preset option is used to determine which function should be called.
+    The preset option is set in the config file.
+
+    Parameters
+    ----------
+    sc : bool, optional
+        Decide if meta analysis should be done using sequence limit, by default True
+
+    Returns
+    -------
+    str or None
+        depending on the preset option, the function returns either the time
+        when the annotation was started or None
+    """
     from acodet.annotate import run_annotation, filter_annots_by_thresh
     from acodet.train import run_training, save_model
     from acodet.tfrec import write_tfrec_dataset
@@ -12,6 +29,7 @@ def main(sc=True, **kwargs):
         import importlib
 
         importlib.reload(conf)
+        kwargs["relativ_path"] = conf.SOUND_FILES_SOURCE
     if "preset" in kwargs:
         preset = kwargs["preset"]
     else:
