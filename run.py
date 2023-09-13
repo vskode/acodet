@@ -12,6 +12,7 @@ def main(sc=True, **kwargs):
         import importlib
 
         importlib.reload(conf)
+        kwargs["relativ_path"] = conf.SOUND_FILES_SOURCE
     if "preset" in kwargs:
         preset = kwargs["preset"]
     else:
