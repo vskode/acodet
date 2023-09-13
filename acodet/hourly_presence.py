@@ -14,23 +14,64 @@ import time
 time_start = time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime())
 
 
-def hourly_prs(df, lim=10):
+def hourly_prs(df: pd.DataFrame, lim:int =10):
+    """
+    Compute hourly presence.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        dataframe containing annotations
+    lim : int, optional
+        limit for binary presence judgement, by default 10
+
+    Returns
+    -------
+    int
+        either 0 or 1 - 0 if less than lim annotations are present, 1 if more
+    """
     if len(df) > lim:
         return 1
     else:
         return 0
 
 
-def daily_prs(df):
+def daily_prs(df: pd.DataFrame):
+    """
+    Compute daily presence. If at least one hour is present, the day is
+    considered present.
+
+    Parameters
+    ----------
+    df : pd.Dataframe
+        dataframe containing annotations
+
+    Returns
+    -------
+    int
+        0 or 1 - 0 if no hour is present, 1 if at least one hour is present
+    """
     if 1 in df.loc[len(df), h_of_day_str()].values:
         return 1
     else:
         return 0
 
 
-def get_val(path):
-    df = pd.read_csv(path)
-    return df
+def get_val(path: str or Path):
+    """
+    Get validation dataframe.
+
+    Parameters
+    ----------
+    path : str or Path
+        path to validation dataframe
+
+    Returns
+    -------
+    pd.Dataframe
+        validation dataframe
+    """
+    return pd.read_csv(path) 
 
 
 def seq_crit(

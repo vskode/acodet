@@ -1,29 +1,40 @@
 # **acodet** - **Aco**ustic **Det**ector
 ## Framework for the **usage** and **training** of acoustic species detectors based on machine learning using spectrogram images to detect animal vocalizations 
 
-
+- **Integrated graphical user interface (GUI), so no coding required!**
 - Supports Raven table format
+    - resulting spreadsheets can be directly imported into raven to view annotations
 - automatic generation of presence/absence visualizations
+    - GUI supports interactive visualizations, allowing you to adjust model thresholds and instantly view the results
+- headless version included for those that prefer command line tools
 - variable thresholding
 ---------------------------------------------------
+sample output:
+<!-- include an image -->
+![Annotation Output](acodet/src/imgs/annotation_output.png)
 
-<!-- ## Features:
-## · Generate raven annotation tables
-## · Hourly presence spreadsheets or visualizations
-## · Generate new training data
-## · Train models -->
+Play around with the user interface on the prototype here:
+https://acodet.streamlit.app/
+(the program will look identical when executed on your computer)
+
+
 ## Table of Contents
-- [Installation Instructions for Windows](#installation-instructions-for-windows)
-    - [Preliminary software installations](#preliminary-software-installations)
-    - [Installation instructions](#installation-instructions)
-- [acodet Usage](#acodet-usage)
+- [Installation on Windows](#installation-on-windows)
+- [Installation on Mac](#installation-on-mac)
+- [Installation on Linux](#installation-on-linux)
+- [acodet Usage with GUI](#acodet-usage-with-gui)
+    - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
+    - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
+    - [Usecase 3: Training](#usecase-3-training)
+- [acodet Usage headless](#acodet-usage-headless)
     - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
     - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
     - [Usecase 3: Training](#usecase-3-training)
 - [FAQ](#faq)
-----------------------------------------------------
 
-# Installation Instructions for Windows
+
+----------------------------------------------------
+# Installation on Windows
 ### Preliminary software installations:
 - install python 3.8: (standard install, no admin privileges needed)
 <https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
@@ -50,14 +61,84 @@
 
 - Install required packages:
 
-`pip install -r acodet/requirements.txt`
+`pip install -r AcoDet/requirements.txt`
 
 -------------------------
 
-# acodet Usage
-Users only need to change the files **simple_congif.yml** and **advanced_config.yml** to use acodet. Once the config files are changed, users can run the program by running the command `python run.py` inside the **acodet** directory.
+# Installation on Mac
+### Preliminary software installations:
+- install python 3.8: (standard install, no admin privileges needed)
+<https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
+- install git bash: (default install)
+<https://github.com/git-for-windows/git/releases/download/v2.38.1.windows.1/Git-2.38.1-64-bit.exe>
 
-## Usecase 1: Generating annotations
+### Installation instructions
+- create project directory in location of your choice
+- open git bash in project directory (right click, Git Bash here)
+- clone the repository:
+
+`git clone https://github.com/vskode/acodet.git`
+- Install virtualenv (copy and paste in Git Bash console):
+
+`$HOME/AppData/Local/Programs/Python/Python38/python -m pip install virtualenv`
+
+- Create a new virtual environment (default name env_acodet can be changed):
+
+ `$HOME/AppData/Local/Programs/Python/Python38/python -m virtualenv env_acodet`
+
+- activate newly created virtual environment (change env_acodet if necessary):
+
+`source env_acodet/Scripts/activate`
+
+- Install required packages:
+
+`pip install -r AcoDet/requirements.txt`
+
+--------------------------------------------
+# Installation on Linux
+### Preliminary software installations:
+- install python 3.8: (standard install, no admin privileges needed)
+<https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
+- install git bash: (default install)
+<https://github.com/git-for-windows/git/releases/download/v2.38.1.windows.1/Git-2.38.1-64-bit.exe>
+
+### Installation instructions
+- create project directory in location of your choice
+- open git bash in project directory (right click, Git Bash here)
+- clone the repository:
+
+`git clone https://github.com/vskode/acodet.git`
+- Install virtualenv (copy and paste in Git Bash console):
+
+`$HOME/AppData/Local/Programs/Python/Python38/python -m pip install virtualenv`
+
+- Create a new virtual environment (default name env_acodet can be changed):
+
+ `$HOME/AppData/Local/Programs/Python/Python38/python -m virtualenv env_acodet`
+
+- activate newly created virtual environment (change env_acodet if necessary):
+
+`source env_acodet/Scripts/activate`
+
+- Install required packages:
+
+`pip install -r AcoDet/requirements.txt`
+
+# AcoDet usage with GUI
+
+All inputs and outputs are handled through a gui. To run the gui run
+
+`streamlit run streamlit_run.app`
+
+This should start a new tab in your browser which runs the interface that you can interact with. It is important that your virtual environment where you have installed the required packages is active, for that see the Installation sections. To activate the environment run `source env_acodet/bin/activate` whilst in the directory above acodet.
+
+
+
+
+# AcoDet usage headless
+Users only need to change the files **simple_congif.yml** and **advanced_config.yml** to use AcoDet. Once the config files are changed, users can run the program by running the command `python run.py` inside the **acodet** directory.
+
+## Usecase 1: generating annotations
 To generate annotations:
 - open the file **simple_config.yml** in any Editor (default is Notepad). 
 - change `run_config` to `1`
@@ -84,7 +165,7 @@ To start the program:
 
 - run the run.py script:
 
-`python acodet/run.py`
+`python AcoDet/run.py`
 
 ## Output
 
@@ -96,7 +177,7 @@ If you have chosen option 2 (or 0) you will also find a directory `thresh_0.x` w
 
 If you have chosen option 3, 4 or 0 you will find a directory `analysis` within the dataset directory. In that directory you will find spreadsheets for hourly presence and hourly counts, as well as visualizations of the hourly presence and hourly counts.
 
-## Usecase 2: Generating new training data
+## Usecase 2: generating new training data
 
 Either use manually created annotations -> option 2, or create new annotations by reviewing the automatically generated annotations -> option 1.
 
@@ -121,9 +202,9 @@ To start the program:
 
 - run the run.py script:
 
-`python acodet/run.py`
+`python AcoDet/run.py`
 
-## Usecase 3: Training
+## Usecase 3: training
 
 To train the model:
 - open the file **simple_config.yml** in any Editor (default is Notepad). 
@@ -141,7 +222,7 @@ To start the program:
 
 - run the run.py script:
 
-`python acodet/run.py`
+`python AcoDet/run.py`
 
 # FAQ
 
