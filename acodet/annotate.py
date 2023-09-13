@@ -44,6 +44,7 @@ class MetaData:
         time_start: str,
         relativ_path: str = conf.SOUND_FILES_SOURCE,
         computing_time: str = "not calculated",
+        **kwargs,
     ):
         """
         Append the metadata of the generated annotations to the dataframe and
@@ -134,7 +135,12 @@ def run_annotation(train_date=None, **kwargs):
         )
         computing_time = time.time() - start
         mdf.append_and_save_meta_file(
-            file, annot, f_ind, time_start, computing_time=computing_time
+            file,
+            annot,
+            f_ind,
+            time_start,
+            computing_time=computing_time,
+            **kwargs,
         )
     return time_start
 

@@ -12,9 +12,13 @@
 ##############################################################################
 
 import json
+import streamlit as st
 
-with open("acodet/src/tmp_session.json", "r") as f:
-    session = json.load(f)
+if "session_started" in st.session_state:
+    session = {**st.session_state}
+else:
+    with open("acodet/src/tmp_session.json", "r") as f:
+        session = json.load(f)
 
 ####################  AUDIO PROCESSING PARAMETERS  ###########################
 ## GLOBAL AUDIO PROCESSING PARAMETERS

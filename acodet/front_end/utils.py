@@ -75,11 +75,14 @@ def user_dropdown(label, vals, **input_params):
 
 
 def write_to_session_file(key, value):
-    with open("acodet/src/tmp_session.json", "r") as f:
-        session = json.load(f)
-    session[key] = value
-    with open("acodet/src/tmp_session.json", "w") as f:
-        json.dump(session, f)
+    if "session_started" in st.session_state:
+        setattr(st.session_state, key, value)
+    else:
+        with open("acodet/src/tmp_session.json", "r") as f:
+            session = json.load(f)
+        session[key] = value
+        with open("acodet/src/tmp_session.json", "w") as f:
+            json.dump(session, f)
 
 
 def validate_float(input):
@@ -103,8 +106,11 @@ def validate_int(input):
 
 
 def make_nested_btn_false_if_dropdown_changed(run_id, preset_id, btn_id):
-    with open("acodet/src/tmp_session.json", "r") as f:
-        session = json.load(f)
+    if "session_started" in st.session_state:
+        session = {**st.session_state}
+    else:
+        with open("acodet/src/tmp_session.json", "r") as f:
+            session = json.load(f)
     if not (
         session["run_config"] == run_id
         and session["predefined_settings"] == preset_id
