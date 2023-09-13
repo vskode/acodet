@@ -6,4 +6,5 @@ acodet/src/models/Humpback_20221130/
 _*
 .vscode/*
 tests/test_files/analysi*
+tests/test_files/test_annoted_files/thresh_0.5/N1/analysi*
 generated*
