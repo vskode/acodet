@@ -16,6 +16,7 @@ def annotate_options(key="annot"):
                 "3 - generate hourly predictions",
                 "0 - all of the above",
             ),
+            index=2,
             key=key,
         )[0]
     )
@@ -47,6 +48,7 @@ def annotate_options(key="annot"):
             default_path = st.radio(
                 f"The annotations I would like to filter are located in `{Path(conf['generated_annotations_folder']).resolve()}`:",
                 ("Yes", "No"),
+                index=1,
                 key="radio_" + key,
                 horizontal=True,
             )
@@ -70,6 +72,7 @@ def annotate_options(key="annot"):
                     key="folder_" + key,
                     label="From the timestamps folders, choose the one you would like to work on.",
                     filter_existing_annotations=True,
+                    index=1
                 )
                 if (
                     Path(config["generated_annotation_source"]).stem
