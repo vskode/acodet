@@ -78,6 +78,9 @@ if __name__ == "__main__":
         ### This program is currently equipped with a humpback whale song detector for the North Atlantic :whale2:
         For more information, please visit https://github.com/vskode/acodet
         
+        This is a test version, with limited functionality. 
+        It is only intended to show the capabilities of the program and to let users decide
+        if they want to install this locally.
         ---
         """
     )
