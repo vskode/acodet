@@ -14,7 +14,7 @@ sample output:
 ![Annotation Output](acodet/src/imgs/annotation_output.png)
 
 Play around with the user interface on the prototype here:
-https://acodet.streamlit.app/
+https://acodet-example.streamlit.app/
 (the program will look identical when executed on your computer)
 
 
