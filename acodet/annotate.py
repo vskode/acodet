@@ -111,7 +111,7 @@ def run_annotation(train_date=None, **kwargs):
     mdf = MetaData()
     f_ind = 0
 
-    if conf.STREAMLIT is not None:
+    if conf.STREAMLIT:
         import streamlit as st
 
         st.session_state.progbar1 = 0
@@ -119,7 +119,7 @@ def run_annotation(train_date=None, **kwargs):
         if file.is_dir():
             continue
 
-        if conf.STREAMLIT is not None:
+        if conf.STREAMLIT:
             import streamlit as st
 
             st.session_state.progbar1 += 1
