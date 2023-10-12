@@ -1,9 +1,5 @@
 import streamlit as st
 from acodet.front_end import utils
-import json
-
-help_str = json.load(open("acodet/front_end/help_strings.json", "rb"))
-
 
 def generate_data_options(key="gen_data"):
     preset_option = int(

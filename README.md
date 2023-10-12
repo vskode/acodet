@@ -149,7 +149,7 @@ while your terminal directory is inside **acodet**.
 
 ## Usecase 1: generating annotations (GUI)
 
-- Choose the 1 - Annotate option from the first drop-down menu
+- Choose the 1 - Inference option from the first drop-down menu
 - Choose between the predefined Settings
 0. run all of the steps
 1. generating new annotations 

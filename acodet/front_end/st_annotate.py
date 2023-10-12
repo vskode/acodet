@@ -2,6 +2,8 @@ import streamlit as st
 from acodet.front_end import utils
 from pathlib import Path
 from acodet import create_session_file
+from acodet.front_end import help_strings
+
 
 conf = create_session_file.read_session_file()
 
@@ -17,6 +19,7 @@ def annotate_options(key="annot"):
                 "0 - all of the above",
             ),
             key=key,
+            help=help_strings.SELECT_PRESET,
         )[0]
     )
 
@@ -34,14 +37,17 @@ def annotate_options(key="annot"):
 
         if preset_option == 1 or preset_option == 0:
             path = st.text_input(
-                "Enter the path to your sound data:", "tests/test_files"
+                "Enter the path to your sound data:", "tests/test_files",
+                help=help_strings.ENTER_PATH
             )
             config["sound_files_source"] = utils.open_folder_dialogue(
-                path, key="folder_" + key
+                path, key="folder_" + key,
+                help=help_strings.CHOOSE_FOLDER
             )
             config["thresh"] = utils.validate_float(
-                utils.user_input("Model threshold:", "0.9")
-            )
+                utils.user_input("Model threshold:", "0.9", help=help_strings.THRESHOLD)
+                
+                )
 
         elif preset_option in [2, 3]:
             default_path = st.radio(
@@ -49,6 +55,7 @@ def annotate_options(key="annot"):
                 ("Yes", "No"),
                 key="radio_" + key,
                 horizontal=True,
+                help=help_strings.ANNOTATIONS_DEFAULT_LOCATION,
             )
             if default_path == "Yes":
                 config[
@@ -56,12 +63,14 @@ def annotate_options(key="annot"):
                 ] = utils.open_folder_dialogue(
                     key="folder_default_" + key,
                     label="From the timestamps folders, choose the one you would like to work on.",
+                    help=help_strings.CHOOSE_TIMESTAMP_FOLDER,
                     filter_existing_annotations=True,
                 )
             elif default_path == "No":
                 path = st.text_input(
                     "Enter the path to your annotation data:",
                     "tests/test_files",
+                    help=help_strings.ENTER_PATH
                 )
                 config[
                     "generated_annotation_source"
@@ -69,6 +78,7 @@ def annotate_options(key="annot"):
                     path,
                     key="folder_" + key,
                     label="From the timestamps folders, choose the one you would like to work on.",
+                    help=help_strings.CHOOSE_TIMESTAMP_FOLDER,
                     filter_existing_annotations=True,
                 )
                 if (
@@ -86,7 +96,7 @@ def annotate_options(key="annot"):
             if preset_option == 2:
                 config["thresh"] = utils.validate_float(
                     utils.user_input(
-                        "Rerun annotations Model threshold:", "0.9"
+                        "Rerun annotations Model threshold:", "0.9" , help=help_strings.THRESHOLD
                     )
                 )
 
