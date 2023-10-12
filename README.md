@@ -276,4 +276,4 @@ To start the program:
 
 # FAQ
 
-At the moment installation on the Apple M1 and M2 processors still produce installation errors, this is a known issue and will hopefully be fixed soon.
+At the moment the generation of new training data and the training are not yet supported in the graphical user interface.
