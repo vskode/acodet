@@ -1,6 +1,7 @@
 import streamlit as st
 from acodet.create_session_file import create_session_file, read_session_file
 from acodet.front_end import help_strings
+import streamlit_analytics
 
 if not "session_started" in st.session_state:
     st.session_state.session_started = True
@@ -71,7 +72,6 @@ def display_not_implemented_text():
 
 
 if __name__ == "__main__":
-    
     st.markdown(
         """
         # Welcome to AcoDet - Acoustic Detection of Animal Vocalizations :loud_sound:
@@ -81,6 +81,7 @@ if __name__ == "__main__":
         ---
         """
     )
+    streamlit_analytics.start_tracking()
     run_option = int(
         st.selectbox(
             "How would you like run the program?",
@@ -92,3 +93,4 @@ if __name__ == "__main__":
 
     st.session_state.run_option = run_option
     select_preset()
+    streamlit_analytics.stop_tracking()
