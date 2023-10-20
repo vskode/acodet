@@ -12,6 +12,7 @@ def open_folder_dialogue(
     key="folder",
     label="Choose a folder",
     filter_existing_annotations=False,
+    **kwargs
 ):
     try:
         if not filter_existing_annotations:
@@ -32,7 +33,7 @@ def open_folder_dialogue(
             foldernames_list.reverse()
         # create selectbox with the foldernames
         chosen_folder = st.selectbox(
-            label=label, options=foldernames_list, key=key
+            label=label, options=foldernames_list, key=key, **kwargs
         )
 
         # set the full path to be able to refer to it
@@ -60,7 +61,7 @@ def user_input(label, val, **input_params):
     input_params.setdefault("key", label)
     c1.markdown(label)
     return c2.text_input(
-        "empty", val, label_visibility="hidden", **input_params
+        " ", val, **input_params
     )
 
 
@@ -70,7 +71,7 @@ def user_dropdown(label, vals, **input_params):
     input_params.setdefault("key", label)
     c1.markdown(label)
     return c2.selectbox(
-        "empty", vals, label_visibility="hidden", **input_params
+        " ", vals, **input_params
     )
 
 

@@ -5,6 +5,7 @@ import numpy as np
 from acodet.front_end import utils
 import plotly.express as px
 from acodet.create_session_file import read_session_file
+from acodet.front_end import help_strings
 
 conf = read_session_file()
 
@@ -96,7 +97,8 @@ class ShowAnnotationPredictions:
                 if "Unnamed: 0" in df.columns:
                     df = df.drop(columns=["Unnamed: 0"])
                 st.dataframe(df, hide_index=True)
-            except:
+            except Exception as e:
+                print(e)
                 st.write(
                     """No stats.csv file found. Please run predefined settings 0, or 1 first
                     to view this tab."""
@@ -114,6 +116,7 @@ class ShowAnnotationPredictions:
                 `{path.resolve()}`""",
                 options=display_annots,
                 key=f"file_selec_{tab_number}",
+                help=help_strings.ANNOT_FILES_DROPDOWN,
             )
             st.write("All of these files can be imported into Raven directly.")
             df = pd.read_csv(path.joinpath(chosen_file), sep="\t")
@@ -161,6 +164,7 @@ class InitPlots:
                 "What limit would you like to set?",
                 ("Simple limit", "Sequence limit"),
                 key=f"limit_selec_{key}",
+                help=help_strings.LIMIT,
             )
 
             plot = PlotPresence(self, limit, tab, key)
@@ -232,6 +236,7 @@ class PlotPresence:
             conf[self.thresh],
             0.01,
             key=f"thresh_slider_{self.key}",
+            help=help_strings.THRESHOLD,
         )
 
         if self.sc:
@@ -242,6 +247,7 @@ class PlotPresence:
                 conf[self.limit],
                 1,
                 key=f"limit_slider_{self.key}",
+                help=help_strings.SC_LIMIT,
             )
 
         rerun = st.button("Rerun computation", key=f"update_plot_{self.key}")

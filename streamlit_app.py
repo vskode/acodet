@@ -1,5 +1,6 @@
 import streamlit as st
 from acodet.create_session_file import create_session_file, read_session_file
+from acodet.front_end import help_strings
 
 if not "session_started" in st.session_state:
     st.session_state.session_started = True
@@ -70,12 +71,22 @@ def display_not_implemented_text():
 
 
 if __name__ == "__main__":
+    
+    st.markdown(
+        """
+        # Welcome to AcoDet - Acoustic Detection of Animal Vocalizations :loud_sound:
+        ### This program is currently equipped with a humpback whale song detector for the North Atlantic :whale2:
+        For more information, please visit https://github.com/vskode/acodet
+        
+        ---
+        """
+    )
     run_option = int(
         st.selectbox(
             "How would you like run the program?",
-            ("1 - Annotate", "2 - Generate new training data", "3 - Train"),
+            ("1 - Inference", "2 - Generate new training data", "3 - Train"),
             key="main",
-            help="you're being helped",
+            help=help_strings.RUN_OPTION,
         )[0]
     )
 
