@@ -128,7 +128,7 @@ https://acodet.streamlit.app/
 
 All inputs and outputs are handled through a gui. To run the gui run
 
-`streamlit run streamlit_run.app`
+`streamlit run streamlit_app.py`
 
 This should start a new tab in your browser which runs the interface that you can interact with. It is important that your virtual environment where you have installed the required packages is active, for that see the Installation sections. To activate the environment run `source env_acodet/bin/activate` whilst in the directory above acodet.
 
