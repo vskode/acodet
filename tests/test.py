@@ -43,47 +43,6 @@ from acodet.train import run_training
 from acodet import global_config as conf
 
 
-class TestTFRecordCreation(unittest.TestCase):
-    def test_tfrecord(self):
-        time_stamp = list(Path(conf.ANNOT_DEST).iterdir())[-1]
-        write_tfrec_dataset(annot_dir=time_stamp, active_learning=False)
-        metadata_file_path = Path(conf.TFREC_DESTINATION).joinpath(
-            "dataset_meta_train.json"
-        )
-        self.assertEqual(
-            metadata_file_path.exists(),
-            1,
-            "TFRecords metadata file was not created.",
-        )
-
-        with open(metadata_file_path, "r") as f:
-            data = json.load(f)
-            self.assertEqual(
-                data["dataset"]["size"]["train"],
-                517,
-                "TFRecords files has wrong number of datapoints.",
-            )
-
-    def test_combined_annotation(self):
-        generate_final_annotations(active_learning=False)
-        time_stamp = list(Path(conf.GEN_ANNOTS_DIR).iterdir())[-1].stem
-        combined_annots_path = (
-            Path(conf.ANNOT_DEST)
-            .joinpath(time_stamp)
-            .joinpath("combined_annotations.csv")
-        )
-        self.assertEqual(
-            combined_annots_path.exists(),
-            1,
-            "csv file containing combined_annotations does not exist.",
-        )
-        df = pd.read_csv(combined_annots_path)
-        self.assertEqual(
-            df.start.iloc[-1],
-            1795.2825,
-            "The annotations in combined_annotations.csv don't seem to be identical",
-        )
-
 
 class TestDetection(unittest.TestCase):
     def test_annotation(self):
@@ -126,6 +85,47 @@ class TestTraining(unittest.TestCase):
     #     n_train, n_noise = get_train_set_size(data_dir)
     #     self.assertEqual(n_train, 517)
     #     self.assertEqual(n_noise, 42)
+
+class TestTFRecordCreation(unittest.TestCase):
+    def test_tfrecord(self):
+        time_stamp = list(Path(conf.ANNOT_DEST).iterdir())[-1]
+        write_tfrec_dataset(annot_dir=time_stamp, active_learning=False)
+        metadata_file_path = Path(conf.TFREC_DESTINATION).joinpath(
+            "dataset_meta_train.json"
+        )
+        self.assertEqual(
+            metadata_file_path.exists(),
+            1,
+            "TFRecords metadata file was not created.",
+        )
+
+        with open(metadata_file_path, "r") as f:
+            data = json.load(f)
+            self.assertEqual(
+                data["dataset"]["size"]["train"],
+                517,
+                "TFRecords files has wrong number of datapoints.",
+            )
+
+    def test_combined_annotation(self):
+        generate_final_annotations(active_learning=False)
+        time_stamp = list(Path(conf.GEN_ANNOTS_DIR).iterdir())[-1].stem
+        combined_annots_path = (
+            Path(conf.ANNOT_DEST)
+            .joinpath(time_stamp)
+            .joinpath("combined_annotations.csv")
+        )
+        self.assertEqual(
+            combined_annots_path.exists(),
+            1,
+            "csv file containing combined_annotations does not exist.",
+        )
+        df = pd.read_csv(combined_annots_path)
+        self.assertEqual(
+            df.start.iloc[-1],
+            1795.2825,
+            "The annotations in combined_annotations.csv don't seem to be identical",
+        )
 
 
 if __name__ == "__main__":

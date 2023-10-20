@@ -61,7 +61,7 @@ def user_input(label, val, **input_params):
     input_params.setdefault("key", label)
     c1.markdown(label)
     return c2.text_input(
-        "empty", val, label_visibility="hidden", **input_params
+        " ", val, **input_params
     )
 
 
@@ -71,7 +71,7 @@ def user_dropdown(label, vals, **input_params):
     input_params.setdefault("key", label)
     c1.markdown(label)
     return c2.selectbox(
-        "empty", vals, label_visibility="hidden", **input_params
+        " ", vals, **input_params
     )
 
 
