@@ -134,13 +134,13 @@ https://acodet-web.streamlit.app/
 
 # AcoDet usage with GUI
 
-AcoDet provides a graphical user interface (GUI) for users to intuitively use the program. All inputs and outputs are handled through the GUI. To run the gui, run:
+AcoDet provides a graphical user interface (GUI) for users to intuitively use the program. All inputs and outputs are handled through the GUI. To run the gui, run (while in acodet directory):
 
 `streamlit run streamlit_app.py`
 
 This should start a new tab in a web browser which runs the interface that you can interact with. It is important that your virtual environment where you have installed the required packages is active, for that see the Installation sections. To activate the environment run 
 
-`source ../env_acodet/bin/activate` (on Windows) 
+`source ../env_acodet/Scripts/activate` (on Windows) 
 or 
 
 `source ../env_acodet/bin/activate` (on Mac/Linux) 
