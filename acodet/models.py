@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow_addons import metrics
 from pathlib import Path
 import zipfile
 import sys
@@ -83,7 +84,8 @@ class HumpBackNorthAtlantic(ModelHelper):
                     with zipfile.ZipFile(model_path, "r") as model_zip:
                         model_zip.extractall(conf.MODEL_DIR)
         self.model = tf.keras.models.load_model(
-            Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME)
+            Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
+            custom_objects={"FBetaScote": metrics.FBetaScore},
         )
 
 

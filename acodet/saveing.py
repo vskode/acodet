@@ -21,10 +21,14 @@ class SM(tf.keras.Sequential):
             [tf.keras.layers.InputLayer([None, 1])] + front_end_layers
         )
         self.features = tf.keras.Sequential(
-            [tf.keras.layers.InputLayer([128, 64]), self.layers[2]]
+            [
+                tf.keras.layers.InputLayer([128, 64], name="input_3_0"),
+                self.layers[2],
+            ]
         )
         self.logits = tf.keras.Sequential(
-            [tf.keras.layers.InputLayer([128, 64])] + self.layers[2:]
+            [tf.keras.layers.InputLayer([128, 64], name="input_3_1")]
+            + self.layers[2:]
         )
 
     @tf.function(
@@ -86,7 +90,7 @@ class SM(tf.keras.Sequential):
 
 def save(model):
     model.save(
-        "saved_model_1",
+        "saved_model_2",
         signatures={
             "score": model.score,
             "metadata": model.metadata,
@@ -100,8 +104,15 @@ model = models.init_model(
     checkpoint_dir=f"../trainings/2022-11-30_01/unfreeze_no-TF",
     keras_mod_name=False,
 )
-path = "tests/test_files/test_audio_files/BERCHOK_SAMANA_200901_4/Samana_PU194_20090111_003000.wav"
+path = (
+    "tests/test_files/test_audio_files/humpback_test_file_20160215T111605Z.wav"
+)
 e, r = tf.audio.decode_wav(tf.io.read_file(path))
+e = tf.convert_to_tensor(e.numpy()[:7755])
 smod = SM(model)
+# lambda layer einbauen damit gesplitted wird und nicht nur
+# 1 s an datei eingelesen werden kann. oder vielleicht ist
+# das auch nicht noetig und das aufsplitten geschieht immer ausserhalb
+# des models
 smod.predict(tf.expand_dims(e, 0))
 save(smod)
