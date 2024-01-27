@@ -693,7 +693,11 @@ def get_top_dir(parent_dirs):
 
 
 def gen_annotations(
-    file, model: tf.keras.Model, mod_label: str, time_start: str, **kwargs
+    file,
+    model: tf.keras.Model,
+    mod_label: str,
+    timestamp_foldername: str,
+    **kwargs,
 ):
     """
     Load audio file, instantiate model, use it to predict labels, fill a
@@ -710,8 +714,8 @@ def gen_annotations(
         tensorflow model
     mod_label : str
         label to clarify which model was used
-    time_start : str
-        date time string corresponding to the time the annotations were
+    timestamp_foldername : str
+        date time string foldername corresponding to the time the annotations were
         computed
     """
     parent_dirs = manage_dir_structure(file)
@@ -731,7 +735,7 @@ def gen_annotations(
 
     save_path = (
         Path(conf.GEN_ANNOTS_DIR)
-        .joinpath(time_start)
+        .joinpath(timestamp_foldername)
         .joinpath("thresh_0.5")
         .joinpath(parent_dirs)
     )

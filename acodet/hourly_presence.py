@@ -9,12 +9,9 @@ import seaborn as sns
 
 sns.set_theme()
 sns.set_style("white")
-import time
-
-time_start = time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime())
 
 
-def hourly_prs(df: pd.DataFrame, lim:int =10):
+def hourly_prs(df: pd.DataFrame, lim: int = 10):
     """
     Compute hourly presence.
 
@@ -71,7 +68,7 @@ def get_val(path: str or Path):
     pd.Dataframe
         validation dataframe
     """
-    return pd.read_csv(path) 
+    return pd.read_csv(path)
 
 
 def seq_crit(

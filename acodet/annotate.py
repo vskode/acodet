@@ -41,7 +41,7 @@ class MetaData:
         file: Path,
         annot: pd.DataFrame,
         f_ind: int,
-        time_start: str,
+        timestamp_foldername: str,
         relativ_path: str = conf.SOUND_FILES_SOURCE,
         computing_time: str = "not calculated",
         **kwargs,
@@ -58,8 +58,8 @@ class MetaData:
             Dataframe containing the annotations.
         f_ind : int
             Index of the file.
-        time_start : str
-            Timestamp of the annotation run.
+        timestamp_foldername : str
+            Timestamp of the annotation run for folder name.
         relativ_path : str, optional
             Path of folder containing files , by default conf.SOUND_FILES_SOURCE
         computing_time : str, optional
@@ -84,13 +84,14 @@ class MetaData:
         self.df.loc[f_ind, self.time_per_file] = computing_time
         self.df.to_csv(
             Path(conf.GEN_ANNOTS_DIR)
-            .joinpath(time_start)
+            .joinpath(timestamp_foldername)
             .joinpath("stats.csv")
         )
 
 
 def run_annotation(train_date=None, **kwargs):
-    time_start = time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime())
+    timestamp_foldername = time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime())
+    # TODO add custom foldername after time stamp
     files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="**/*")
 
     if not train_date:
@@ -129,7 +130,7 @@ def run_annotation(train_date=None, **kwargs):
             file,
             model,
             mod_label=mod_label,
-            time_start=time_start,
+            timestamp_foldername=timestamp_foldername,
             num_of_files=len(files),
             **kwargs,
         )
@@ -138,11 +139,11 @@ def run_annotation(train_date=None, **kwargs):
             file,
             annot,
             f_ind,
-            time_start,
+            timestamp_foldername,
             computing_time=computing_time,
             **kwargs,
         )
-    return time_start
+    return timestamp_foldername
 
 
 def check_for_multiple_time_dirs_error(path):

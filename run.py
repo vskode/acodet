@@ -37,8 +37,8 @@ def main(sc=True, **kwargs):
 
     if conf.RUN_CONFIG == 1:
         if preset == 1:
-            time_start = run_annotation(**kwargs)
-            return time_start
+            timestamp_foldername = run_annotation(**kwargs)
+            return timestamp_foldername
         elif preset == 2:
             new_thresh = filter_annots_by_thresh(**kwargs)
             return new_thresh
@@ -51,10 +51,10 @@ def main(sc=True, **kwargs):
         elif preset == 6:
             calc_val_diff(**kwargs)
         elif preset == 0:
-            time_start = run_annotation(**kwargs)
-            filter_annots_by_thresh(time_start, **kwargs)
-            compute_hourly_pres(time_start, sc=sc, **kwargs)
-            return time_start
+            timestamp_foldername = run_annotation(**kwargs)
+            filter_annots_by_thresh(timestamp_foldername, **kwargs)
+            compute_hourly_pres(timestamp_foldername, sc=sc, **kwargs)
+            return timestamp_foldername
 
     elif conf.RUN_CONFIG == 2:
         if preset == 1:

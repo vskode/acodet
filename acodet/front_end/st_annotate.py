@@ -37,17 +37,19 @@ def annotate_options(key="annot"):
 
         if preset_option == 1 or preset_option == 0:
             path = st.text_input(
-                "Enter the path to your sound data:", "tests/test_files",
-                help=help_strings.ENTER_PATH
+                "Enter the path to your sound data:",
+                "tests/test_files",
+                help=help_strings.ENTER_PATH,
             )
             config["sound_files_source"] = utils.open_folder_dialogue(
-                path, key="folder_" + key,
-                help=help_strings.CHOOSE_FOLDER
+                path, key="folder_" + key, help=help_strings.CHOOSE_FOLDER
             )
             config["thresh"] = utils.validate_float(
-                utils.user_input("Model threshold:", "0.9", help=help_strings.THRESHOLD)
-                
+                utils.user_input(
+                    "Model threshold:", "0.9", help=help_strings.THRESHOLD
                 )
+            )
+            # TODO insert text field for custom folder
 
         elif preset_option in [2, 3]:
             default_path = st.radio(
@@ -70,7 +72,7 @@ def annotate_options(key="annot"):
                 path = st.text_input(
                     "Enter the path to your annotation data:",
                     "tests/test_files",
-                    help=help_strings.ENTER_PATH
+                    help=help_strings.ENTER_PATH,
                 )
                 config[
                     "generated_annotation_source"
@@ -96,7 +98,9 @@ def annotate_options(key="annot"):
             if preset_option == 2:
                 config["thresh"] = utils.validate_float(
                     utils.user_input(
-                        "Rerun annotations Model threshold:", "0.9" , help=help_strings.THRESHOLD
+                        "Rerun annotations Model threshold:",
+                        "0.9",
+                        help=help_strings.THRESHOLD,
                     )
                 )
 
