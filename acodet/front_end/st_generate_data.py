@@ -1,6 +1,7 @@
 import streamlit as st
 from acodet.front_end import utils
 
+
 def generate_data_options(key="gen_data"):
     preset_option = int(
         st.selectbox(
@@ -51,8 +52,8 @@ def generate_data_options(key="gen_data"):
             config["stft_frame_len"] = utils.validate_int(
                 utils.user_input("STFT frame length [samples]", "1024")
             )
-            config["number_of_frequency_bins"] = utils.validate_int(
-                utils.user_input("number of frequency bins", "128")
+            config["number_of_time_bins"] = utils.validate_int(
+                utils.user_input("number of time bins", "128")
             )
             st.markdown("#### TFRecord creationg settings")
             config["tfrecs_limit_per_file"] = utils.validate_int(
@@ -93,8 +94,8 @@ def generate_data_options(key="gen_data"):
             config["stft_frame_len"] = utils.validate_int(
                 utils.user_input("STFT frame length [samples]", "1024")
             )
-            config["number_of_frequency_bins"] = utils.validate_int(
-                utils.user_input("number of frequency bins", "128")
+            config["number_of_time_bins"] = utils.validate_int(
+                utils.user_input("number of time bins", "128")
             )
             st.markdown("#### TFRecord creationg settings")
             config["tfrecs_limit_per_file"] = utils.validate_int(

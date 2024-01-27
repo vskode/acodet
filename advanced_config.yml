@@ -24,8 +24,8 @@ context_window_in_seconds: 3.9
 ## Mel-Spectrogram parameters
 # FFT window length
 stft_frame_len: 1024
-# number of fft bins for mel spectrogram
-number_of_frequency_bins: 128
+# number of time bins for mel spectrogram
+number_of_time_bins: 128
 
 
 ###################  TFRECORD CREATION PARAMETERS  ###########################

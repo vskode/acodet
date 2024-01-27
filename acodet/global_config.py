@@ -28,8 +28,8 @@ SR = session["sample_rate"]
 # FFT window length
 STFT_FRAME_LEN = session["stft_frame_len"]
 
-# number of fft bins for mel spectrogram
-N_FREQ_BINS = session["number_of_frequency_bins"]
+# number of time bins for mel spectrogram
+N_TIME_BINS = session["number_of_time_bins"]
 
 ## CALCULATION OF CONTEXT WINDOW LENGTH
 # calculation of context window in seconds to fit stft frame length
@@ -40,7 +40,7 @@ N_FREQ_BINS = session["number_of_frequency_bins"]
 # which is added subsequently.
 set_length_samples = session["context_window_in_seconds"] * SR
 set_length_without_stft_frame = set_length_samples - STFT_FRAME_LEN
-set_length_fixed = set_length_without_stft_frame % (N_FREQ_BINS - 1)
+set_length_fixed = set_length_without_stft_frame % (N_TIME_BINS - 1)
 
 CONTEXT_WIN = int(
     set_length_without_stft_frame - set_length_fixed + STFT_FRAME_LEN
@@ -76,7 +76,7 @@ HR_CNTS_VMAX = session["max_annots_per_hour"]
 PRED_WIN_LIM = session["prediction_window_limit"]
 
 # calculated global variables
-FFT_HOP = (CONTEXT_WIN - STFT_FRAME_LEN) // (N_FREQ_BINS - 1)
+FFT_HOP = (CONTEXT_WIN - STFT_FRAME_LEN) // (N_TIME_BINS - 1)
 PRED_BATCH_SIZE = PRED_WIN_LIM * CONTEXT_WIN
 
 ## Paths

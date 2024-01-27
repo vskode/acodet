@@ -11,3 +11,4 @@ generated*
 tests/test_files/test_gen*
 tests/test_files/test_com*
 tests/test_files/test_tfr*
+simple_test*
