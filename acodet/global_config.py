@@ -86,6 +86,7 @@ REV_ANNOT_SRC = session["reviewed_annotation_source"]
 GEN_ANNOT_SRC = session["generated_annotation_source"]
 SOUND_FILES_SOURCE = session["sound_files_source"]
 GEN_ANNOTS_DIR = session["generated_annotations_folder"]
+ANNOTS_TIMESTAMP_FOLDER = session["annots_timestamp_folder"]
 # model directory
 MODEL_DIR = "acodet/src/models"
 # model name

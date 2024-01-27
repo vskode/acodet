@@ -54,6 +54,9 @@ generated_annotations_folder: '../generated_annotations'
 model_name: 'Humpback_20221130'
 # name of top level directory when annotating multiple datasets
 top_dir_name: 'main'
+# custom string to add to timestamp for directory name 
+# of created annotations
+annots_timestamp_folder: ''
 
 #######################  TRAINING  ###########################################
 

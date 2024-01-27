@@ -8,6 +8,25 @@ from acodet.front_end import help_strings
 conf = create_session_file.read_session_file()
 
 
+def custom_timestamp_dialog(config, key):
+    timestamp_radio = st.radio(
+        f"Would you like to customize the annotaitons folder?",
+        ("No", "Yes"),
+        key="radio_" + key,
+        horizontal=True,
+        help=help_strings.ANNOTATIONS_TIMESTAMP_RADIO,
+    )
+    if timestamp_radio == "Yes":
+        config["annots_timestamp_folder"] = "___" + utils.user_input(
+            "Custom Folder string:",
+            "",
+            help=help_strings.ANNOTATIONS_TIMESTAMP_FOLDER,
+        )
+    elif timestamp_radio == "No":
+        config["annots_timestamp_folder"] = ""
+    return config
+
+
 def annotate_options(key="annot"):
     preset_option = int(
         st.selectbox(
@@ -49,7 +68,7 @@ def annotate_options(key="annot"):
                     "Model threshold:", "0.9", help=help_strings.THRESHOLD
                 )
             )
-            # TODO insert text field for custom folder
+            config = custom_timestamp_dialog(config, key)
 
         elif preset_option in [2, 3]:
             default_path = st.radio(

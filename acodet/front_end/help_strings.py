@@ -1,4 +1,6 @@
-RUN_OPTION = "Choose what option to run (currently only Inference is supported)."
+RUN_OPTION = (
+    "Choose what option to run (currently only Inference is supported)."
+)
 SELECT_PRESET = "Based on the preset, different computations will run."
 SAMPLE_RATE = """
 If you need to change this, make sure that the sample rate 
@@ -16,6 +18,13 @@ Choose the folder containing the dataset(s) you would like to annotate on.
 THRESHOLD = "The threshold will be used to filter the predictions."
 ANNOTATIONS_DEFAULT_LOCATION = """
 The annotations are stored in this folder by default. If you want to specify another location, choose "No".
+"""
+ANNOTATIONS_TIMESTAMP_FOLDER = """
+Specify custom string to append to timestamp for foldername.\n
+Example: 2024-01-27_22-24-23___Custom-Dataset-1"""
+ANNOTATIONS_TIMESTAMP_RADIO = """
+By default the annotations folder is named according to the timestamp when it was created.
+By clicking Yes you can add a custom string to make it more specific.
 """
 CHOOSE_TIMESTAMP_FOLDER = """
 These are the time stamps corresponding to computations that 
