@@ -92,7 +92,7 @@ class MetaData:
 def run_annotation(train_date=None, **kwargs):
     timestamp_foldername = time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime())
     timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
-    # TODO add custom foldername after time stamp
+
     files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="**/*")
 
     if not train_date:
