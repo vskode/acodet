@@ -5,30 +5,24 @@ from acodet import create_session_file
 from acodet.front_end import help_strings
 
 
-conf = create_session_file.read_session_file()
+session_config = create_session_file.read_session_file()
 
 
-def custom_timestamp_dialog(config, key):
-    timestamp_radio = st.radio(
-        f"Would you like to customize the annotaitons folder?",
-        ("No", "Yes"),
-        key="radio_" + key,
-        horizontal=True,
-        help=help_strings.ANNOTATIONS_TIMESTAMP_RADIO,
-    )
-    if timestamp_radio == "Yes":
-        config["annots_timestamp_folder"] = "___" + utils.user_input(
-            "Custom Folder string:",
-            "",
-            help=help_strings.ANNOTATIONS_TIMESTAMP_FOLDER,
-        )
-    elif timestamp_radio == "No":
-        config["annots_timestamp_folder"] = ""
-    return config
+def initial_dropdown(key):
+    """
+    Show dropdown menu to select what preset to run.
 
+    Parameters
+    ----------
+    key : string
+        unique identifier for streamlit objects
 
-def annotate_options(key="annot"):
-    preset_option = int(
+    Returns
+    -------
+    int
+        preset number
+    """
+    return int(
         st.selectbox(
             "What predefined Settings would you like to run?",
             (
@@ -42,87 +36,166 @@ def annotate_options(key="annot"):
         )[0]
     )
 
+
+class PresetInterfaceSettings:
+    def __init__(self, config, key) -> None:
+        """
+        Preset settings class. All methods are relevant for displaying
+        streamlit objects that will then be used to run the computations.
+
+        Parameters
+        ----------
+        config : dict
+            config dictionsary
+        key : string
+            unique identifier
+        """
+        self.config = config
+        self.key = key
+
+    def custom_timestamp_dialog(self):
+        """
+        Show radio buttons asking for custom folder names. If Yes is selected
+        allow user input that will be appended to timestamp for uses to give
+        custom names to annotation sessions.
+        """
+        timestamp_radio = st.radio(
+            f"Would you like to customize the annotaitons folder?",
+            ("No", "Yes"),
+            key="radio_" + self.key,
+            horizontal=True,
+            help=help_strings.ANNOTATIONS_TIMESTAMP_RADIO,
+        )
+        if timestamp_radio == "Yes":
+            self.config["annots_timestamp_folder"] = "___" + utils.user_input(
+                "Custom Folder string:",
+                "",
+                help=help_strings.ANNOTATIONS_TIMESTAMP_FOLDER,
+            )
+        elif timestamp_radio == "No":
+            self.config["annots_timestamp_folder"] = ""
+
+    def perform_inference(self):
+        """
+        Interface options when inference is selected, i.e. preset options 0 or 1.
+        """
+        path = st.text_input(
+            "Enter the path to your sound data:",
+            "tests/test_files",
+            help=help_strings.ENTER_PATH,
+        )
+        self.config["sound_files_source"] = utils.open_folder_dialogue(
+            path, key="folder_" + self.key, help=help_strings.CHOOSE_FOLDER
+        )
+        self.config["thresh"] = utils.validate_float(
+            utils.user_input(
+                "Model threshold:", "0.9", help=help_strings.THRESHOLD
+            )
+        )
+        self.custom_timestamp_dialog()
+
+    def rerun_annotations(self):
+        """
+        Streamlit objects for preset options 2 and 3.
+        """
+        default_path = st.radio(
+            f"""The annotations I would like to filter are located in 
+            `{Path(session_config['generated_annotations_folder']).resolve()}`:""",
+            ("Yes", "No"),
+            key="radio_" + self.key,
+            horizontal=True,
+            help=help_strings.ANNOTATIONS_DEFAULT_LOCATION,
+        )
+        if default_path == "Yes":
+            self.config[
+                "generated_annotation_source"
+            ] = utils.open_folder_dialogue(
+                key="folder_default_" + self.key,
+                label="From the timestamps folders, choose the one you would like to work on.",
+                help=help_strings.CHOOSE_TIMESTAMP_FOLDER,
+                filter_existing_annotations=True,
+            )
+        elif default_path == "No":
+            path = st.text_input(
+                "Enter the path to your annotation data:",
+                "tests/test_files",
+                help=help_strings.ENTER_PATH,
+            )
+            self.config[
+                "generated_annotation_source"
+            ] = utils.open_folder_dialogue(
+                path,
+                key="folder_" + self.key,
+                label="From the timestamps folders, choose the one you would like to work on.",
+                help=help_strings.CHOOSE_TIMESTAMP_FOLDER,
+                filter_existing_annotations=True,
+            )
+            if (
+                Path(self.config["generated_annotation_source"]).stem
+                + Path(self.config["generated_annotation_source"]).suffix
+                == f"thresh_{session_config['default_threshold']}"
+            ):
+                st.write(
+                    """
+                        <p style="color:red; font-size:14px;">
+                        Please choose the top-level folder (usually a timestamp) instead.
+                        </p>""",
+                    unsafe_allow_html=True,
+                )
+
+    def change_threshold_text_field(self):
+        """
+        Streamlit text input for alternative threshold values.
+        """
+        self.config["thresh"] = utils.validate_float(
+            utils.user_input(
+                "Rerun annotations Model threshold:",
+                "0.9",
+                help=help_strings.THRESHOLD,
+            )
+        )
+
+
+def annotate_options(key="annot"):
+    """
+    Caller function for inference settings. Calls all necessary components
+    to show streamlit objects where users can choose what settings to run.
+
+    Parameters
+    ----------
+    key : str, optional
+        unique identifier for streamlit objects, by default "annot"
+
+    Returns
+    -------
+    boolean
+        True once all settings have been entered
+    """
+    preset_option = initial_dropdown(key)
+
     st.session_state.preset_option = preset_option
     utils.make_nested_btn_false_if_dropdown_changed(1, preset_option, 1)
     utils.make_nested_btn_false_if_dropdown_changed(
         run_id=1, preset_id=preset_option, btn_id=4
     )
     utils.next_button(id=1)
+
     if not st.session_state.b1:
         pass
     else:
         config = dict()
         config["predefined_settings"] = preset_option
+        interface_settings = PresetInterfaceSettings(config, key)
 
         if preset_option == 1 or preset_option == 0:
-            path = st.text_input(
-                "Enter the path to your sound data:",
-                "tests/test_files",
-                help=help_strings.ENTER_PATH,
-            )
-            config["sound_files_source"] = utils.open_folder_dialogue(
-                path, key="folder_" + key, help=help_strings.CHOOSE_FOLDER
-            )
-            config["thresh"] = utils.validate_float(
-                utils.user_input(
-                    "Model threshold:", "0.9", help=help_strings.THRESHOLD
-                )
-            )
-            config = custom_timestamp_dialog(config, key)
+            interface_settings.perform_inference()
 
         elif preset_option in [2, 3]:
-            default_path = st.radio(
-                f"The annotations I would like to filter are located in `{Path(conf['generated_annotations_folder']).resolve()}`:",
-                ("Yes", "No"),
-                key="radio_" + key,
-                horizontal=True,
-                help=help_strings.ANNOTATIONS_DEFAULT_LOCATION,
-            )
-            if default_path == "Yes":
-                config[
-                    "generated_annotation_source"
-                ] = utils.open_folder_dialogue(
-                    key="folder_default_" + key,
-                    label="From the timestamps folders, choose the one you would like to work on.",
-                    help=help_strings.CHOOSE_TIMESTAMP_FOLDER,
-                    filter_existing_annotations=True,
-                )
-            elif default_path == "No":
-                path = st.text_input(
-                    "Enter the path to your annotation data:",
-                    "tests/test_files",
-                    help=help_strings.ENTER_PATH,
-                )
-                config[
-                    "generated_annotation_source"
-                ] = utils.open_folder_dialogue(
-                    path,
-                    key="folder_" + key,
-                    label="From the timestamps folders, choose the one you would like to work on.",
-                    help=help_strings.CHOOSE_TIMESTAMP_FOLDER,
-                    filter_existing_annotations=True,
-                )
-                if (
-                    Path(config["generated_annotation_source"]).stem
-                    + Path(config["generated_annotation_source"]).suffix
-                    == f"thresh_{conf['default_threshold']}"
-                ):
-                    st.write(
-                        """
-                            <p style="color:red; font-size:14px;">
-                            Please choose the top-level folder (usually a timestamp) instead.
-                            </p>""",
-                        unsafe_allow_html=True,
-                    )
-            if preset_option == 2:
-                config["thresh"] = utils.validate_float(
-                    utils.user_input(
-                        "Rerun annotations Model threshold:",
-                        "0.9",
-                        help=help_strings.THRESHOLD,
-                    )
-                )
+            interface_settings.rerun_annotations()
 
-        for k, v in config.items():
+            if preset_option == 2:
+                interface_settings.change_threshold_text_field()
+
+        for k, v in interface_settings.config.items():
             utils.write_to_session_file(k, v)
         return True
