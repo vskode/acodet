@@ -25,16 +25,24 @@ class MetaData:
         self.n_pred08_col = "number of predictions with thresh>0.8"
         self.n_pred09_col = "number of predictions with thresh>0.9"
         self.time_per_file = "computing time [s]"
-        self.df = pd.DataFrame(
-            columns=[
-                self.filename,
-                self.f_dt,
-                self.n_pred_col,
-                self.avg_pred_col,
-                self.n_pred08_col,
-                self.n_pred09_col,
-            ]
-        )
+        if not "timestamp_folder" in conf.session:
+            self.df = pd.DataFrame(
+                columns=[
+                    self.filename,
+                    self.f_dt,
+                    self.n_pred_col,
+                    self.avg_pred_col,
+                    self.n_pred08_col,
+                    self.n_pred09_col,
+                ]
+            )
+        else:
+            self.df = pd.read_csv(
+                conf.session["timestamp_folder"].parent.parent.joinpath(
+                    "stats.csv"
+                )
+            )
+            self.df.pop("Unnamed: 0")
 
     def append_and_save_meta_file(
         self,
@@ -90,10 +98,29 @@ class MetaData:
 
 
 def run_annotation(train_date=None, **kwargs):
-    timestamp_foldername = time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime())
-    timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
-
     files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="**/*")
+    if not "timestamp_folder" in conf.session:
+        timestamp_foldername = time.strftime(
+            "%Y-%m-%d_%H-%M-%S", time.gmtime()
+        )
+        timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
+        mdf = MetaData()
+        f_ind = 0
+
+    else:
+        timestamp_foldername = conf.session[
+            "timestamp_folder"
+        ].parent.parent.stem
+        last_annotated_file = list(
+            conf.session["timestamp_folder"].rglob("*.txt")
+        )[-1]
+        file_stems = [f.stem for f in files]
+        file_idx = np.where(
+            np.array(file_stems) == last_annotated_file.stem.split("_annot")[0]
+        )[0][0]
+        files = files[file_idx:]
+        mdf = MetaData()
+        f_ind = file_idx - 1
 
     if not train_date:
         model = models.init_model()
@@ -110,8 +137,6 @@ def run_annotation(train_date=None, **kwargs):
             keras_mod_name=keras_mod_name,
         )
         mod_label = train_date
-    mdf = MetaData()
-    f_ind = 0
 
     if conf.STREAMLIT:
         import streamlit as st
@@ -192,22 +217,6 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
             print(f"Writing file {i+1}/{len(files)}")
     if conf.STREAMLIT:
         return path
-
-
-def generate_stats():
-    files = get_files(location=conf.GEN_ANNOT_SRC, search_str="**/*txt")
-    mdf = MetaData()
-    f_ind = 0
-    for i, file in enumerate(files):
-        f_ind += 1
-        annot = pd.read_csv(file, sep="\t")
-        mdf.append_and_save_meta_file(
-            file,
-            annot,
-            f_ind,
-            Path(conf.GEN_ANNOT_SRC).stem,
-            relativ_path=conf.GEN_ANNOT_SRC,
-        )
 
 
 if __name__ == "__main__":

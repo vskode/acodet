@@ -75,6 +75,37 @@ class PresetInterfaceSettings:
         elif timestamp_radio == "No":
             self.config["annots_timestamp_folder"] = ""
 
+    def ask_to_continue_incomplete_inference(self):
+        continue_radio = st.radio(
+            f"Would you like to continue a cancelled session?",
+            ("No", "Yes"),
+            key="radio_continue_session_" + self.key,
+            horizontal=True,
+            help=help_strings.ANNOTATIONS_TIMESTAMP_RADIO,
+        )
+        if continue_radio == "Yes":
+            past_sessions = list(
+                Path(session_config["generated_annotations_folder"]).rglob(
+                    Path(self.config["sound_files_source"]).stem
+                )
+            )
+            if len(past_sessions) == 0:
+                st.text(
+                    f"""Sorry, but no annotations have been found in 
+                        `{session_config['generated_annotations_folder']}` on the currently
+                        selected dataset (`{self.config['sound_files_source']}`)."""
+                )
+            else:
+                previous_session = st.selectbox(
+                    "Which previous session would you like to continue?",
+                    past_sessions,
+                    key="continue_session_" + self.key,
+                    help=help_strings.SELECT_PRESET,
+                )
+                self.config["timestamp_folder"] = previous_session
+        else:
+            return True
+
     def perform_inference(self):
         """
         Interface options when inference is selected, i.e. preset options 0 or 1.
@@ -92,7 +123,14 @@ class PresetInterfaceSettings:
                 "Model threshold:", "0.9", help=help_strings.THRESHOLD
             )
         )
-        self.custom_timestamp_dialog()
+        self.advanced_settings()
+
+    def advanced_settings(self):
+        with st.expander("# Advanced Settings"):
+            continue_session = self.ask_to_continue_incomplete_inference()
+
+            if continue_session:
+                self.custom_timestamp_dialog()
 
     def rerun_annotations(self):
         """

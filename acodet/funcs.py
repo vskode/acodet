@@ -725,9 +725,9 @@ def gen_annotations(
     audio = load_audio(file, channel)
     if audio is None:
         raise ImportError(
-            "Audio file cannot be loaded. Check if file has "
+            f"The audio file `{str(file)}` cannot be loaded. Check if file has "
             "one of the supported endings "
-            "(wav, mp3, flac, etc.))"
+            "(wav, mp3, flac, etc.)) and is not empty."
         )
     audio_batches = batch_audio(audio)
 
