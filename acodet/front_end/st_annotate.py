@@ -126,7 +126,10 @@ class PresetInterfaceSettings:
         self.advanced_settings()
 
     def advanced_settings(self):
-        with st.expander("# Advanced Settings"):
+        """
+        Expandable section showing advanced settings options.
+        """
+        with st.expander(r"**Advanced Settings**"):
             continue_session = self.ask_to_continue_incomplete_inference()
 
             if continue_session:
