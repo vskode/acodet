@@ -171,8 +171,9 @@ class InitPlots:
             plot.plot_df()
 
 
-class PlotPresence:
+class PlotPresence(utils.Limits):
     def __init__(self, plot_tabs, limit, tab, key) -> None:
+        super(PlotPresence, self).__init__(limit, key)
         self.plot_tabs = plot_tabs
         self.tab = tab
         self.key = key
@@ -186,21 +187,10 @@ class PlotPresence:
             self.cbar_label = "Presence"
             self.c_range = [0, 1]
 
-        if limit == "Simple limit":
-            self.limit = "simple_limit"
-            self.thresh = "thresh"
-            self.sc = False
-            self.limit_max = 50
-        elif limit == "Sequence limit":
-            self.limit = "sequence_limit"
-            self.thresh = "sequence_thresh"
-            self.sc = True
-            self.limit_max = 20
-
     def plot_df(self):
         df = pd.read_csv(
             self.plot_tabs.chosen_dataset.joinpath(
-                f"{self.path_prefix}_{self.limit}.csv"
+                f"{self.path_prefix}_{self.limit_label}.csv"
             )
         )
         df.index = pd.DatetimeIndex(df.Date)
@@ -226,36 +216,17 @@ class PlotPresence:
 
         st.plotly_chart(fig)
 
-        self.create_sliders()
+        self.create_limit_sliders()
 
-    def create_sliders(self):
-        thresh = st.slider(
-            "Threshold",
-            0.35,
-            0.99,
-            conf[self.thresh],
-            0.01,
-            key=f"thresh_slider_{self.key}",
-            help=help_strings.THRESHOLD,
-        )
+        self.rerun_computation_btn()
 
-        if self.sc:
-            limit = st.slider(
-                "Limit",
-                1,
-                self.limit_max,
-                conf[self.limit],
-                1,
-                key=f"limit_slider_{self.key}",
-                help=help_strings.SC_LIMIT,
-            )
-
+    def rerun_computation_btn(self):
         rerun = st.button("Rerun computation", key=f"update_plot_{self.key}")
         st.session_state.progbar_update = st.progress(0, text="Updating plot")
         if rerun:
-            utils.write_to_session_file(self.thresh, thresh)
+            utils.write_to_session_file(self.thresh_label, self.thresh)
             if self.sc:
-                utils.write_to_session_file(self.limit, limit)
+                utils.write_to_session_file(self.limit_label, self.limit)
 
             import run
 

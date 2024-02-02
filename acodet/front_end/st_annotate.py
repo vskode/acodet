@@ -136,6 +136,18 @@ class PresetInterfaceSettings:
                 self.custom_timestamp_dialog()
 
     def rerun_annotations(self):
+        self.select_annotation_source_directory()
+        self.limit = st.radio(
+            "What limit would you like to set?",
+            ("Simple limit", "Sequence limit"),
+            key=f"limit_selec_{self.key}",
+            help=help_strings.LIMIT,
+        )
+
+        self.lim_obj = utils.Limits(self.limit, self.key)
+        self.lim_obj.create_limit_sliders()
+
+    def select_annotation_source_directory(self):
         """
         Streamlit objects for preset options 2 and 3.
         """
@@ -184,18 +196,6 @@ class PresetInterfaceSettings:
                     unsafe_allow_html=True,
                 )
 
-    def change_threshold_text_field(self):
-        """
-        Streamlit text input for alternative threshold values.
-        """
-        self.config["thresh"] = utils.validate_float(
-            utils.user_input(
-                "Rerun annotations Model threshold:",
-                "0.9",
-                help=help_strings.THRESHOLD,
-            )
-        )
-
 
 def annotate_options(key="annot"):
     """
@@ -231,11 +231,11 @@ def annotate_options(key="annot"):
         if preset_option == 1 or preset_option == 0:
             interface_settings.perform_inference()
 
-        elif preset_option in [2, 3]:
+        elif preset_option == 2:
             interface_settings.rerun_annotations()
 
-            if preset_option == 2:
-                interface_settings.change_threshold_text_field()
+        elif preset_option == 3:
+            interface_settings.select_annotation_source_directory()
 
         for k, v in interface_settings.config.items():
             utils.write_to_session_file(k, v)

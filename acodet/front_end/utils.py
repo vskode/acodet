@@ -1,6 +1,7 @@
 import streamlit as st
 from pathlib import Path
 from acodet import create_session_file
+from . import help_strings
 
 conf = create_session_file.read_session_file()
 import json
@@ -12,7 +13,7 @@ def open_folder_dialogue(
     key="folder",
     label="Choose a folder",
     filter_existing_annotations=False,
-    **kwargs
+    **kwargs,
 ):
     try:
         if not filter_existing_annotations:
@@ -60,9 +61,7 @@ def user_input(label, val, **input_params):
     c1.markdown("##")
     input_params.setdefault("key", label)
     c1.markdown(label)
-    return c2.text_input(
-        " ", val, **input_params
-    )
+    return c2.text_input(" ", val, **input_params)
 
 
 def user_dropdown(label, vals, **input_params):
@@ -70,9 +69,7 @@ def user_dropdown(label, vals, **input_params):
     c1.markdown("##")
     input_params.setdefault("key", label)
     c1.markdown(label)
-    return c2.selectbox(
-        " ", vals, **input_params
-    )
+    return c2.selectbox(" ", vals, **input_params)
 
 
 def write_to_session_file(key, value):
@@ -138,6 +135,43 @@ def prepare_run():
         else:
             kwargs = {"progbar1": st.progress(0, text="Progress")}
     return kwargs
+
+
+class Limits:
+    def __init__(self, limit, key):
+        self.key = key
+        if limit == "Simple limit":
+            self.limit_label = "simple_limit"
+            self.thresh_label = "thresh"
+            self.sc = False
+            self.limit_max = 50
+        elif limit == "Sequence limit":
+            self.limit_label = "sequence_limit"
+            self.thresh_label = "sequence_thresh"
+            self.sc = True
+            self.limit_max = 20
+
+    def create_limit_sliders(self):
+        self.thresh = st.slider(
+            "Threshold",
+            0.35,
+            0.99,
+            conf[self.thresh_label],
+            0.01,
+            key=f"thresh_slider_{self.key}",
+            help=help_strings.THRESHOLD,
+        )
+
+        if self.sc:
+            self.limit = st.slider(
+                "Limit",
+                1,
+                self.limit_max,
+                conf[self.limit_label],
+                1,
+                key=f"limit_slider_{self.key}",
+                help=help_strings.SC_LIMIT,
+            )
 
 
 class TFPredictProgressBar(keras.callbacks.Callback):
