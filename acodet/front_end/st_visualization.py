@@ -28,7 +28,7 @@ def output():
             disp.show_individual_files(
                 tab_number=2, thresh_path=f"thresh_{conf['thresh']}"
             )
-            plot_tabs = InitPlots(disp)
+            plot_tabs = Results(disp)
             plot_tabs.create_tabs()
 
         elif st.session_state.preset_option == 1:
@@ -57,7 +57,7 @@ def output():
             )
             disp.show_stats()
             disp.show_individual_files()
-            plot_tabs = InitPlots(disp, tab_number=2)
+            plot_tabs = Results(disp, tab_number=2)
             plot_tabs.create_tabs()
 
 
@@ -80,6 +80,14 @@ class ShowAnnotationPredictions:
         )
 
     def create_tabs(self, additional_headings=[]):
+        """
+        Create the tabs to display the respective results.
+
+        Parameters
+        ----------
+        additional_headings : list, optional
+            list of additional headings, by default []
+        """
         tabs = st.tabs(
             [
                 "Stats",
@@ -91,6 +99,9 @@ class ShowAnnotationPredictions:
             setattr(self, f"tab{i}", tab)
 
     def show_stats(self):
+        """
+        Show stats file as pandas.DataFrame in a table.
+        """
         with self.tab0:
             try:
                 df = pd.read_csv(self.annots_path.joinpath("stats.csv"))
@@ -123,8 +134,20 @@ class ShowAnnotationPredictions:
             st.dataframe(df, hide_index=True)
 
 
-class InitPlots:
+class Results(utils.Limits):
     def __init__(self, disp_obj, tab_number=3) -> None:
+        """
+        Results class containing all of the data processings to prepare
+        data for plots and tables.
+
+        Parameters
+        ----------
+        disp_obj : object
+            ShowAnnotationPredictions object to link processing to
+            the respective streamlit widget
+        tab_number : int, optional
+            number of tab to show results in, by default 3
+        """
         self.plots_paths = [
             p for p in disp_obj.annots_path.rglob("*analysis*")
         ]
@@ -138,6 +161,9 @@ class InitPlots:
         self.tab_number = tab_number
 
     def create_tabs(self):
+        """
+        Create tabs for plots.
+        """
         self.tabs = {
             "binary": getattr(self.disp_obj, f"tab{self.tab_number}"),
             "presence": getattr(self.disp_obj, f"tab{self.tab_number+1}"),
@@ -146,6 +172,7 @@ class InitPlots:
             self.init_tab(tab=tab, key=key)
 
     def init_tab(self, tab, key):
+        print("hi")
         with tab:
             datasets = [l.parent.stem for l in self.plots_paths]
 
@@ -167,14 +194,40 @@ class InitPlots:
                 help=help_strings.LIMIT,
             )
 
-            plot = PlotPresence(self, limit, tab, key)
-            plot.plot_df()
+            super(Results, self).__init__(limit, key)
+
+            results = PlotDisplay(self.chosen_dataset, tab, key)
+            results.plot_df(self.limit_label)
+
+            self.create_limit_sliders()
+
+            self.rerun_computation_btn()
+
+    def rerun_computation_btn(self):
+        """
+        Show rerun computation button after limits have been set and
+        execute run.main.
+        """
+        rerun = st.button("Rerun computation", key=f"update_plot_{self.key}")
+        st.session_state.progbar_update = st.progress(0, text="Updating plot")
+        if rerun:
+            utils.write_to_session_file(self.thresh_label, self.thresh)
+            if self.sc:
+                utils.write_to_session_file(self.limit_label, self.limit)
+
+            import run
+
+            run.main(
+                dont_save_plot=True,
+                sc=self.sc,
+                fetch_config_again=True,
+                preset=3,
+            )
 
 
-class PlotPresence(utils.Limits):
-    def __init__(self, plot_tabs, limit, tab, key) -> None:
-        super(PlotPresence, self).__init__(limit, key)
-        self.plot_tabs = plot_tabs
+class PlotDisplay:
+    def __init__(self, chosen_dataset, tab, key) -> None:
+        self.chosen_dataset = chosen_dataset
         self.tab = tab
         self.key = key
 
@@ -187,10 +240,22 @@ class PlotPresence(utils.Limits):
             self.cbar_label = "Presence"
             self.c_range = [0, 1]
 
-    def plot_df(self):
+    def plot_df(self, limit_label):
+        """
+
+        Plot dataframe showing either hourly presence or annotation count
+        in an interactive plotly visualization.
+
+        TODO onclick display of scrollable spectrogram would be really sick.
+
+        Parameters
+        ----------
+        limit_label : string
+            key of config dict to acces simple or sequence limit
+        """
         df = pd.read_csv(
-            self.plot_tabs.chosen_dataset.joinpath(
-                f"{self.path_prefix}_{self.limit_label}.csv"
+            self.chosen_dataset.joinpath(
+                f"{self.path_prefix}_{limit_label}.csv"
             )
         )
         df.index = pd.DatetimeIndex(df.Date)
@@ -215,24 +280,3 @@ class PlotPresence(utils.Limits):
         fig.update_layout(hovermode="x")
 
         st.plotly_chart(fig)
-
-        self.create_limit_sliders()
-
-        self.rerun_computation_btn()
-
-    def rerun_computation_btn(self):
-        rerun = st.button("Rerun computation", key=f"update_plot_{self.key}")
-        st.session_state.progbar_update = st.progress(0, text="Updating plot")
-        if rerun:
-            utils.write_to_session_file(self.thresh_label, self.thresh)
-            if self.sc:
-                utils.write_to_session_file(self.limit_label, self.limit)
-
-            import run
-
-            run.main(
-                dont_save_plot=True,
-                sc=self.sc,
-                fetch_config_again=True,
-                preset=3,
-            )
