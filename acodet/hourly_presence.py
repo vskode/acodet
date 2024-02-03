@@ -127,6 +127,7 @@ def compute_hourly_pres(
     lim_sc=conf.SEQUENCE_LIMIT,
     sc=False,
     fetch_config_again=False,
+    multiple_datasets=False,
     **kwargs,
 ):
     if fetch_config_again:
@@ -140,11 +141,21 @@ def compute_hourly_pres(
 
     path = find_thresh05_path_in_dir(time_dir)
 
-    directories = [p for p in path.iterdir() if p.is_dir()]
+    if multiple_datasets:
+        directories = [
+            [d for d in p.iterdir() if p.is_dir()]
+            for p in path.iterdir()
+            if p.is_dir()
+        ][0]
+        directories = [d for d in directories if not d.stem == "analysis"]
+    else:
+        directories = [p for p in path.iterdir() if p.is_dir()]
 
-    for ind, dir in enumerate(directories):
+    for ind, fold in enumerate(directories):
         files = get_files(
-            location=path.joinpath(dir.stem), search_str="**/*txt"
+            location=fold,
+            search_str="**/*txt"
+            # location=path.joinpath(fold.stem), search_str="**/*txt"
         )
         files.sort()
 
@@ -155,30 +166,32 @@ def compute_hourly_pres(
             lim,
             lim_sc,
             sc,
-            dir,
+            fold,
             dir_ind=ind,
             total_dirs=len(directories),
             **kwargs,
         )
 
-        annots.df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
+        annots.df.to_csv(get_path(path.joinpath(fold.stem), conf.HR_PRS_SL))
         annots.df_counts.to_csv(
-            get_path(path.joinpath(dir.stem), conf.HR_CNTS_SL)
+            get_path(path.joinpath(fold.stem), conf.HR_CNTS_SL)
         )
         if not "dont_save_plot" in kwargs.keys():
             for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
-                plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
+                plot_hp(path.joinpath(fold.stem), lim, thresh, metric)
 
         if sc:
             annots.df_sc.to_csv(
-                get_path(path.joinpath(dir.stem), conf.HR_PRS_SC)
+                get_path(path.joinpath(fold.stem), conf.HR_PRS_SC)
             )
             annots.df_sc_cnt.to_csv(
-                get_path(path.joinpath(dir.stem), conf.HR_CNTS_SC)
+                get_path(path.joinpath(fold.stem), conf.HR_CNTS_SC)
             )
             if not "dont_save_plot" in kwargs.keys():
                 for metric in (conf.HR_CNTS_SC, conf.HR_PRS_SC):
-                    plot_hp(path.joinpath(dir.stem), lim_sc, thresh_sc, metric)
+                    plot_hp(
+                        path.joinpath(fold.stem), lim_sc, thresh_sc, metric
+                    )
         print("\n")
 
 

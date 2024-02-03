@@ -488,7 +488,7 @@ def get_pr_arrays(
 
 def get_files(
     *, location: str = f"{conf.GEN_ANNOTS_DIR}", search_str: str = "*.wav"
-) -> generator:
+) -> list:
     """
     Find all files corresponding to given search string within a specified
     location.
