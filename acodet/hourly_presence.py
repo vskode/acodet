@@ -71,29 +71,6 @@ def get_val(path: str or Path):
     return pd.read_csv(path)
 
 
-def seq_crit(
-    annot,
-    n_prec_preds=conf.SEQUENCE_CON_WIN,
-    thresh_sc=0.9,
-    n_exceed_thresh=4,
-    return_counts=True,
-):
-    sequ_crit = 0
-    annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh_sc]
-    for i, row in annot.iterrows():
-        bool1 = 0 < (row["Begin Time (s)"] - annot["Begin Time (s)"])
-        bool2 = (
-            row["Begin Time (s)"] - annot["Begin Time (s)"]
-        ) < n_prec_preds * conf.CONTEXT_WIN / conf.SR
-        prec_anns = annot.loc[bool1 * bool2]
-        if len(prec_anns) > n_exceed_thresh:
-            sequ_crit += 1
-            # this stops the function as soon as the limit is met once
-            if not return_counts:
-                return 1
-    return sequ_crit
-
-
 def h_of_day_str():
     return ["%.2i:00" % i for i in np.arange(24)]
 
@@ -172,7 +149,7 @@ def compute_hourly_pres(
         )
         files.sort()
 
-        df_tuple = return_hourly_pres_df(
+        annots = return_hourly_pres_df(
             files,
             thresh,
             thresh_sc,
@@ -185,17 +162,19 @@ def compute_hourly_pres(
             **kwargs,
         )
 
-        df, df_sc, df_counts, df_sc_counts = df_tuple
-
-        df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
-        df_counts.to_csv(get_path(path.joinpath(dir.stem), conf.HR_CNTS_SL))
+        annots.df.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SL))
+        annots.df_counts.to_csv(
+            get_path(path.joinpath(dir.stem), conf.HR_CNTS_SL)
+        )
         if not "dont_save_plot" in kwargs.keys():
             for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
                 plot_hp(path.joinpath(dir.stem), lim, thresh, metric)
 
         if sc:
-            df_sc.to_csv(get_path(path.joinpath(dir.stem), conf.HR_PRS_SC))
-            df_sc_counts.to_csv(
+            annots.df_sc.to_csv(
+                get_path(path.joinpath(dir.stem), conf.HR_PRS_SC)
+            )
+            annots.df_sc_cnt.to_csv(
                 get_path(path.joinpath(dir.stem), conf.HR_CNTS_SC)
             )
             if not "dont_save_plot" in kwargs.keys():
@@ -253,88 +232,188 @@ def init_new_dt_if_exceeding_3600_s(h, date, hour):
     return date, hour
 
 
-def concat_files_within_hour(count, files, file_ind):
-    annot_all = pd.DataFrame()
-    for _ in range(count):
-        annot_all = pd.concat(
-            [annot_all, pd.read_csv(files[file_ind], sep="\t")]
+class ProcessLimits:
+    def __init__(
+        self,
+        files,
+        thresh,
+        thresh_sc,
+        lim,
+        lim_sc,
+        sc,
+        dir_ind,
+        total_dirs,
+        return_counts,
+    ):
+        self.df = pd.DataFrame(
+            columns=["Date", conf.HR_DP_COL, *h_of_day_str()]
         )
-        file_ind += 1
-    return annot_all, file_ind
+        self.df_sc = self.df.copy()
+        self.df_counts = pd.DataFrame(
+            columns=["Date", conf.HR_DA_COL, *h_of_day_str()]
+        )
+        self.df_sc_cnt = self.df_counts.copy()
+        self.files = files
+        self.thresh = thresh
+        self.thresh_sc = thresh_sc
+        self.sc = sc
+        self.lim_sc = lim_sc
+        self.lim = lim
+        self.dir_ind = dir_ind
+        self.total_dirs = total_dirs
+        self.return_counts = return_counts
 
+        self.file_ind = 0
+        self.row = 0
+        self.n_prec_preds = conf.SEQUENCE_CON_WIN
+        self.n_exceed_thresh = 4
 
-def filter_files_of_hour_by_limit(
-    annot_all,
-    end,
-    df,
-    df_counts,
-    thresh,
-    sc,
-    df_sc,
-    df_sc_counts,
-    thresh_sc,
-    lim_sc,
-    file_ind,
-    files,
-    lim,
-    return_counts,
-    date,
-    hour,
-):
-    for h in range(0, end or 1, 3600):
-        annot = annot_all.loc[
-            (h < annot_all["Begin Time (s)"])
-            & (annot_all["Begin Time (s)"] < h + 3600)
-        ]
-        date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
+    def concat_files_within_hour(self, count):
+        self.annot_all = pd.DataFrame()
+        self.filtered_annots = pd.DataFrame()
+        for _ in range(count):
+            self.annot_all = pd.concat(
+                [
+                    self.annot_all,
+                    pd.read_csv(self.files[self.file_ind], sep="\t"),
+                ]
+            )
+            self.file_ind += 1
 
-        annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh]
-        if not date in df["Date"].values:
-            if not row == 0:
-                df.loc[row, conf.HR_DP_COL] = daily_prs(df)
-                df_counts.loc[row, conf.HR_DA_COL] = sum(
-                    df_counts.loc[len(df_counts), h_of_day_str()].values
+    def seq_crit(self, annot):
+        sequ_crit = 0
+        annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= self.thresh_sc]
+        for i, row in annot.iterrows():
+            bool1 = 0 < (row["Begin Time (s)"] - annot["Begin Time (s)"])
+            bool2 = (
+                row["Begin Time (s)"] - annot["Begin Time (s)"]
+            ) < self.n_prec_preds * conf.CONTEXT_WIN / conf.SR
+            self.prec_anns = annot.loc[bool1 * bool2]
+            if len(self.prec_anns) > self.n_exceed_thresh:
+                sequ_crit += 1
+                self.filtered_annots = pd.concat(
+                    [self.filtered_annots, self.prec_anns.iloc[-1:]]
                 )
+                # this stops the function as soon as the limit is met once
+                if not self.return_counts:
+                    return 1
+        return sequ_crit
 
-                if sc:
-                    df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
-                    df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                        df_sc_counts.loc[
-                            len(df_sc_counts), h_of_day_str()
+    def get_end_of_last_annotation(self):
+        if len(self.annot_all) == 0:
+            self.end = False
+        else:
+            self.end = int(self.annot_all["End Time (s)"].iloc[-1])
+
+    def filter_files_of_hour_by_limit(self, date, hour):
+        for h in range(0, self.end or 1, 3600):
+            fil_h_ann = self.annot_all.loc[
+                (h < self.annot_all["Begin Time (s)"])
+                & (self.annot_all["Begin Time (s)"] < h + 3600)
+            ]
+            date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
+
+            fil_h_ann = fil_h_ann.loc[
+                fil_h_ann[conf.ANNOTATION_COLUMN] >= self.thresh
+            ]
+            if not date in self.df["Date"].values:
+                if not self.row == 0:
+                    self.df.loc[self.row, conf.HR_DP_COL] = daily_prs(self.df)
+                    self.df_counts.loc[self.row, conf.HR_DA_COL] = sum(
+                        self.df_counts.loc[
+                            len(self.df_counts), h_of_day_str()
                         ].values
                     )
 
-            row += 1
-            df.loc[row, "Date"] = date
-            df_counts.loc[row, "Date"] = date
-            if sc:
-                df_sc.loc[row, "Date"] = date
-                df_sc_counts.loc[row, "Date"] = date
+                    if self.sc:
+                        self.df_sc.loc[self.row, conf.HR_DP_COL] = daily_prs(
+                            self.df_sc
+                        )
+                        self.df_sc_cnt.loc[self.row, conf.HR_DA_COL] = sum(
+                            self.df_sc_cnt.loc[
+                                len(self.df_sc_cnt), h_of_day_str()
+                            ].values
+                        )
 
-        df.loc[row, hour] = hourly_prs(annot, lim=lim)
-        df_counts.loc[row, hour] = len(annot)
+                self.row += 1
+                self.df.loc[self.row, "Date"] = date
+                self.df_counts.loc[self.row, "Date"] = date
+                if self.sc:
+                    self.df_sc.loc[self.row, "Date"] = date
+                    self.df_sc_cnt.loc[self.row, "Date"] = date
 
-        if file_ind == len(files):
-            df.loc[row, conf.HR_DP_COL] = daily_prs(df)
-            df_counts.loc[row, conf.HR_DA_COL] = sum(
-                df_counts.loc[len(df_counts), h_of_day_str()].values
-            )
+            self.df.loc[self.row, hour] = hourly_prs(fil_h_ann, lim=self.lim)
+            self.df_counts.loc[self.row, hour] = len(fil_h_ann)
 
-            if sc:
-                df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
-                df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                    df_sc_counts.loc[len(df_sc_counts), h_of_day_str()].values
+            if self.file_ind == len(self.files):
+                self.df.loc[self.row, conf.HR_DP_COL] = daily_prs(self.df)
+                self.df_counts.loc[self.row, conf.HR_DA_COL] = sum(
+                    self.df_counts.loc[
+                        len(self.df_counts), h_of_day_str()
+                    ].values
                 )
 
-        if sc:
-            df_sc_counts.loc[row, hour] = seq_crit(
-                annot,
-                thresh_sc=thresh_sc,
-                n_exceed_thresh=lim_sc,
-                return_counts=return_counts,
+                if self.sc:
+                    self.df_sc.loc[self.row, conf.HR_DP_COL] = daily_prs(
+                        self.df_sc
+                    )
+                    self.df_sc_cnt.loc[self.row, conf.HR_DA_COL] = sum(
+                        self.df_sc_cnt.loc[
+                            len(self.df_sc_cnt), h_of_day_str()
+                        ].values
+                    )
+
+            if self.sc:
+                self.df_sc_cnt.loc[self.row, hour] = self.seq_crit(fil_h_ann)
+                self.df_sc.loc[self.row, hour] = int(
+                    bool(self.df_sc_cnt.loc[self.row, hour])
+                )
+
+    def save_filtered_selection_tables(self, dataset_path):
+        if self.sc:
+            thresh_label = f"thresh_{self.thresh_sc}_seq_{self.lim_sc}"
+        else:
+            thresh_label = f"thresh_{self.thresh}_sim"
+        new_thresh_path = dataset_path.parent.parent.joinpath(thresh_label)
+        new_thresh_path = new_thresh_path.joinpath(
+            self.files[self.file_ind - 1]
+            .relative_to(dataset_path.parent)
+            .parent
+        )
+        new_thresh_path.mkdir(exist_ok=True, parents=True)
+        file_path = new_thresh_path.joinpath(
+            self.files[self.file_ind - 1].stem
+            + self.files[self.file_ind - 1].suffix
+        )
+        if not self.sc:
+            self.filtered_annots = self.annot_all.loc[
+                self.annot_all[conf.ANNOTATION_COLUMN] >= self.thresh
+            ]
+        if len(self.filtered_annots) > 0:
+            self.filtered_annots.index = self.filtered_annots.Selection
+            self.filtered_annots.pop("Selection")
+            self.filtered_annots.to_csv(file_path, sep="\t")
+
+    def update_annotation_progbar(self, **kwargs):
+        import streamlit as st
+
+        inner_counter = self.file_ind / len(self.files)
+        outer_couter = self.dir_ind / self.total_dirs
+        counter = inner_counter * 1 / self.total_dirs + outer_couter
+
+        if "preset" in kwargs:
+            st.session_state.progbar_update.progress(
+                counter,
+                text="Progress",
             )
-            df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
-    return df, df_sc, df_counts, df_sc_counts
+            if counter == 1 and "update_plot" in kwargs:
+                st.write("Plot updated")
+                st.button("Update plot")
+        elif conf.PRESET == 3:
+            kwargs["progbar1"].progress(
+                counter,
+                text="Progress",
+            )
 
 
 def return_hourly_pres_df(
@@ -348,71 +427,43 @@ def return_hourly_pres_df(
     total_dirs,
     dir_ind,
     return_counts=True,
+    save_filtered_selection_tables=False,
     **kwargs,
 ):
     if not isinstance(path, Path):
         path = Path(path)
-    file_ind, row = 0, 0
-    df = pd.DataFrame(columns=["Date", conf.HR_DP_COL, *h_of_day_str()])
-    df_sc = df.copy()
-    df_counts = pd.DataFrame(columns=["Date", conf.HR_DA_COL, *h_of_day_str()])
-    df_sc_counts = df_counts.copy()
+
     tup, counts = init_date_tuple(files)
+    filt_annots = ProcessLimits(
+        files,
+        thresh,
+        thresh_sc,
+        lim,
+        lim_sc,
+        sc,
+        dir_ind,
+        total_dirs,
+        return_counts,
+    )
     for (date, hour), count in zip(tup, counts):
-        annot_all, file_ind = concat_files_within_hour(count, files, file_ind)
+        filt_annots.concat_files_within_hour(count)
 
-        end = get_end_of_last_annotation(annot_all)
+        filt_annots.get_end_of_last_annotation()
 
-        df, df_sc, df_counts, df_sc_counts = filter_files_of_hour_by_limit(
-            annot_all,
-            end,
-            df,
-            df_counts,
-            thresh,
-            sc,
-            df_sc,
-            df_sc_counts,
-            thresh_sc,
-            lim_sc,
-            file_ind,
-            files,
-            lim,
-            return_counts,
-            date,
-            hour,
-        )
+        filt_annots.filter_files_of_hour_by_limit(date, hour)
+
+        if save_filtered_selection_tables:
+            filt_annots.save_filtered_selection_tables(path)
 
         print(
-            f"Computing files in {path.stem}: " f"{file_ind}/{len(files)}",
+            f"Computing files in {path.stem}: "
+            f"{filt_annots.file_ind}/{len(files)}",
             end="\r",
         )
         if "preset" in kwargs or conf.PRESET == 3 and conf.STREAMLIT:
-            update_annotation_progbar(
-                file_ind, files, dir_ind, total_dirs, **kwargs
-            )
-    return df, df_sc, df_counts, df_sc_counts
+            filt_annots.update_annotation_progbar(**kwargs)
 
-
-def update_annotation_progbar(file_ind, files, dir_ind, total_dirs, **kwargs):
-    import streamlit as st
-
-    inner_counter = file_ind / len(files)
-    outer_couter = dir_ind / total_dirs
-    counter = inner_counter * 1 / total_dirs + outer_couter
-
-    if "preset" in kwargs:
-        st.session_state.progbar_update.progress(
-            counter,
-            text="Progress",
-        )
-        if counter == 1:
-            st.write("Plot updated")
-            st.button("Update plot")
-    elif conf.PRESET == 3:
-        kwargs["progbar1"].progress(
-            counter,
-            text="Progress",
-        )
+    return filt_annots
 
 
 def get_path(path, metric):
@@ -472,7 +523,7 @@ def calc_val_diff(
         )
         files.sort()
 
-        df_tuple = return_hourly_pres_df(
+        annots = return_hourly_pres_df(
             files,
             thresh,
             thresh_sc,
@@ -485,10 +536,9 @@ def calc_val_diff(
             return_counts=False,
             **kwargs,
         )
-        df, df_sc, _, _ = df_tuple
 
         d, incorrect, df_diff = dict(), dict(), dict()
-        for agg_met, df_metric in zip(("sl", "sq"), (df, df_sc)):
+        for agg_met, df_metric in zip(("sl", "sq"), (annots.df, annots.df_sc)):
             df_val.index = df_metric.index
             df_diff.update(
                 {
@@ -529,12 +579,12 @@ def calc_val_diff(
             "%.2f" % (incorrect["sq"] / (len(df_diff["sl"]) * 24) * 100),
         )
 
-        df.to_csv(
+        annots.df.to_csv(
             Path(fold)
             .joinpath("analysis")
             .joinpath(f"th{thresh}_l{lim}_hourly_presence.csv")
         )
-        df_sc.to_csv(
+        annots.df_sc.to_csv(
             Path(fold)
             .joinpath("analysis")
             .joinpath(f"th{thresh_sc}_l{lim_sc}_hourly_pres_sequ_crit.csv")

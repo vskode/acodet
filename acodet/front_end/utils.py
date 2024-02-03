@@ -202,9 +202,7 @@ class Limits:
         """
         self.show_save_selection_tables_btn()
         if self.save_btn:
-            st.session_state.progbar_update = st.progress(
-                0, text="Updating plot"
-            )
+            st.session_state.progbar_update = st.progress(0, text="Progress")
             write_to_session_file(self.thresh_label, self.thresh)
             if self.sc:
                 write_to_session_file(self.limit_label, self.limit)
@@ -216,6 +214,7 @@ class Limits:
                 sc=self.sc,
                 fetch_config_again=True,
                 preset=3,
+                save_filtered_selection_tables=True,
             )
 
 

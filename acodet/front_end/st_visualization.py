@@ -200,8 +200,9 @@ class Results(utils.Limits):
             results.plot_df(self.limit_label)
 
             self.create_limit_sliders()
-
             self.rerun_computation_btn()
+
+            self.save_selection_tables_with_limit_settings()
 
     def rerun_computation_btn(self):
         """
@@ -222,6 +223,7 @@ class Results(utils.Limits):
                 sc=self.sc,
                 fetch_config_again=True,
                 preset=3,
+                update_plot=True,
             )
 
 
