@@ -172,7 +172,6 @@ class Results(utils.Limits):
             self.init_tab(tab=tab, key=key)
 
     def init_tab(self, tab, key):
-        print("hi")
         with tab:
             datasets = [l.parent.stem for l in self.plots_paths]
 

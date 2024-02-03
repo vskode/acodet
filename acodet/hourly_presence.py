@@ -126,7 +126,6 @@ def compute_hourly_pres(
     thresh_sc=conf.SEQUENCE_THRESH,
     lim_sc=conf.SEQUENCE_LIMIT,
     sc=False,
-    return_hourly_counts=True,
     fetch_config_again=False,
     **kwargs,
 ):
@@ -245,6 +244,36 @@ class ProcessLimits:
         total_dirs,
         return_counts,
     ):
+        """
+        Handle processing of hourly and daily annotations counts and presence.
+        A class object is created and used to go through all files and calculate
+        the presence and annotation count metrics for a given hour within the
+        file. If more than one hour exists within a file, the metrics are counted
+        for every hour. If multiple files make up one hour they are concatenated
+        before processing. Simple limit and sequence limit processing is handled
+        by this class.
+
+        Parameters
+        ----------
+        files : list
+            pathlib.Path objects linking to file path
+        thresh : float
+            threshold
+        thresh_sc : float
+            threshold for sequence limit
+        lim : int
+            limit for simple limit presence
+        lim_sc : int
+            limit for sequence limit
+        sc : bool
+            sequence limit yes or no
+        dir_ind : int
+            directory index, in case multiple dirs are processed
+        total_dirs : int
+            number of total directories
+        return_counts : bool
+            return annotation counts or only binary presence
+        """
         self.df = pd.DataFrame(
             columns=["Date", conf.HR_DP_COL, *h_of_day_str()]
         )
@@ -269,6 +298,15 @@ class ProcessLimits:
         self.n_exceed_thresh = 4
 
     def concat_files_within_hour(self, count):
+        """
+        Concatenate files within one hour. Relevant if multiple files make
+        up one hour.
+
+        Parameters
+        ----------
+        count : int
+            number of files making up given hour
+        """
         self.annot_all = pd.DataFrame()
         self.filtered_annots = pd.DataFrame()
         for _ in range(count):
@@ -281,6 +319,28 @@ class ProcessLimits:
             self.file_ind += 1
 
     def seq_crit(self, annot):
+        """
+        Sequence limit calculation. Initially all predictions are thresholded.
+        After that two boolean arrays are created. Using the AND operator for
+        these two arrays only returns the values that pass the sequence limit.
+        This means that within the number of consecutive windows
+        (self.n_prec_anns) more than the self.lim_sc number of windows have to
+        exceed the value of self.thresh_sc. Depending on the settings this
+        function is cancelled early if only binary presence is of interest.
+        A filtered annotations dataframe is saved that only has the predictions
+        that passed the filtering process.
+
+        Parameters
+        ----------
+        annot : pandas.DataFrame
+            annotations of the given hour
+
+        Returns
+        -------
+        int
+            either 1 if only binary presence is relevant or the number of
+            annotations that passed the sequence limit in the given hour
+        """
         sequ_crit = 0
         annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= self.thresh_sc]
         for i, row in annot.iterrows():
@@ -300,12 +360,29 @@ class ProcessLimits:
         return sequ_crit
 
     def get_end_of_last_annotation(self):
+        """
+        Get the time corresponding to the last annotation in current file.
+        """
         if len(self.annot_all) == 0:
             self.end = False
         else:
             self.end = int(self.annot_all["End Time (s)"].iloc[-1])
 
     def filter_files_of_hour_by_limit(self, date, hour):
+        """
+        Process the annotation counts and binary presence for a given
+        hour in the dataset. This function is quite cryptic because there
+        are several dataframes that have to be updated to insert the
+        correct number of annotations and the binary presence value
+        for the given hour and date.
+
+        Parameters
+        ----------
+        date : string
+            date string
+        hour : string
+            hour string
+        """
         for h in range(0, self.end or 1, 3600):
             fil_h_ann = self.annot_all.loc[
                 (h < self.annot_all["Begin Time (s)"])
@@ -370,6 +447,17 @@ class ProcessLimits:
                 )
 
     def save_filtered_selection_tables(self, dataset_path):
+        """
+        Save the selection tables under a new directory with the
+        chosen filter settings. Depending if sequence limit is chosen
+        or not a directory name is chosen and saved in the parent
+        timestamp foldername of the current inference session.
+
+        Parameters
+        ----------
+        dataset_path : pathlib.Path
+            path to dataset in current annotation timestamp folder
+        """
         if self.sc:
             thresh_label = f"thresh_{self.thresh_sc}_seq_{self.lim_sc}"
         else:
@@ -395,6 +483,9 @@ class ProcessLimits:
             self.filtered_annots.to_csv(file_path, sep="\t")
 
     def update_annotation_progbar(self, **kwargs):
+        """
+        Update the annotation progbar in the corresponding streamlit widget.
+        """
         import streamlit as st
 
         inner_counter = self.file_ind / len(self.files)
@@ -430,6 +521,41 @@ def return_hourly_pres_df(
     save_filtered_selection_tables=False,
     **kwargs,
 ):
+    """
+    Return the hourly presence and hourly annotation counts for all files
+    within the chosen dataset. Processing is handled by the ProcessLimits class
+    this is the caller function.
+
+    Parameters
+    ----------
+    files : list
+        pathlib.Path objects linking to files
+    thresh : float
+        threshold
+    thresh_sc : float
+        threshold for sequence limit
+    lim : int
+        limit of simple limit for binary presence
+    lim_sc : int
+        limit for sequence limit
+    sc : bool
+        sequence limit yes or no
+    path : pathlib.Path
+        path to current dataset in annotations folder
+    total_dirs : int
+        number of directories to be annotated
+    dir_ind : int
+        index of directory
+    return_counts : bool, optional
+        only binary presence or hourly counts, by default True
+    save_filtered_selection_tables : bool, optional
+        whether to save the filtered selection tables or not, by default False
+
+    Returns
+    -------
+    ProcessLimits object
+        contains all dataframes with the hourly and daily metrics
+    """
     if not isinstance(path, Path):
         path = Path(path)
 
