@@ -253,6 +253,90 @@ def init_new_dt_if_exceeding_3600_s(h, date, hour):
     return date, hour
 
 
+def concat_files_within_hour(count, files, file_ind):
+    annot_all = pd.DataFrame()
+    for _ in range(count):
+        annot_all = pd.concat(
+            [annot_all, pd.read_csv(files[file_ind], sep="\t")]
+        )
+        file_ind += 1
+    return annot_all, file_ind
+
+
+def filter_files_of_hour_by_limit(
+    annot_all,
+    end,
+    df,
+    df_counts,
+    thresh,
+    sc,
+    df_sc,
+    df_sc_counts,
+    thresh_sc,
+    lim_sc,
+    file_ind,
+    files,
+    lim,
+    return_counts,
+    date,
+    hour,
+):
+    for h in range(0, end or 1, 3600):
+        annot = annot_all.loc[
+            (h < annot_all["Begin Time (s)"])
+            & (annot_all["Begin Time (s)"] < h + 3600)
+        ]
+        date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
+
+        annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh]
+        if not date in df["Date"].values:
+            if not row == 0:
+                df.loc[row, conf.HR_DP_COL] = daily_prs(df)
+                df_counts.loc[row, conf.HR_DA_COL] = sum(
+                    df_counts.loc[len(df_counts), h_of_day_str()].values
+                )
+
+                if sc:
+                    df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
+                    df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
+                        df_sc_counts.loc[
+                            len(df_sc_counts), h_of_day_str()
+                        ].values
+                    )
+
+            row += 1
+            df.loc[row, "Date"] = date
+            df_counts.loc[row, "Date"] = date
+            if sc:
+                df_sc.loc[row, "Date"] = date
+                df_sc_counts.loc[row, "Date"] = date
+
+        df.loc[row, hour] = hourly_prs(annot, lim=lim)
+        df_counts.loc[row, hour] = len(annot)
+
+        if file_ind == len(files):
+            df.loc[row, conf.HR_DP_COL] = daily_prs(df)
+            df_counts.loc[row, conf.HR_DA_COL] = sum(
+                df_counts.loc[len(df_counts), h_of_day_str()].values
+            )
+
+            if sc:
+                df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
+                df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
+                    df_sc_counts.loc[len(df_sc_counts), h_of_day_str()].values
+                )
+
+        if sc:
+            df_sc_counts.loc[row, hour] = seq_crit(
+                annot,
+                thresh_sc=thresh_sc,
+                n_exceed_thresh=lim_sc,
+                return_counts=return_counts,
+            )
+            df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
+    return df, df_sc, df_counts, df_sc_counts
+
+
 def return_hourly_pres_df(
     files,
     thresh,
@@ -275,97 +359,60 @@ def return_hourly_pres_df(
     df_sc_counts = df_counts.copy()
     tup, counts = init_date_tuple(files)
     for (date, hour), count in zip(tup, counts):
-        annot_all = pd.DataFrame()
-
-        for _ in range(count):
-            annot_all = pd.concat(
-                [annot_all, pd.read_csv(files[file_ind], sep="\t")]
-            )
-            file_ind += 1
+        annot_all, file_ind = concat_files_within_hour(count, files, file_ind)
 
         end = get_end_of_last_annotation(annot_all)
 
-        for h in range(0, end or 1, 3600):
-            annot = annot_all.loc[
-                (h < annot_all["Begin Time (s)"])
-                & (annot_all["Begin Time (s)"] < h + 3600)
-            ]
-            date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
-
-            annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= thresh]
-            if not date in df["Date"].values:
-                if not row == 0:
-                    df.loc[row, conf.HR_DP_COL] = daily_prs(df)
-                    df_counts.loc[row, conf.HR_DA_COL] = sum(
-                        df_counts.loc[len(df_counts), h_of_day_str()].values
-                    )
-
-                    if sc:
-                        df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
-                        df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                            df_sc_counts.loc[
-                                len(df_sc_counts), h_of_day_str()
-                            ].values
-                        )
-
-                row += 1
-                df.loc[row, "Date"] = date
-                df_counts.loc[row, "Date"] = date
-                if sc:
-                    df_sc.loc[row, "Date"] = date
-                    df_sc_counts.loc[row, "Date"] = date
-
-            df.loc[row, hour] = hourly_prs(annot, lim=lim)
-            df_counts.loc[row, hour] = len(annot)
-
-            if file_ind == len(files):
-                df.loc[row, conf.HR_DP_COL] = daily_prs(df)
-                df_counts.loc[row, conf.HR_DA_COL] = sum(
-                    df_counts.loc[len(df_counts), h_of_day_str()].values
-                )
-
-                if sc:
-                    df_sc.loc[row, conf.HR_DP_COL] = daily_prs(df_sc)
-                    df_sc_counts.loc[row, conf.HR_DA_COL] = sum(
-                        df_sc_counts.loc[
-                            len(df_sc_counts), h_of_day_str()
-                        ].values
-                    )
-
-            if sc:
-                df_sc_counts.loc[row, hour] = seq_crit(
-                    annot,
-                    thresh_sc=thresh_sc,
-                    n_exceed_thresh=lim_sc,
-                    return_counts=return_counts,
-                )
-                df_sc.loc[row, hour] = int(bool(df_sc_counts.loc[row, hour]))
+        df, df_sc, df_counts, df_sc_counts = filter_files_of_hour_by_limit(
+            annot_all,
+            end,
+            df,
+            df_counts,
+            thresh,
+            sc,
+            df_sc,
+            df_sc_counts,
+            thresh_sc,
+            lim_sc,
+            file_ind,
+            files,
+            lim,
+            return_counts,
+            date,
+            hour,
+        )
 
         print(
             f"Computing files in {path.stem}: " f"{file_ind}/{len(files)}",
             end="\r",
         )
         if "preset" in kwargs or conf.PRESET == 3 and conf.STREAMLIT:
-            import streamlit as st
-
-            inner_counter = file_ind / len(files)
-            outer_couter = dir_ind / total_dirs
-            counter = inner_counter * 1 / total_dirs + outer_couter
-
-            if "preset" in kwargs:
-                st.session_state.progbar_update.progress(
-                    counter,
-                    text="Progress",
-                )
-                if counter == 1:
-                    st.write("Plot updated")
-                    st.button("Update plot")
-            elif conf.PRESET == 3:
-                kwargs["progbar1"].progress(
-                    counter,
-                    text="Progress",
-                )
+            update_annotation_progbar(
+                file_ind, files, dir_ind, total_dirs, **kwargs
+            )
     return df, df_sc, df_counts, df_sc_counts
+
+
+def update_annotation_progbar(file_ind, files, dir_ind, total_dirs, **kwargs):
+    import streamlit as st
+
+    inner_counter = file_ind / len(files)
+    outer_couter = dir_ind / total_dirs
+    counter = inner_counter * 1 / total_dirs + outer_couter
+
+    if "preset" in kwargs:
+        st.session_state.progbar_update.progress(
+            counter,
+            text="Progress",
+        )
+        if counter == 1:
+            st.write("Plot updated")
+            st.button("Update plot")
+    elif conf.PRESET == 3:
+        kwargs["progbar1"].progress(
+            counter,
+            text="Progress",
+        )
 
 
 def get_path(path, metric):

@@ -33,6 +33,11 @@ and can be used to filter the annotations with different thresholds or to genera
 hourly predictions.
 """
 
+SAVE_SELECTION_BTN = """
+By clicking, the selection tables of the chosen datasets will be 
+recomputed with the limit settings chosen above and saved in the same location
+with a name corresponding to the limit name and threshold."""
+
 LIMIT = """
 Choose between Simple and Sequence limit. Simple limit will only count the
 annotations that are above the threshold. Sequence limit will only count the

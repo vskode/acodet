@@ -139,7 +139,19 @@ def prepare_run():
 
 class Limits:
     def __init__(self, limit, key):
-        self.key = key
+        """
+        A simple class to contain all methods revolving around the limit sliders
+        for simple and sequence limit.
+
+        Parameters
+        ----------
+        limit : string
+            either simple or sequence limit, from radio btn
+        key : string
+            unique identifier for streamlit options
+        """
+        self.key = "limit_" + key
+        self.save_btn = False
         if limit == "Simple limit":
             self.limit_label = "simple_limit"
             self.thresh_label = "thresh"
@@ -152,6 +164,10 @@ class Limits:
             self.limit_max = 20
 
     def create_limit_sliders(self):
+        """
+        Show sliders for simple and sequence limit, depending on the selection
+        of the radio btn.
+        """
         self.thresh = st.slider(
             "Threshold",
             0.35,
@@ -171,6 +187,35 @@ class Limits:
                 1,
                 key=f"limit_slider_{self.key}",
                 help=help_strings.SC_LIMIT,
+            )
+
+    def show_save_selection_tables_btn(self):
+        """Show save selection tables btn."""
+        self.save_btn = st.button(
+            "Save tables", self.key, help=help_strings.SAVE_SELECTION_BTN
+        )
+
+    def save_selection_tables_with_limit_settings(self):
+        """
+        Save the selection tables of the chosen dataset again with
+        the selected settings of the respective limit.
+        """
+        self.show_save_selection_tables_btn()
+        if self.save_btn:
+            st.session_state.progbar_update = st.progress(
+                0, text="Updating plot"
+            )
+            write_to_session_file(self.thresh_label, self.thresh)
+            if self.sc:
+                write_to_session_file(self.limit_label, self.limit)
+
+            import run
+
+            run.main(
+                dont_save_plot=True,
+                sc=self.sc,
+                fetch_config_again=True,
+                preset=3,
             )
 
 

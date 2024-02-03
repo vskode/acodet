@@ -136,6 +136,10 @@ class PresetInterfaceSettings:
                 self.custom_timestamp_dialog()
 
     def rerun_annotations(self):
+        """
+        Show options for rerunning annotations and saving the
+        selection tables with a different limit.
+        """
         self.select_annotation_source_directory()
         self.limit = st.radio(
             "What limit would you like to set?",
@@ -146,6 +150,7 @@ class PresetInterfaceSettings:
 
         self.lim_obj = utils.Limits(self.limit, self.key)
         self.lim_obj.create_limit_sliders()
+        self.lim_obj.save_selection_tables_with_limit_settings()
 
     def select_annotation_source_directory(self):
         """
