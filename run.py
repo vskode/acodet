@@ -46,8 +46,6 @@ def main(sc=True, **kwargs):
             compute_hourly_pres(sc=sc, **kwargs)
         elif preset == 4:
             compute_hourly_pres(**kwargs)
-        elif preset == 5:
-            pass  # TODO hourly preds mit varying limits
         elif preset == 6:
             calc_val_diff(**kwargs)
         elif preset == 0:

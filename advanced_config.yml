@@ -57,6 +57,8 @@ top_dir_name: 'main'
 # custom string to add to timestamp for directory name 
 # of created annotations
 annots_timestamp_folder: ''
+# default threshold folder name
+thresh_label: 'thresh_0.5'
 
 #######################  TRAINING  ###########################################
 

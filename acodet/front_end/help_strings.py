@@ -33,6 +33,17 @@ and can be used to filter the annotations with different thresholds or to genera
 hourly predictions.
 """
 
+MULTI_DATA = """
+Are there multiple datasets located in the selected folder and would you
+like for all of them to be processed? If so select yes, if not, please only
+select the desired folder.
+"""
+
+SAVE_SELECTION_BTN = """
+By clicking, the selection tables of the chosen datasets will be 
+recomputed with the limit settings chosen above and saved in the same location
+with a name corresponding to the limit name and threshold."""
+
 LIMIT = """
 Choose between Simple and Sequence limit. Simple limit will only count the
 annotations that are above the threshold. Sequence limit will only count the

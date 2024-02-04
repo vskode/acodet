@@ -488,7 +488,7 @@ def get_pr_arrays(
 
 def get_files(
     *, location: str = f"{conf.GEN_ANNOTS_DIR}", search_str: str = "*.wav"
-) -> generator:
+) -> list:
     """
     Find all files corresponding to given search string within a specified
     location.
@@ -736,7 +736,7 @@ def gen_annotations(
     save_path = (
         Path(conf.GEN_ANNOTS_DIR)
         .joinpath(timestamp_foldername)
-        .joinpath("thresh_0.5")
+        .joinpath(conf.THRESH_LABEL)
         .joinpath(parent_dirs)
     )
     save_path.mkdir(exist_ok=True, parents=True)

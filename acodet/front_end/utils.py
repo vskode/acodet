@@ -1,6 +1,7 @@
 import streamlit as st
 from pathlib import Path
 from acodet import create_session_file
+from . import help_strings
 
 conf = create_session_file.read_session_file()
 import json
@@ -12,7 +13,7 @@ def open_folder_dialogue(
     key="folder",
     label="Choose a folder",
     filter_existing_annotations=False,
-    **kwargs
+    **kwargs,
 ):
     try:
         if not filter_existing_annotations:
@@ -60,9 +61,7 @@ def user_input(label, val, **input_params):
     c1.markdown("##")
     input_params.setdefault("key", label)
     c1.markdown(label)
-    return c2.text_input(
-        " ", val, **input_params
-    )
+    return c2.text_input(" ", val, **input_params)
 
 
 def user_dropdown(label, vals, **input_params):
@@ -70,9 +69,7 @@ def user_dropdown(label, vals, **input_params):
     c1.markdown("##")
     input_params.setdefault("key", label)
     c1.markdown(label)
-    return c2.selectbox(
-        " ", vals, **input_params
-    )
+    return c2.selectbox(" ", vals, **input_params)
 
 
 def write_to_session_file(key, value):
@@ -138,6 +135,87 @@ def prepare_run():
         else:
             kwargs = {"progbar1": st.progress(0, text="Progress")}
     return kwargs
+
+
+class Limits:
+    def __init__(self, limit, key):
+        """
+        A simple class to contain all methods revolving around the limit sliders
+        for simple and sequence limit.
+
+        Parameters
+        ----------
+        limit : string
+            either simple or sequence limit, from radio btn
+        key : string
+            unique identifier for streamlit options
+        """
+        self.key = "limit_" + key
+        self.save_btn = False
+        if limit == "Simple limit":
+            self.limit_label = "simple_limit"
+            self.thresh_label = "thresh"
+            self.sc = False
+            self.limit_max = 50
+        elif limit == "Sequence limit":
+            self.limit_label = "sequence_limit"
+            self.thresh_label = "sequence_thresh"
+            self.sc = True
+            self.limit_max = 20
+
+    def create_limit_sliders(self):
+        """
+        Show sliders for simple and sequence limit, depending on the selection
+        of the radio btn.
+        """
+        self.thresh = st.slider(
+            "Threshold",
+            0.35,
+            0.99,
+            conf[self.thresh_label],
+            0.01,
+            key=f"thresh_slider_{self.key}",
+            help=help_strings.THRESHOLD,
+        )
+
+        if self.sc:
+            self.limit = st.slider(
+                "Limit",
+                1,
+                self.limit_max,
+                conf[self.limit_label],
+                1,
+                key=f"limit_slider_{self.key}",
+                help=help_strings.SC_LIMIT,
+            )
+
+    def show_save_selection_tables_btn(self):
+        """Show save selection tables btn."""
+        self.save_btn = st.button(
+            "Save tables", self.key, help=help_strings.SAVE_SELECTION_BTN
+        )
+
+    def save_selection_tables_with_limit_settings(self):
+        """
+        Save the selection tables of the chosen dataset again with
+        the selected settings of the respective limit.
+        """
+        self.show_save_selection_tables_btn()
+        if self.save_btn:
+            st.session_state.progbar_update = st.progress(0, text="Progress")
+            write_to_session_file(self.thresh_label, self.thresh)
+            if self.sc:
+                write_to_session_file(self.limit_label, self.limit)
+
+            import run
+
+            run.main(
+                dont_save_plot=True,
+                sc=self.sc,
+                fetch_config_again=True,
+                preset=3,
+                save_filtered_selection_tables=True,
+            )
 
 
 class TFPredictProgressBar(keras.callbacks.Callback):

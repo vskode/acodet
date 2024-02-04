@@ -28,7 +28,7 @@ def output():
             disp.show_individual_files(
                 tab_number=2, thresh_path=f"thresh_{conf['thresh']}"
             )
-            plot_tabs = InitPlots(disp)
+            plot_tabs = Results(disp)
             plot_tabs.create_tabs()
 
         elif st.session_state.preset_option == 1:
@@ -57,7 +57,7 @@ def output():
             )
             disp.show_stats()
             disp.show_individual_files()
-            plot_tabs = InitPlots(disp, tab_number=2)
+            plot_tabs = Results(disp, tab_number=2)
             plot_tabs.create_tabs()
 
 
@@ -80,6 +80,14 @@ class ShowAnnotationPredictions:
         )
 
     def create_tabs(self, additional_headings=[]):
+        """
+        Create the tabs to display the respective results.
+
+        Parameters
+        ----------
+        additional_headings : list, optional
+            list of additional headings, by default []
+        """
         tabs = st.tabs(
             [
                 "Stats",
@@ -91,6 +99,9 @@ class ShowAnnotationPredictions:
             setattr(self, f"tab{i}", tab)
 
     def show_stats(self):
+        """
+        Show stats file as pandas.DataFrame in a table.
+        """
         with self.tab0:
             try:
                 df = pd.read_csv(self.annots_path.joinpath("stats.csv"))
@@ -104,7 +115,9 @@ class ShowAnnotationPredictions:
                     to view this tab."""
                 )
 
-    def show_individual_files(self, tab_number=1, thresh_path="thresh_0.5"):
+    def show_individual_files(
+        self, tab_number=1, thresh_path=conf["thresh_label"]
+    ):
         with getattr(self, f"tab{tab_number}"):
             path = self.annots_path.joinpath(thresh_path)
             annot_files = [l for l in path.rglob("*.txt")]
@@ -123,11 +136,24 @@ class ShowAnnotationPredictions:
             st.dataframe(df, hide_index=True)
 
 
-class InitPlots:
+class Results(utils.Limits):
     def __init__(self, disp_obj, tab_number=3) -> None:
+        """
+        Results class containing all of the data processings to prepare
+        data for plots and tables.
+
+        Parameters
+        ----------
+        disp_obj : object
+            ShowAnnotationPredictions object to link processing to
+            the respective streamlit widget
+        tab_number : int, optional
+            number of tab to show results in, by default 3
+        """
         self.plots_paths = [
-            p for p in disp_obj.annots_path.rglob("*analysis*")
-        ]
+            [d for d in p.iterdir() if d.is_dir()]
+            for p in disp_obj.annots_path.rglob("*analysis*")
+        ][0]
         if not self.plots_paths:
             st.write(
                 "No analysis files found for this dataset. "
@@ -138,6 +164,9 @@ class InitPlots:
         self.tab_number = tab_number
 
     def create_tabs(self):
+        """
+        Create tabs for plots.
+        """
         self.tabs = {
             "binary": getattr(self.disp_obj, f"tab{self.tab_number}"),
             "presence": getattr(self.disp_obj, f"tab{self.tab_number+1}"),
@@ -147,7 +176,7 @@ class InitPlots:
 
     def init_tab(self, tab, key):
         with tab:
-            datasets = [l.parent.stem for l in self.plots_paths]
+            datasets = [l.stem for l in self.plots_paths]
 
             chosen_dataset = st.selectbox(
                 label=f"""Choose a dataset:""",
@@ -155,9 +184,9 @@ class InitPlots:
                 key=f"dataset_selec_{key}",
             )
             self.chosen_dataset = (
-                self.disp_obj.annots_path.joinpath("thresh_0.5")
-                .joinpath(chosen_dataset)
+                self.disp_obj.annots_path.joinpath(conf["thresh_label"])
                 .joinpath("analysis")
+                .joinpath(chosen_dataset)
             )
 
             limit = st.radio(
@@ -167,13 +196,42 @@ class InitPlots:
                 help=help_strings.LIMIT,
             )
 
-            plot = PlotPresence(self, limit, tab, key)
-            plot.plot_df()
+            super(Results, self).__init__(limit, key)
+
+            results = PlotDisplay(self.chosen_dataset, tab, key)
+            results.plot_df(self.limit_label)
+
+            self.create_limit_sliders()
+            self.rerun_computation_btn()
+
+            self.save_selection_tables_with_limit_settings()
+
+    def rerun_computation_btn(self):
+        """
+        Show rerun computation button after limits have been set and
+        execute run.main.
+        """
+        rerun = st.button("Rerun computation", key=f"update_plot_{self.key}")
+        st.session_state.progbar_update = st.progress(0, text="Updating plot")
+        if rerun:
+            utils.write_to_session_file(self.thresh_label, self.thresh)
+            if self.sc:
+                utils.write_to_session_file(self.limit_label, self.limit)
+
+            import run
+
+            run.main(
+                dont_save_plot=True,
+                sc=self.sc,
+                fetch_config_again=True,
+                preset=3,
+                update_plot=True,
+            )
 
 
-class PlotPresence:
-    def __init__(self, plot_tabs, limit, tab, key) -> None:
-        self.plot_tabs = plot_tabs
+class PlotDisplay:
+    def __init__(self, chosen_dataset, tab, key) -> None:
+        self.chosen_dataset = chosen_dataset
         self.tab = tab
         self.key = key
 
@@ -186,21 +244,22 @@ class PlotPresence:
             self.cbar_label = "Presence"
             self.c_range = [0, 1]
 
-        if limit == "Simple limit":
-            self.limit = "simple_limit"
-            self.thresh = "thresh"
-            self.sc = False
-            self.limit_max = 50
-        elif limit == "Sequence limit":
-            self.limit = "sequence_limit"
-            self.thresh = "sequence_thresh"
-            self.sc = True
-            self.limit_max = 20
+    def plot_df(self, limit_label):
+        """
 
-    def plot_df(self):
+        Plot dataframe showing either hourly presence or annotation count
+        in an interactive plotly visualization.
+
+        TODO onclick display of scrollable spectrogram would be really sick.
+
+        Parameters
+        ----------
+        limit_label : string
+            key of config dict to acces simple or sequence limit
+        """
         df = pd.read_csv(
-            self.plot_tabs.chosen_dataset.joinpath(
-                f"{self.path_prefix}_{self.limit}.csv"
+            self.chosen_dataset.joinpath(
+                f"{self.path_prefix}_{limit_label}.csv"
             )
         )
         df.index = pd.DatetimeIndex(df.Date)
@@ -225,43 +284,3 @@ class PlotPresence:
         fig.update_layout(hovermode="x")
 
         st.plotly_chart(fig)
-
-        self.create_sliders()
-
-    def create_sliders(self):
-        thresh = st.slider(
-            "Threshold",
-            0.35,
-            0.99,
-            conf[self.thresh],
-            0.01,
-            key=f"thresh_slider_{self.key}",
-            help=help_strings.THRESHOLD,
-        )
-
-        if self.sc:
-            limit = st.slider(
-                "Limit",
-                1,
-                self.limit_max,
-                conf[self.limit],
-                1,
-                key=f"limit_slider_{self.key}",
-                help=help_strings.SC_LIMIT,
-            )
-
-        rerun = st.button("Rerun computation", key=f"update_plot_{self.key}")
-        st.session_state.progbar_update = st.progress(0, text="Updating plot")
-        if rerun:
-            utils.write_to_session_file(self.thresh, thresh)
-            if self.sc:
-                utils.write_to_session_file(self.limit, limit)
-
-            import run
-
-            run.main(
-                dont_save_plot=True,
-                sc=self.sc,
-                fetch_config_again=True,
-                preset=3,
-            )

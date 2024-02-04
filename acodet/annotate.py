@@ -173,7 +173,7 @@ def run_annotation(train_date=None, **kwargs):
 
 
 def check_for_multiple_time_dirs_error(path):
-    if not path.joinpath("thresh_0.5").exists():
+    if not path.joinpath(conf.THRESH_LABEL).exists():
         subdirs = [l for l in path.iterdir() if l.is_dir()]
         path = path.joinpath(subdirs[-1].stem)
     return path
@@ -185,7 +185,7 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
     else:
         path = Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir)
     files = get_files(location=path, search_str="**/*txt")
-    files = [f for f in files if "thresh_0.5" in str(f.parent)]
+    files = [f for f in files if conf.THRESH_LABEL in str(f.parent)]
     path = check_for_multiple_time_dirs_error(path)
     for i, file in enumerate(files):
         try:
@@ -199,7 +199,7 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
         save_dir = (
             path.joinpath(f"thresh_{conf.THRESH}")
-            .joinpath(file.relative_to(path.joinpath("thresh_0.5")))
+            .joinpath(file.relative_to(path.joinpath(conf.THRESH_LABEL)))
             .parent
         )
         save_dir.mkdir(exist_ok=True, parents=True)
