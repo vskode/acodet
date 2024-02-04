@@ -148,6 +148,7 @@ class PresetInterfaceSettings:
         if multiple_datasets == "Yes":
             self.config["multi_datasets"] = True
 
+
     def rerun_annotations(self):
         """
         Show options for rerunning annotations and saving the
