@@ -92,6 +92,7 @@ MODEL_DIR = "acodet/src/models"
 # model name
 MODEL_NAME = session["model_name"]
 TOP_DIR_NAME = session["top_dir_name"]
+THRESH_LABEL = session["thresh_label"]
 
 #############  ANNOTATIONS  #####################################
 DEFAULT_THRESH = session["default_threshold"]

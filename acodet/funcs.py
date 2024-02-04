@@ -736,7 +736,7 @@ def gen_annotations(
     save_path = (
         Path(conf.GEN_ANNOTS_DIR)
         .joinpath(timestamp_foldername)
-        .joinpath("thresh_0.5")
+        .joinpath(conf.THRESH_LABEL)
         .joinpath(parent_dirs)
     )
     save_path.mkdir(exist_ok=True, parents=True)

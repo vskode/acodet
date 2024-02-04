@@ -135,6 +135,19 @@ class PresetInterfaceSettings:
             if continue_session:
                 self.custom_timestamp_dialog()
 
+            self.ask_for_multiple_datasets()
+
+    def ask_for_multiple_datasets(self):
+        multiple_datasets = st.radio(
+            "Would you like to process multiple datasets in this session?",
+            ("No", "Yes"),
+            key=f"multi_datasets_{self.key}",
+            horizontal=True,
+            help=help_strings.MULTI_DATA,
+        )
+        if multiple_datasets == "Yes":
+            self.config["multi_datasets"] = True
+
     def rerun_annotations(self):
         """
         Show options for rerunning annotations and saving the
@@ -241,6 +254,7 @@ def annotate_options(key="annot"):
 
         elif preset_option == 3:
             interface_settings.select_annotation_source_directory()
+            interface_settings.ask_for_multiple_datasets()
 
         for k, v in interface_settings.config.items():
             utils.write_to_session_file(k, v)

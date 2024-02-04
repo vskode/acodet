@@ -91,19 +91,21 @@ def find_thresh05_path_in_dir(time_dir):
         correct path leading to thresh_0.5 directory
     """
     root = Path(conf.GEN_ANNOT_SRC)
-    if root.parts[-1] == "thresh_0.5":
+    if root.parts[-1] == conf.THRESH_LABEL:
         root = root.parent
     elif root.parts[-1] == "thresh_0.9":
         root = root.parent
 
     if not time_dir:
-        if root.joinpath("thresh_0.5").exists():
-            path = root.joinpath("thresh_0.5")
+        if root.joinpath(conf.THRESH_LABEL).exists():
+            path = root.joinpath(conf.THRESH_LABEL)
         else:
             path = root
     else:
         path = (
-            Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir).joinpath("thresh_0.5")
+            Path(conf.GEN_ANNOTS_DIR)
+            .joinpath(time_dir)
+            .joinpath(conf.THRESH_LABEL)
         )
     return path
 
@@ -127,7 +129,6 @@ def compute_hourly_pres(
     lim_sc=conf.SEQUENCE_LIMIT,
     sc=False,
     fetch_config_again=False,
-    multiple_datasets=False,
     **kwargs,
 ):
     if fetch_config_again:
@@ -141,22 +142,18 @@ def compute_hourly_pres(
 
     path = find_thresh05_path_in_dir(time_dir)
 
-    if multiple_datasets:
+    if "multi_datasets" in conf.session:
         directories = [
-            [d for d in p.iterdir() if p.is_dir()]
+            [d for d in p.iterdir() if d.is_dir()]
             for p in path.iterdir()
             if p.is_dir()
         ][0]
-        directories = [d for d in directories if not d.stem == "analysis"]
     else:
         directories = [p for p in path.iterdir() if p.is_dir()]
+    directories = [d for d in directories if not d.stem == "analysis"]
 
     for ind, fold in enumerate(directories):
-        files = get_files(
-            location=fold,
-            search_str="**/*txt"
-            # location=path.joinpath(fold.stem), search_str="**/*txt"
-        )
+        files = get_files(location=fold, search_str="**/*txt")
         files.sort()
 
         annots = return_hourly_pres_df(
@@ -171,27 +168,25 @@ def compute_hourly_pres(
             total_dirs=len(directories),
             **kwargs,
         )
+        if "save_filtered_selection_tables" in kwargs:
+            top_dir_path = path.parent.joinpath(conf.THRESH_LABEL).joinpath(
+                fold.stem
+            )
+        else:
+            top_dir_path = path.joinpath(fold.stem)
 
-        annots.df.to_csv(get_path(path.joinpath(fold.stem), conf.HR_PRS_SL))
-        annots.df_counts.to_csv(
-            get_path(path.joinpath(fold.stem), conf.HR_CNTS_SL)
-        )
+        annots.df.to_csv(get_path(top_dir_path, conf.HR_PRS_SL))
+        annots.df_counts.to_csv(get_path(top_dir_path, conf.HR_CNTS_SL))
         if not "dont_save_plot" in kwargs.keys():
             for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
-                plot_hp(path.joinpath(fold.stem), lim, thresh, metric)
+                plot_hp(top_dir_path, lim, thresh, metric)
 
         if sc:
-            annots.df_sc.to_csv(
-                get_path(path.joinpath(fold.stem), conf.HR_PRS_SC)
-            )
-            annots.df_sc_cnt.to_csv(
-                get_path(path.joinpath(fold.stem), conf.HR_CNTS_SC)
-            )
+            annots.df_sc.to_csv(get_path(top_dir_path, conf.HR_PRS_SC))
+            annots.df_sc_cnt.to_csv(get_path(top_dir_path, conf.HR_CNTS_SC))
             if not "dont_save_plot" in kwargs.keys():
                 for metric in (conf.HR_CNTS_SC, conf.HR_PRS_SC):
-                    plot_hp(
-                        path.joinpath(fold.stem), lim_sc, thresh_sc, metric
-                    )
+                    plot_hp(top_dir_path, lim_sc, thresh_sc, metric)
         print("\n")
 
 
@@ -475,7 +470,8 @@ class ProcessLimits:
             thresh_label = f"thresh_{self.thresh_sc}_seq_{self.lim_sc}"
         else:
             thresh_label = f"thresh_{self.thresh}_sim"
-        new_thresh_path = dataset_path.parent.parent.joinpath(thresh_label)
+        conf.THRESH_LABEL = thresh_label
+        new_thresh_path = Path(conf.GEN_ANNOT_SRC).joinpath(thresh_label)
         new_thresh_path = new_thresh_path.joinpath(
             self.files[self.file_ind - 1]
             .relative_to(dataset_path.parent)
@@ -607,7 +603,7 @@ def return_hourly_pres_df(
 
 def get_path(path, metric):
     if not path.stem == "analysis":
-        save_path = Path(path).joinpath("analysis")
+        save_path = path.parent.joinpath("analysis").joinpath(path.stem)
     else:
         save_path = path
     save_path.mkdir(exist_ok=True, parents=True)
@@ -622,8 +618,8 @@ def get_title(metric):
 
 
 def plot_hp(path, lim, thresh, metric):
-    path = Path(path).joinpath("analysis")
-    df = pd.read_csv(get_path(path, metric))
+    path = get_path(path, metric)
+    df = pd.read_csv(path)
     h_pres = df.loc[:, h_of_day_str()]
     h_pres.index = df["Date"]
     plt.figure(figsize=[8, 6])
@@ -637,7 +633,9 @@ def plot_hp(path, lim, thresh, metric):
     sns.heatmap(h_pres.T, cmap="crest", **d)
     plt.ylabel("hour of day")
     plt.tight_layout()
-    plt.savefig(path.joinpath(f"{metric}_{thresh:.2f}_{lim:.0f}.png"), dpi=150)
+    plt.savefig(
+        path.parent.joinpath(f"{metric}_{thresh:.2f}_{lim:.0f}.png"), dpi=150
+    )
     plt.close()
 
 

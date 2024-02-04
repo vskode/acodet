@@ -115,7 +115,9 @@ class ShowAnnotationPredictions:
                     to view this tab."""
                 )
 
-    def show_individual_files(self, tab_number=1, thresh_path="thresh_0.5"):
+    def show_individual_files(
+        self, tab_number=1, thresh_path=conf["thresh_label"]
+    ):
         with getattr(self, f"tab{tab_number}"):
             path = self.annots_path.joinpath(thresh_path)
             annot_files = [l for l in path.rglob("*.txt")]
@@ -149,8 +151,9 @@ class Results(utils.Limits):
             number of tab to show results in, by default 3
         """
         self.plots_paths = [
-            p for p in disp_obj.annots_path.rglob("*analysis*")
-        ]
+            [d for d in p.iterdir() if d.is_dir()]
+            for p in disp_obj.annots_path.rglob("*analysis*")
+        ][0]
         if not self.plots_paths:
             st.write(
                 "No analysis files found for this dataset. "
@@ -173,7 +176,7 @@ class Results(utils.Limits):
 
     def init_tab(self, tab, key):
         with tab:
-            datasets = [l.parent.stem for l in self.plots_paths]
+            datasets = [l.stem for l in self.plots_paths]
 
             chosen_dataset = st.selectbox(
                 label=f"""Choose a dataset:""",
@@ -181,9 +184,9 @@ class Results(utils.Limits):
                 key=f"dataset_selec_{key}",
             )
             self.chosen_dataset = (
-                self.disp_obj.annots_path.joinpath("thresh_0.5")
-                .joinpath(chosen_dataset)
+                self.disp_obj.annots_path.joinpath(conf["thresh_label"])
                 .joinpath("analysis")
+                .joinpath(chosen_dataset)
             )
 
             limit = st.radio(
