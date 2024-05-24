@@ -13,3 +13,4 @@ tensorflow_io==0.31.0
 plotly==5.16.1
 black==23.7.0
 pre-commit==3.3.3
+pyqt==5.15.6
