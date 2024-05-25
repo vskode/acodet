@@ -49,11 +49,11 @@ https://acodet-web.streamlit.app/
 `git clone https://github.com/vskode/acodet.git`
 - Install virtualenv (copy and paste in Git Bash console):
 
-`$HOME/AppData/Local/Programs/Python/Python38/python -m pip install virtualenv`
+`"$HOME/AppData/Local/Programs/Python/Python38/python" -m pip install virtualenv`
 
 - Create a new virtual environment (default name env_acodet can be changed):
 
- `$HOME/AppData/Local/Programs/Python/Python38/python -m virtualenv env_acodet`
+ `"$HOME/AppData/Local/Programs/Python/Python38/python" -m virtualenv env_acodet`
 
 - activate newly created virtual environment (change env_acodet if necessary):
 
