@@ -17,6 +17,8 @@ Play around with the user interface on the prototype here:
 https://acodet-web.streamlit.app/
 (the program will look identical when executed on your computer)
 
+Video tutorials for installation and usage of the AcoDet GUI:
+https://www.youtube.com/watch?v=bJf4d8qf9h0&list=PLQOW4PvEYW-GNWIYRehs2-4-sa9T20c8A
 
 ## Table of Contents
 - [Installation on Windows](#installation-on-windows)
