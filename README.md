@@ -1,42 +1,52 @@
 # **acodet** - **Aco**ustic **Det**ector
-## Framework for the **usage** and **training** of acoustic species detectors based on machine learning using spectrogram images to detect animal vocalizations 
+## Framework for the **usage** and **training** of acoustic species detectors based on CNN models
 
+### Highlights
 - **Integrated graphical user interface (GUI), so no coding required!**
 - Supports Raven table format
     - resulting spreadsheets can be directly imported into raven to view annotations
 - automatic generation of presence/absence visualizations
     - GUI supports interactive visualizations, allowing you to adjust model thresholds and instantly view the results
 - headless version included for those that prefer command line tools
-- variable thresholding
+- interactive post-processing methods to reduce false-positives
 ---------------------------------------------------
 sample output:
-<!-- include an image -->
+
 ![Annotation Output](acodet/src/imgs/annotation_output.png)
 
-Play around with the user interface on the prototype here:
+Play around with the GUI in the __Online Demo__ here:
 https://acodet-web.streamlit.app/
 (the program will look identical when executed on your computer)
 
-Video tutorials for installation and usage of the AcoDet GUI:
+__Video tutorials__ for installation and usage of the AcoDet GUI:
 https://www.youtube.com/watch?v=bJf4d8qf9h0&list=PLQOW4PvEYW-GNWIYRehs2-4-sa9T20c8A
 
+The corresponding paper to acodet can be found here: 
+https://doi.org/10.1121/10.0025275
+
+
 ## Table of Contents
-- [Installation on Windows](#installation-on-windows)
-- [Installation on Mac](#installation-on-mac)
-- [Installation on Linux](#installation-on-linux)
-- [acodet Usage with GUI](#acodet-usage-with-gui)
-    - [Usecase 1: Generating annotations (GUI)](#usecase-1-generating-annotations-gui)
-    - [Usecase 2: Generating new training data (GUI)](#usecase-2-generating-new-training-data-gui)
-    - [Usecase 3: Training (GUI)](#usecase-3-training-gui)
-- [acodet Usage headless](#acodet-usage-headless)
-    - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
-    - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
-    - [Usecase 3: Training](#usecase-3-training)
+- [Installation](#installation)
+    - [Installation on Windows](#installation-on-windows)
+    - [Installation on Mac](#installation-on-mac)
+    - [Installation on Linux](#installation-on-linux)
+- [Usage](#usage)
+    - [acodet Usage with GUI](#acodet-usage-with-gui)
+        - [Usecase 1: Generating annotations (GUI)](#usecase-1-generating-annotations-gui)
+        - [Usecase 2: Generating new training data (GUI)](#usecase-2-generating-new-training-data-gui)
+        - [Usecase 3: Training (GUI)](#usecase-3-training-gui)
+    - [acodet Usage headless](#acodet-usage-headless)
+        - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
+        - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
+        - [Usecase 3: Training](#usecase-3-training)
+- [Explanation of Sequence limit](#explanation-of-sequence-limit)
+- [Citation](#citation)
 - [FAQ](#faq)
 
 
 ----------------------------------------------------
-# Installation on Windows
+# Installation
+## Installation on Windows
 ### Preliminary software installations:
 - install python 3.8: (standard install, no admin privileges needed)
 <https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
@@ -67,7 +77,7 @@ https://www.youtube.com/watch?v=bJf4d8qf9h0&list=PLQOW4PvEYW-GNWIYRehs2-4-sa9T20
 
 -------------------------
 
-# Installation on Mac
+## Installation on Mac
 ### Preliminary software installations:
 - install python 3.8: (standard install, no admin privileges needed)
 <https://www.python.org/ftp/python/3.8.7/python-3.8.7-macosx10.9.pkg>
@@ -105,7 +115,7 @@ https://www.youtube.com/watch?v=bJf4d8qf9h0&list=PLQOW4PvEYW-GNWIYRehs2-4-sa9T20
         `pip install -r acodet/requirements.txt`
 
 --------------------------------------------
-# Installation on Linux
+## Installation on Linux
 ### Preliminary software installations:
 - install python 3.8: (standard install, no admin privileges needed)
 <https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
@@ -134,7 +144,8 @@ https://www.youtube.com/watch?v=bJf4d8qf9h0&list=PLQOW4PvEYW-GNWIYRehs2-4-sa9T20
 
     `pip install -r acodet/requirements.txt`
 
-# AcoDet usage with GUI
+# Usage
+## AcoDet usage with GUI
 
 AcoDet provides a graphical user interface (GUI) for users to intuitively use the program. All inputs and outputs are handled through the GUI. To run the gui, run (while in acodet directory):
 
@@ -149,7 +160,7 @@ or
 
 while your terminal directory is inside **acodet**. 
 
-## Usecase 1: generating annotations (GUI)
+### Usecase 1: generating annotations (GUI)
 
 - Choose the 1 - Inference option from the first drop-down menu
 - Choose between the predefined Settings
@@ -180,17 +191,17 @@ while your terminal directory is inside **acodet**.
     - the "Presence Plots" shows a similar visualization as the previous section, however, only showing binary presence.
 
 
-## Usecase 2: generating new training data (GUI)
+### Usecase 2: generating new training data (GUI)
 
 This feature is currently not integrated in the gui.
-## Usecase 3: training (GUI)
+### Usecase 3: training (GUI)
 
 This feature is currently not integrated in the gui.
 
-# AcoDet usage headless
+## AcoDet usage headless
 Users only need to change the files **simple_congif.yml** and **advanced_config.yml** to use AcoDet. Once the config files are changed, users can run the program by running the command `python run.py` inside the **acodet** directory.
 
-## Usecase 1: generating annotations
+### Usecase 1: generating annotations
 To generate annotations:
 - open the file **simple_config.yml** in any Editor (default is Notepad). 
 - change `run_config` to `1`
@@ -219,7 +230,7 @@ To start the program:
 
 `python acodet/run.py`
 
-## Output
+### Output
 
 The software will now run thorugh your dataset and gerate annotations for every (readable) soundifle within the dataset. While running, a spreadsheet, called stats.csv is continuously updated showing information on the annotations for every file (do not open while program is still running, because the program wont be able to access it).
 
@@ -229,7 +240,7 @@ If you have chosen option 2 (or 0) you will also find a directory `thresh_0.x` w
 
 If you have chosen option 3, 4 or 0 you will find a directory `analysis` within the dataset directory. In that directory you will find spreadsheets for hourly presence and hourly counts, as well as visualizations of the hourly presence and hourly counts.
 
-## Usecase 2: generating new training data
+### Usecase 2: generating new training data
 
 Either use manually created annotations -> option 2, or create new annotations by reviewing the automatically generated annotations -> option 1.
 
@@ -256,7 +267,7 @@ To start the program:
 
 `python acodet/run.py`
 
-## Usecase 3: training
+### Usecase 3: training
 
 To train the model:
 - open the file **simple_config.yml** in any Editor (default is Notepad). 
@@ -275,6 +286,42 @@ To start the program:
 - run the run.py script:
 
 `python acodet/run.py`
+
+# Explanation of Sequence limit
+Besides a simple thresholding (simple limit) the sequence limit can be used to distinguish repeating vocalizations from other noise sources. For humpback whales this vastly reduces the number of generated false positives.
+
+To briefly explain:
+In a stream of 20 consecutive windows (of approx. 4 s length) you can set limit and threshold. After applying the limit, predictions are only kept if they exceed the threshold and occur in thre frequency set by the limit. This is especially convenient for __hourly presence__ annotations. The below image shows an example of 20 consecutive windows with their given model prediction values. The highlighted values exceed the threshold and since they occur in the required frequency (Limit=3), the hourly presence yield the value 1.
+
+![Sequence Limit](acodet/src/imgs/sequence_limit.png)
+
+The sequence limit can be useful in noisy environments, where vocalizations are masked by noise and their repetitiveness can be used to distinguish them from irregular background noise.
+
+Threshold and limit can be set interactively and their effect on the data can be analyzed right away. As this is only post-processing the existing annotations, computing time is very fast. The following image shows a screenshot of the sequence limit in the acodet GUI.
+
+![alt text](acodet/src/imgs/gui_sequence_limit.png)
+
+# Citation
+
+If you used acodet in your work, please reference the following:
+
+Vincent Kather, Fabian Seipel, Benoit Berges, Genevieve Davis, Catherine Gibson, Matt Harvey, Lea-Anne Henry, Andrew Stevenson, Denise Risch; Development of a machine learning detector for North Atlantic humpback whale song. J. Acoust. Soc. Am. 1 March 2024; 155 (3): 2050–2064.
+
+For bibtex:
+```bibtex
+@article{10.1121/10.0025275,
+    author = {Kather, Vincent and Seipel, Fabian and Berges, Benoit and Davis, Genevieve and Gibson, Catherine and Harvey, Matt and Henry, Lea-Anne and Stevenson, Andrew and Risch, Denise},
+    title = "{Development of a machine learning detector for North Atlantic humpback whale song}",
+    journal = {The Journal of the Acoustical Society of America},
+    volume = {155},
+    number = {3},
+    pages = {2050-2064},
+    year = {2024},
+    month = {03},
+    issn = {0001-4966},
+    doi = {10.1121/10.0025275}
+}
+```
 
 # FAQ
 
