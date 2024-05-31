@@ -179,46 +179,6 @@ def check_for_multiple_time_dirs_error(path):
     return path
 
 
-def filter_annots_by_thresh(time_dir=None, **kwargs):
-    if not time_dir:
-        path = Path(conf.GEN_ANNOT_SRC)
-    else:
-        path = Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir)
-    files = get_files(location=path, search_str="**/*txt")
-    files = [f for f in files if conf.THRESH_LABEL in str(f.parent)]
-    path = check_for_multiple_time_dirs_error(path)
-    for i, file in enumerate(files):
-        try:
-            annot = pd.read_csv(file, sep="\t")
-        except Exception as e:
-            print(
-                "Could not process file, maybe not an annotation file?",
-                "Error: ",
-                e,
-            )
-        annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
-        save_dir = (
-            path.joinpath(f"thresh_{conf.THRESH}")
-            .joinpath(file.relative_to(path.joinpath(conf.THRESH_LABEL)))
-            .parent
-        )
-        save_dir.mkdir(exist_ok=True, parents=True)
-
-        if "Selection" in annot.columns:
-            annot.index.name = "Selection"
-            annot = annot.drop(columns=["Selection"])
-        else:
-            annot.index = np.arange(1, len(annot) + 1)
-            annot.index.name = "Selection"
-        annot.to_csv(save_dir.joinpath(file.stem + file.suffix), sep="\t")
-        if conf.STREAMLIT and "progbar1" in kwargs.keys():
-            kwargs["progbar1"].progress((i + 1) / len(files), text="Progress")
-        else:
-            print(f"Writing file {i+1}/{len(files)}")
-    if conf.STREAMLIT:
-        return path
-
-
 if __name__ == "__main__":
     train_dates = ["2022-11-30_01"]
 

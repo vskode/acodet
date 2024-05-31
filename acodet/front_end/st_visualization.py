@@ -14,6 +14,9 @@ def output():
     conf = read_session_file()
     if st.session_state.run_option == 1:
         if st.session_state.preset_option == 0:
+            utils.write_to_session_file(
+                "thresh_label", f"thresh_{conf['thresh']}_sim"
+            )
             disp = ShowAnnotationPredictions()
             disp.show_annotation_predictions()
             disp.create_tabs(
@@ -24,9 +27,11 @@ def output():
                 ]
             )
             disp.show_stats()
-            disp.show_individual_files()
             disp.show_individual_files(
-                tab_number=2, thresh_path=f"thresh_{conf['thresh']}"
+                thresh_path=f'thresh_{conf["default_threshold"]}'
+            )
+            disp.show_individual_files(
+                tab_number=2, thresh_path=f"thresh_{conf['thresh']}_sim"
             )
             plot_tabs = Results(disp)
             plot_tabs.create_tabs()
@@ -175,6 +180,7 @@ class Results(utils.Limits):
             self.init_tab(tab=tab, key=key)
 
     def init_tab(self, tab, key):
+        conf = read_session_file()
         with tab:
             datasets = [l.stem for l in self.plots_paths]
 

@@ -34,14 +34,13 @@ with open("acodet/src/tmp_session.json", "w") as f:
 ##############################################################################
 
 
-from acodet.annotate import run_annotation, filter_annots_by_thresh
+from acodet.annotate import run_annotation
 from acodet.funcs import return_windowed_file, get_train_set_size
 from acodet.models import GoogleMod
 from acodet.combine_annotations import generate_final_annotations
 from acodet.tfrec import write_tfrec_dataset
 from acodet.train import run_training
 from acodet import global_config as conf
-
 
 
 class TestDetection(unittest.TestCase):
@@ -60,20 +59,6 @@ class TestDetection(unittest.TestCase):
             "Number of predictions is not what it should be.",
         )
 
-        filter_annots_by_thresh(self.time_stamp)
-        file = list(
-            Path(conf.GEN_ANNOT_SRC)
-            .joinpath(self.time_stamp)
-            .joinpath(f"thresh_{conf.THRESH}")
-            .glob("**/*.txt")
-        )[0]
-        df = pd.read_csv(file)
-        self.assertEqual(
-            len(df),
-            309,
-            "Number of predictions from filtered thresholds " "is incorrect.",
-        )
-
 
 class TestTraining(unittest.TestCase):
     def test_model_load(self):
@@ -85,6 +70,7 @@ class TestTraining(unittest.TestCase):
     #     n_train, n_noise = get_train_set_size(data_dir)
     #     self.assertEqual(n_train, 517)
     #     self.assertEqual(n_noise, 42)
+
 
 class TestTFRecordCreation(unittest.TestCase):
     def test_tfrecord(self):

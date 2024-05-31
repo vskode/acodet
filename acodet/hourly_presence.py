@@ -140,16 +140,16 @@ def compute_hourly_pres(
         thresh_sc = conf.SEQUENCE_THRESH
         lim_sc = conf.SEQUENCE_LIMIT
 
-    path = find_thresh05_path_in_dir(time_dir)
+    path05 = find_thresh05_path_in_dir(time_dir)
 
     if "multi_datasets" in conf.session:
         directories = [
             [d for d in p.iterdir() if d.is_dir()]
-            for p in path.iterdir()
+            for p in path05.iterdir()
             if p.is_dir()
         ][0]
     else:
-        directories = [p for p in path.iterdir() if p.is_dir()]
+        directories = [p for p in path05.iterdir() if p.is_dir()]
     directories = [d for d in directories if not d.stem == "analysis"]
 
     for ind, fold in enumerate(directories):
@@ -166,14 +166,15 @@ def compute_hourly_pres(
             fold,
             dir_ind=ind,
             total_dirs=len(directories),
+            time_dir=path05.parent,
             **kwargs,
         )
         if "save_filtered_selection_tables" in kwargs:
-            top_dir_path = path.parent.joinpath(conf.THRESH_LABEL).joinpath(
+            top_dir_path = path05.parent.joinpath(conf.THRESH_LABEL).joinpath(
                 fold.stem
             )
         else:
-            top_dir_path = path.joinpath(fold.stem)
+            top_dir_path = path05.joinpath(fold.stem)
 
         annots.df.to_csv(get_path(top_dir_path, conf.HR_PRS_SL))
         annots.df_counts.to_csv(get_path(top_dir_path, conf.HR_CNTS_SL))
@@ -454,7 +455,9 @@ class ProcessLimits:
                     bool(self.df_sc_cnt.loc[self.row, hour])
                 )
 
-    def save_filtered_selection_tables(self, dataset_path):
+    def save_filtered_selection_tables(
+        self, dataset_path, time_dir=None, **kwargs
+    ):
         """
         Save the selection tables under a new directory with the
         chosen filter settings. Depending if sequence limit is chosen
@@ -465,13 +468,19 @@ class ProcessLimits:
         ----------
         dataset_path : pathlib.Path
             path to dataset in current annotation timestamp folder
+        time_dir : str, optional
+            if preset == 0 is run the selection tables are recomputed
+            and saved to the same time_stamp folder, by default None
         """
         if self.sc:
             thresh_label = f"thresh_{self.thresh_sc}_seq_{self.lim_sc}"
         else:
             thresh_label = f"thresh_{self.thresh}_sim"
         conf.THRESH_LABEL = thresh_label
-        new_thresh_path = Path(conf.GEN_ANNOT_SRC).joinpath(thresh_label)
+        if not time_dir:
+            new_thresh_path = Path(conf.GEN_ANNOT_SRC).joinpath(thresh_label)
+        else:
+            new_thresh_path = Path(time_dir).joinpath(thresh_label)
         new_thresh_path = new_thresh_path.joinpath(
             self.files[self.file_ind - 1]
             .relative_to(dataset_path.parent)
@@ -588,7 +597,7 @@ def return_hourly_pres_df(
         filt_annots.filter_files_of_hour_by_limit(date, hour)
 
         if save_filtered_selection_tables:
-            filt_annots.save_filtered_selection_tables(path)
+            filt_annots.save_filtered_selection_tables(path, **kwargs)
 
         print(
             f"Computing files in {path.stem}: "

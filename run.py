@@ -16,7 +16,7 @@ def main(sc=True, **kwargs):
         depending on the preset option, the function returns either the time
         when the annotation was started or None
     """
-    from acodet.annotate import run_annotation, filter_annots_by_thresh
+    from acodet.annotate import run_annotation
     from acodet.train import run_training, save_model
     from acodet.tfrec import write_tfrec_dataset
     from acodet.hourly_presence import compute_hourly_pres, calc_val_diff
@@ -39,9 +39,6 @@ def main(sc=True, **kwargs):
         if preset == 1:
             timestamp_foldername = run_annotation(**kwargs)
             return timestamp_foldername
-        elif preset == 2:
-            new_thresh = filter_annots_by_thresh(**kwargs)
-            return new_thresh
         elif preset == 3:
             compute_hourly_pres(sc=sc, **kwargs)
         elif preset == 4:
@@ -50,8 +47,12 @@ def main(sc=True, **kwargs):
             calc_val_diff(**kwargs)
         elif preset == 0:
             timestamp_foldername = run_annotation(**kwargs)
-            filter_annots_by_thresh(timestamp_foldername, **kwargs)
-            compute_hourly_pres(timestamp_foldername, sc=sc, **kwargs)
+            compute_hourly_pres(
+                timestamp_foldername,
+                sc=False,
+                save_filtered_selection_tables=True,
+                **kwargs
+            )
             return timestamp_foldername
 
     elif conf.RUN_CONFIG == 2:
