@@ -68,7 +68,13 @@ def output():
 
 class ShowAnnotationPredictions:
     def show_annotation_predictions(self):
-        saved_annots_dir = Path(st.session_state.save_dir)
+        conf = read_session_file()
+        if not st.session_state.save_dir:
+            saved_annots_dir = Path(
+                conf["generated_annotation_source"]
+            ).joinpath(conf["thresh_label"])
+        else:
+            saved_annots_dir = Path(st.session_state.save_dir)
         if len(list(saved_annots_dir.parents)) > 1:
             self.annots_path = saved_annots_dir
         else:

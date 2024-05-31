@@ -166,13 +166,11 @@ def compute_hourly_pres(
             fold,
             dir_ind=ind,
             total_dirs=len(directories),
-            time_dir=path05.parent,
+            time_dir=time_dir,
             **kwargs,
         )
         if "save_filtered_selection_tables" in kwargs:
-            top_dir_path = path05.parent.joinpath(conf.THRESH_LABEL).joinpath(
-                fold.stem
-            )
+            top_dir_path = annots.new_thresh_path
         else:
             top_dir_path = path05.joinpath(fold.stem)
 
@@ -455,6 +453,25 @@ class ProcessLimits:
                     bool(self.df_sc_cnt.loc[self.row, hour])
                 )
 
+    def find_thresh_path(self, time_dir, thresh_label, dataset_path):
+        if not time_dir:
+            new_thresh_path = Path(conf.GEN_ANNOT_SRC).joinpath(thresh_label)
+        else:
+            path05 = find_thresh05_path_in_dir(time_dir)
+            new_thresh_path = path05.parent.joinpath(thresh_label)
+        previous_thresh_path = (
+            self.files[self.file_ind - 1]
+            .relative_to(dataset_path.parent)
+            .parent
+        )
+        if "thresh" in str(previous_thresh_path.parents[0]):
+            previous_thresh_path = previous_thresh_path.parents[1].joinpath(
+                previous_thresh_path.stem
+            )
+        self.new_thresh_path = new_thresh_path.joinpath(previous_thresh_path)
+
+        self.new_thresh_path.mkdir(exist_ok=True, parents=True)
+
     def save_filtered_selection_tables(
         self, dataset_path, time_dir=None, **kwargs
     ):
@@ -476,18 +493,9 @@ class ProcessLimits:
             thresh_label = f"thresh_{self.thresh_sc}_seq_{self.lim_sc}"
         else:
             thresh_label = f"thresh_{self.thresh}_sim"
-        conf.THRESH_LABEL = thresh_label
-        if not time_dir:
-            new_thresh_path = Path(conf.GEN_ANNOT_SRC).joinpath(thresh_label)
-        else:
-            new_thresh_path = Path(time_dir).joinpath(thresh_label)
-        new_thresh_path = new_thresh_path.joinpath(
-            self.files[self.file_ind - 1]
-            .relative_to(dataset_path.parent)
-            .parent
-        )
-        new_thresh_path.mkdir(exist_ok=True, parents=True)
-        file_path = new_thresh_path.joinpath(
+
+        self.find_thresh_path(time_dir, thresh_label, dataset_path)
+        file_path = self.new_thresh_path.joinpath(
             self.files[self.file_ind - 1].stem
             + self.files[self.file_ind - 1].suffix
         )

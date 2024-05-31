@@ -206,6 +206,13 @@ class Limits:
             write_to_session_file(self.thresh_label, self.thresh)
             if self.sc:
                 write_to_session_file(self.limit_label, self.limit)
+                write_to_session_file(
+                    "thresh_label", f"thresh_{self.thresh}_seq_{self.limit}"
+                )
+            else:
+                write_to_session_file(
+                    "thresh_label", f"thresh_{self.thresh}_sim"
+                )
 
             import run
 
@@ -216,6 +223,7 @@ class Limits:
                 preset=3,
                 save_filtered_selection_tables=True,
             )
+            st.stop()
 
 
 class TFPredictProgressBar(keras.callbacks.Callback):
