@@ -62,7 +62,7 @@ class PresetInterfaceSettings:
         timestamp_radio = st.radio(
             f"Would you like to customize the annotaitons folder?",
             ("No", "Yes"),
-            key="radio_" + self.key,
+            key="radio_timestamp_" + self.key,
             horizontal=True,
             help=help_strings.ANNOTATIONS_TIMESTAMP_RADIO,
         )
@@ -114,6 +114,7 @@ class PresetInterfaceSettings:
             "Enter the path to your sound data:",
             "tests/test_files",
             help=help_strings.ENTER_PATH,
+            key="text_" + self.key,
         )
         self.config["sound_files_source"] = utils.open_folder_dialogue(
             path, key="folder_" + self.key, help=help_strings.CHOOSE_FOLDER
@@ -147,7 +148,6 @@ class PresetInterfaceSettings:
         )
         if multiple_datasets == "Yes":
             self.config["multi_datasets"] = True
-
 
     def rerun_annotations(self):
         """
