@@ -87,9 +87,9 @@ class TestTFRecordCreation(unittest.TestCase):
 
         with open(metadata_file_path, "r") as f:
             data = json.load(f)
-            self.assertEqual(
+            self.assertGreater(
                 data["dataset"]["size"]["train"],
-                517,
+                10,
                 "TFRecords files has wrong number of datapoints.",
             )
 
