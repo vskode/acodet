@@ -1,0 +1,16 @@
+*.wav
+*.zip
+utils/__*
+*__pycache__*
+acodet/_*
+acodet/src/tmp_*
+acodet/src/models/Humpback_20221130/
+_*
+.vscode/*
+tests/test_files/analysi*
+tests/test_files/test_annoted_files/thresh_0.5/N1/analysi*
+generated*
+tests/test_files/test_gen*
+tests/test_files/test_com*
+tests/test_files/test_tfr*
+simple_test*

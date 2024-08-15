@@ -1,0 +1,16 @@
+keras_cv==0.5.0
+librosa==0.9.1
+matplotlib==3.5.1
+numpy==1.22.0
+pandas==1.4.2
+PyYAML==6.0.1
+seaborn==0.12.2
+streamlit==1.25.0
+tensorflow==2.12.0
+tensorflow_addons==0.20.0
+tensorflow_intel
+tensorflow_io==0.31.0
+plotly==5.16.1
+black==23.7.0
+pre-commit==3.3.3
+pyqt5==5.15.6

@@ -1,0 +1,99 @@
+##############################################################################
+
+# This file is for you to edit the paths corresponding to the following:
+# - source path of annotation files
+# - destination path of your annotation files (leave unchanged if possible)
+# - source path of sound files (.wav of .aif) (top most directory)
+# - destination path of any plots or spreadsheets
+
+# This file is also for you to edit the threshold value of the detector, to 
+# make the detector more sensitive or less sensitive.
+#   - Higher threshold will decrease number of false positives but
+#   at the cost of overlooking vocalizations.
+#   - Lower threshold values will increase number of false positives
+#   but more likely also detect false positives.
+
+
+##############################################################################
+
+
+
+
+###################### 1. DEFINE YOUR RUN ####################################
+
+# what would you like to do?
+# chose the run configuration: 
+#     - 1 generate annotations
+#     - 2 generate new training data from reviewed annotations
+#     - 3 train (and evaluate)
+run_config: 1
+
+# depending on the main task, chose your predefined settings:
+# for generation of annotations, chose:
+#     - 1 generate new annotations
+#     - 2 filter existing annotations with different threshold
+#     - 3 generate hourly predictions (simple limit and sequence criterion)
+#     - 4 generate hourly predictions (only simple limit)
+#     - 5 generate hourly predictions with varying limits - n.i.
+#     - 0 all of the above
+# for generation of new training data, chose:
+#     - 1 generate new training data from reviewed annotations
+#     - 2 generate new training data from reviewed annotations 
+#       and fill space between annotations with noise annotations
+# for training, chose:
+#     - 1 continue training on existing model and save model in the end
+#     - 2 evaluate saved model
+#     - 3 evaluate model checkpoint
+#     - 4 save model specified in advanced config
+predefined_settings: 0
+
+####################### 2. DEFINCE YOUR PATHS  ###############################
+
+## Paths
+# source path for your sound files (top most directory)
+# relevant for generation of new annotations (option run_config: 1)
+sound_files_source: 'path to your sound files'
+
+# source path for automatically generated annotations
+# relevant for generation of hourly or daily presence, or recomputing
+# with a different threshold
+# (options run_config: 1 and predifined_settings: 2 and 4)
+generated_annotation_source: '../Cathy/HBW_detector'
+
+
+# source path for annotations created or reviewed by you
+# relevant for creation of new dataset (option run_config: 2)
+#   -> might be easier to just copy annotation files to default location
+reviewed_annotation_source: '../annotations'
+
+# source path for automatically generated combined annotations 
+# Only relevant for creation of new dataset (option run_config: 2)
+# if unsure, leave unchanged. 
+annotation_destination: '../combined_annotations'
+
+
+
+
+####################### 3. DEFINE YOUR PARAMETERS  ###########################
+
+## Model Parameters
+# threshold for predictions
+thresh: 0.9
+# number of annotations above threshold for hourly presence (default = 15)
+simple_limit: 15
+# threshold for sequence criterion (default = 0.9)
+sequence_thresh: 0.9
+# number of annotations above threshold within 20 consecutive windows
+# for hourly presence (default = 3)
+sequence_limit: 3
+# number of consecutive windows that sc_limit has to occur in (default = 20)
+sequence_con_win: 20
+# number of annotations that correspond to the upper limit of color bar in 
+# hourly annotations plots
+max_annots_per_hour: 150
+# path to validation file of hourly presence dataset
+hourly_presence_validation_path: 'validation.csv'
+
+# number of predictions that get computed at once - should be in [20, 2000]
+# worth testing out different values to find whats fastest for your machine
+prediction_window_limit: 1000
