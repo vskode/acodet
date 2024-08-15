@@ -1,12 +1,12 @@
 ---
-title: {{title}}
-emoji: {{emoji}}
-colorFrom: {{colorFrom}}
-colorTo: {{colorTo}}
-sdk: {{sdk}}
-sdk_version: "{{sdkVersion}}"
+title: acodet
+emoji: 🛥
+colorFrom: red
+colorTo: yellow
+sdk: streamlit
+sdk_version: "1.25"
 app_file: app.py
-pinned: false
+pinned: true 
 ---
 
 # **acodet** - **Aco**ustic **Det**ector
