@@ -4,9 +4,9 @@ emoji: 🛥
 colorFrom: red
 colorTo: yellow
 sdk: streamlit
-sdk_version: "1.25"
+sdk_version: 1.37.1
 app_file: app.py
-pinned: true 
+pinned: true
 ---
 
 # **acodet** - **Aco**ustic **Det**ector
