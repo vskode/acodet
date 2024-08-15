@@ -110,14 +110,31 @@ class PresetInterfaceSettings:
         """
         Interface options when inference is selected, i.e. preset options 0 or 1.
         """
-        path = st.text_input(
-            "Enter the path to your sound data:",
-            "tests/test_files",
-            help=help_strings.ENTER_PATH,
-        )
-        self.config["sound_files_source"] = utils.open_folder_dialogue(
-            path, key="folder_" + self.key, help=help_strings.CHOOSE_FOLDER
-        )
+        # path = st.text_input(
+        #     "Enter the path to your sound data:",
+        #     "tests/test_files",
+        #     help=help_strings.ENTER_PATH,
+        # )
+        files = st.file_uploader("Choose your sound files (make sure they a time stamp of some format)", 
+                                 accept_multiple_files=True)
+        # also hier kommen die files als so file objekte rein
+        # ich muss irgendwie festlegen dass sie immer am selben ordner landen
+        # und das er sich die ganze verzeichnis check sache spart. ich kann die
+        # nicht in dieser json abspeichern, also reiche ich die entweder direkt weiter
+        # oder ich lad sie erst da hoch wo sie gebraucht werden
+        # oder ich speicher sie hier erstmal ab. ist dann bisschen doppelt gemoppelt
+        # aber dafuer muss sich die struktur so wenig wie moeglich aendern
+        import librosa as lb
+        import soundfile as sf
+        self.config["sound_files_source"] = 'user_audio_uploads'
+        
+        if len(files) > 0:
+            # if len(list(Path(self.config["sound_files_source"]).iterdir())) == 0:
+            for ind, file in enumerate(files):
+                st.progress(ind/len(files), 'Checking files...')
+                audio, sr = lb.load(file)
+                sf.write('user_audio_uploads/' + file.name, audio, sr)
+                
         self.config["thresh"] = utils.validate_float(
             utils.user_input(
                 "Model threshold:", "0.9", help=help_strings.THRESHOLD
