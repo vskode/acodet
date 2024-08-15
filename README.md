@@ -1,3 +1,14 @@
+---
+title: {{title}}
+emoji: {{emoji}}
+colorFrom: {{colorFrom}}
+colorTo: {{colorTo}}
+sdk: {{sdk}}
+sdk_version: "{{sdkVersion}}"
+app_file: app.py
+pinned: false
+---
+
 # **acodet** - **Aco**ustic **Det**ector
 ## Framework for the **usage** and **training** of acoustic species detectors based on CNN models
 
