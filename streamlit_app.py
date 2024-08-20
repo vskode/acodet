@@ -31,7 +31,7 @@ def select_preset():
 
 
 def run_computions(**kwargs):
-    utils.next_button(id=4, text="Run computations")
+    utils.next_button(id=4, text="Next step")
     if st.session_state.b4:
         display_not_implemented_text()
         kwargs = utils.prepare_run()
