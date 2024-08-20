@@ -32,6 +32,7 @@ def initial_dropdown(key):
                 "0 - all of the above",
             ),
             key=key,
+            index=3,
             help=help_strings.SELECT_PRESET,
         )[0]
     )

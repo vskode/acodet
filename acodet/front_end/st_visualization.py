@@ -59,6 +59,11 @@ def output():
             disp.show_individual_files()
             plot_tabs = Results(disp, tab_number=2)
             plot_tabs.create_tabs()
+        import shutil
+        dir_name = st.session_state.to_dict()['generated_annotation_source']
+        shutil.make_archive(Path(dir_name).stem, 'zip', dir_name)
+        with open(Path(dir_name).stem + '.zip', 'rb') as f:
+            st.download_button('download files', f, file_name=Path(dir_name).stem + '.zip')
 
 
 class ShowAnnotationPredictions:
