@@ -115,8 +115,8 @@ class PresetInterfaceSettings:
         #     "tests/test_files",
         #     help=help_strings.ENTER_PATH,
         # )
-        files = st.file_uploader("Choose your sound files (make sure they a time stamp of some format)", 
-                                 accept_multiple_files=True)
+        # files = st.file_uploader("Choose your sound files (make sure they a time stamp of some format)", 
+        #                          accept_multiple_files=True)
         # also hier kommen die files als so file objekte rein
         # ich muss irgendwie festlegen dass sie immer am selben ordner landen
         # und das er sich die ganze verzeichnis check sache spart. ich kann die
@@ -124,16 +124,16 @@ class PresetInterfaceSettings:
         # oder ich lad sie erst da hoch wo sie gebraucht werden
         # oder ich speicher sie hier erstmal ab. ist dann bisschen doppelt gemoppelt
         # aber dafuer muss sich die struktur so wenig wie moeglich aendern
-        import librosa as lb
-        import soundfile as sf
-        self.config["sound_files_source"] = 'user_audio_uploads'
+        # import librosa as lb
+        # import soundfile as sf
+        # self.config["sound_files_source"] = 'user_audio_uploads'
         
-        if len(files) > 0:
-            # if len(list(Path(self.config["sound_files_source"]).iterdir())) == 0:
-            for ind, file in enumerate(files):
-                st.progress(ind/len(files), 'Checking files...')
-                audio, sr = lb.load(file)
-                sf.write('user_audio_uploads/' + file.name, audio, sr)
+        # if len(files) > 0:
+        #     # if len(list(Path(self.config["sound_files_source"]).iterdir())) == 0:
+        #     for ind, file in enumerate(files):
+        #         st.progress(ind/len(files), 'Checking files...')
+        #         audio, sr = lb.load(file)
+        #         sf.write('user_audio_uploads/' + file.name, audio, sr)
                 
         self.config["thresh"] = utils.validate_float(
             utils.user_input(

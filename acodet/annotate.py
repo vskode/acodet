@@ -74,9 +74,7 @@ class MetaData:
             Amount of time that prediction took, by default "not calculated"
         """
         self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
-        self.df.loc[f_ind, self.filename] = Path(file).relative_to(
-            relativ_path
-        )
+        self.df.loc[f_ind, self.filename] = file.name
         # TODO relative_path muss noch dauerhaft geändert werden
         self.df.loc[f_ind, self.n_pred_col] = len(annot)
         df_clean = remove_str_flags_from_predictions(annot)
@@ -95,10 +93,18 @@ class MetaData:
             .joinpath(timestamp_foldername)
             .joinpath("stats.csv")
         )
-
+        
+def get_files_for_huggingface_deployment():
+    import streamlit as st
+    files = st.file_uploader("Choose your sound files (make sure they a time stamp of some format)", 
+                            accept_multiple_files=True)
+    if not files:
+        st.stop()
+    return files
 
 def run_annotation(train_date=None, **kwargs):
-    files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="**/*")
+    # files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="**/*")
+    files = get_files_for_huggingface_deployment()
     if not "timestamp_folder" in conf.session:
         timestamp_foldername = time.strftime(
             "%Y-%m-%d_%H-%M-%S", time.gmtime()
@@ -143,8 +149,8 @@ def run_annotation(train_date=None, **kwargs):
 
         st.session_state.progbar1 = 0
     for i, file in enumerate(files):
-        if file.is_dir():
-            continue
+        # if file.is_dir():
+        #     continue
 
         if conf.STREAMLIT:
             import streamlit as st
