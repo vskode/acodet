@@ -254,7 +254,7 @@ def init_model(
         input_specs = True
     if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()
-    else:
+    elif training_path:
         mod_obj.load_ckpt(training_path)
     if not input_specs:
         mod_obj.change_input_to_array()

@@ -242,7 +242,7 @@ def generate_final_annotations(
     if active_learning:
         files = get_active_learning_files(files)
     folders, counts = np.unique(
-        [list(f.relative_to(conf.REV_ANNOT_SRC).parents) for f in files],
+        [f.relative_to(conf.REV_ANNOT_SRC).parent for f in files],
         return_counts=True,
     )
     if len(folders) > 1:
