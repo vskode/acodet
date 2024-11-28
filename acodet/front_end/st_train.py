@@ -58,9 +58,9 @@ def train_options(key="train"):
             config["batch_size"] = utils.validate_int(
                 utils.user_input("batch size", "32")
             )
-            config["epochs"] = utils.validate_int(
-                utils.user_input("epochs", "50")
-            )
+            # config["epochs"] = utils.validate_int(
+            #     utils.user_input("epochs", "50")
+            # )
             config["steps_per_epoch"] = utils.validate_int(
                 utils.user_input("steps per epoch", "1000")
             )

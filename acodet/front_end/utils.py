@@ -134,7 +134,9 @@ def prepare_run():
             }
         else:
             kwargs = {"progbar1": st.progress(0, text="Progress")}
-    return kwargs
+        return kwargs
+    else:
+        return {}
 
 
 class Limits:

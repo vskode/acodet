@@ -308,7 +308,7 @@ def get_src_dir_structure(file, annot_dir):
         return list(file.relative_to(annot_dir).parents)[-2]
 
 
-def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
+def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True, **kwargs):
     annotation_files = list(Path(annot_dir).glob("**/*.csv"))
     if active_learning:
         inbetween_noise = False

@@ -61,7 +61,7 @@ def run_computions(**kwargs):
 
 
 def display_not_implemented_text():
-    if not st.session_state.run_option == 1:
+    if False:#not st.session_state.run_option == 1:
         st.write(
             """This option is not yet implemented for usage
                     with the user interface. A headless version is
