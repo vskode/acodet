@@ -51,11 +51,8 @@ def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
 
 
 def get_dt_filename(file):
-    from streamlit.runtime.uploaded_file_manager import UploadedFile
     if isinstance(file, Path):
         stem = file.stem
-    elif isinstance(file, UploadedFile):
-        stem = Path(file.name).stem
     else:
         stem = file
 
@@ -129,7 +126,6 @@ def load_audio(file, channel=0, **kwargs) -> np.ndarray:
     audio_flat: np.ndarray
         audio array
     """
-    from streamlit.runtime.uploaded_file_manager import UploadedFile
     try:
         if conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
             with open(file, "rb") as f:
@@ -142,10 +138,6 @@ def load_audio(file, channel=0, **kwargs) -> np.ndarray:
             audio_flat = lb.resample(
                 audio_flat, orig_sr=conf.DOWNSAMPLE_SR, target_sr=conf.SR
             )
-        elif isinstance(file, UploadedFile):
-            audio_flat, _ = lb.load(file, sr=conf.SR, mono=False, **kwargs)
-            if len(audio_flat.shape) > 1:
-                audio_flat = audio_flat[channel]
         else:
             with open(file, "rb") as f:
                 audio_flat, _ = lb.load(f, sr=conf.SR, mono=False, **kwargs)
@@ -726,11 +718,11 @@ def gen_annotations(
         date time string foldername corresponding to the time the annotations were
         computed
     """
-    # parent_dirs = manage_dir_structure(file)
+    parent_dirs = manage_dir_structure(file)
 
-    # channel = get_channel(get_top_dir(parent_dirs))
+    channel = get_channel(get_top_dir(parent_dirs))
 
-    audio = load_audio(file)
+    audio = load_audio(file, channel)
     if audio is None:
         raise ImportError(
             f"The audio file `{str(file)}` cannot be loaded. Check if file has "
@@ -745,11 +737,11 @@ def gen_annotations(
         Path(conf.GEN_ANNOTS_DIR)
         .joinpath(timestamp_foldername)
         .joinpath(conf.THRESH_LABEL)
-        .joinpath('UploadedFiles')
+        .joinpath(parent_dirs)
     )
     save_path.mkdir(exist_ok=True, parents=True)
     annotation_df.to_csv(
-        save_path.joinpath(f"{Path(file.name).stem}_annot_{mod_label}.txt"), sep="\t"
+        save_path.joinpath(f"{file.stem}_annot_{mod_label}.txt"), sep="\t"
     )
 
     return annotation_df

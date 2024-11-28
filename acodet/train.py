@@ -35,7 +35,6 @@ def run_training(
     f_score_beta=conf.F_SCORE_BETA,
     f_score_thresh=conf.F_SCORE_THRESH,
     unfreeze=conf.UNFREEZE,
-    **kwargs
 ):
     info_text = f"""Model run INFO:
 

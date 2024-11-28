@@ -1,6 +1,3 @@
-
-*.wav
-*.zip
 utils/__*
 *__pycache__*
 acodet/_*

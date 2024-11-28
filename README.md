@@ -1,14 +1,3 @@
----
-title: acodet
-emoji: 🛥
-colorFrom: red
-colorTo: yellow
-sdk: streamlit
-sdk_version: 1.37.1
-app_file: streamlit_app.py
-pinned: true
----
-
 # **acodet** - **Aco**ustic **Det**ector
 ## Framework for the **usage** and **training** of acoustic species detectors based on CNN models
 

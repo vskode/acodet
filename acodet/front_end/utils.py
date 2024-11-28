@@ -125,7 +125,7 @@ def make_nested_btns_false_on_click(btn_id):
 def prepare_run():
     if st.session_state.run_option == 1:
         st.markdown("""---""")
-        st.markdown("## Computation will start once files are uploaded, please wait.")
+        st.markdown("## Computation started, please wait.")
         if st.session_state.preset_option in [0, 1]:
             kwargs = {
                 "callbacks": TFPredictProgressBar,
@@ -134,9 +134,7 @@ def prepare_run():
             }
         else:
             kwargs = {"progbar1": st.progress(0, text="Progress")}
-        return kwargs
-    else:
-        return {}
+    return kwargs
 
 
 class Limits:
