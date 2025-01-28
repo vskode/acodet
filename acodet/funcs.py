@@ -127,7 +127,15 @@ def load_audio(file, channel=0, **kwargs) -> np.ndarray:
         audio array
     """
     try:
-        if conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
+        if 'one_annot_for_multiple_files' in kwargs:
+            audio_flat = []
+            audio_files = list(Path(file).parent.glob('*.wav'))
+            for file in audio_files:
+                with open(file, 'rb') as f:
+                    audio_flat.extend(
+                        lb.load(f, sr=conf.SR, mono=False)[0]
+                        )
+        elif conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
             with open(file, "rb") as f:
                 audio_flat, _ = lb.load(
                     f, sr=conf.DOWNSAMPLE_SR, mono=False, **kwargs
@@ -230,7 +238,7 @@ def cntxt_wndw_arr(
         time list for noise
     """
     duration = annotations["end"].iloc[-1] + conf.CONTEXT_WIN / conf.SR
-    audio = load_audio(file, duration=duration)
+    audio = load_audio(file, duration=duration, **kwargs)
 
     segs, times = [], []
     for _, row in annotations.iterrows():
@@ -238,6 +246,7 @@ def cntxt_wndw_arr(
             (row.end - row.start) / (conf.CONTEXT_WIN / conf.SR) - 1
         )
         num_windows = num_windows or 1
+        num_windows = 1
         for i in range(
             num_windows
         ):  # TODO fuer grosse annotationen mehrere fenster erzeugen

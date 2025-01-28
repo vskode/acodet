@@ -45,6 +45,12 @@ def compensate_for_naming_inconsistencies(hard_drive_path, file):
         file_path = glob.glob(
             f"{hard_drive_path}/**/{file_new_annot}*", recursive=True
         )
+        
+    if not file_path:
+        file_path = [
+            str(p) for p 
+            in Path(hard_drive_path).joinpath(file.parent.stem).rglob('*.wav')
+        ]
 
     if not file_path:
         split_file_underscore = file.stem.split("_")[0]
@@ -81,7 +87,7 @@ def get_corresponding_sound_file(file):
         p_dir = list(file.relative_to(conf.REV_ANNOT_SRC).parents)[-2]
         p_dir_main = str(p_dir).split("_")[0]
         for path in file_path:
-            if p_dir_main in path:
+            if p_dir_main in str(path):
                 file_path = path
     else:
         file_path = file_path[0]
@@ -192,6 +198,15 @@ def filter_out_high_freq_and_high_transient(df):
 
 def finalize_annotation(file, freq_time_crit=False, **kwargs):
     ann = pd.read_csv(file, sep="\t")
+    
+    if not 'start' in ann.columns: 
+        if len(ann.columns) == 2:
+            colnames = ["start", "end", "label", "freq_min", "freq_max"]
+            ann = pd.read_csv(file, sep="\t", names=colnames)
+            ann['label'] = 1
+            ann['freq_min'] = 50
+            ann['freq_max'] = 1000
+            ann['Selection'] = ann.index
 
     ann["filename"] = get_corresponding_sound_file(file)
     # if not ann['filename']:

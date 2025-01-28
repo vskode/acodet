@@ -77,4 +77,4 @@ if __name__ == "__main__":
     from acodet.create_session_file import create_session_file
 
     create_session_file()
-    main()
+    main(one_annot_for_multiple_files=True)

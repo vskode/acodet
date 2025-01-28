@@ -35,6 +35,7 @@ def run_training(
     f_score_beta=conf.F_SCORE_BETA,
     f_score_thresh=conf.F_SCORE_THRESH,
     unfreeze=conf.UNFREEZE,
+    **kwargs
 ):
     info_text = f"""Model run INFO:
 
@@ -91,7 +92,7 @@ def run_training(
         data_dir, data_dir="train", AUTOTUNE=AUTOTUNE
     )
     test_data = run_data_pipeline(data_dir, data_dir="test", AUTOTUNE=AUTOTUNE)
-    noise_data = run_data_pipeline(
+    noise_data, n_noise = run_data_pipeline(
         data_dir, data_dir="noise", AUTOTUNE=AUTOTUNE
     )
 

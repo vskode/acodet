@@ -308,7 +308,7 @@ def get_src_dir_structure(file, annot_dir):
         return list(file.relative_to(annot_dir).parents)[-2]
 
 
-def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
+def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True, **kwargs):
     annotation_files = list(Path(annot_dir).glob("**/*.csv"))
     if active_learning:
         inbetween_noise = False
@@ -331,6 +331,7 @@ def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
             save_dir,
             all_noise=all_noise,
             inbetween_noise=inbetween_noise,
+            **kwargs
         )
 
 
@@ -376,6 +377,14 @@ def get_dataset(filenames, AUTOTUNE=None, **kwargs):
         .map(parse_tfrecord_fn, num_parallel_calls=AUTOTUNE)
         .map(partial(prepare_sample, **kwargs), num_parallel_calls=AUTOTUNE)
     )
+    if 'implicit_noise' in kwargs:
+        int_ten = [ten[0] for ten in dataset if ten[-1].numpy() == 0]
+        float_ten = [ten[-1] for ten in dataset if ten[-1].numpy() == 0]
+        # Create the dataset by slicing the tensors separately
+        dataset = (
+        tf.data.Dataset.from_tensor_slices((int_ten, float_ten)),
+        len(int_ten)
+        )
     return dataset
 
 
@@ -391,6 +400,9 @@ def run_data_pipeline(
         elif data_dir == "noise":
             files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
             files += tf.io.gfile.glob(f"{root}/noise/train/*.tfrec")
+            if files == []:
+                files += tf.io.gfile.glob(f"{root}/train/*.tfrec")
+                kwargs.update({"implicit_noise": True})
         else:
             try:
                 files += tf.io.gfile.glob(f"{root}/noise/{data_dir}/*.tfrec")
@@ -399,7 +411,10 @@ def run_data_pipeline(
             files += tf.io.gfile.glob(f"{root}/{data_dir}/*.tfrec")
     dataset = get_dataset(files, AUTOTUNE=AUTOTUNE, **kwargs)
     if return_spec:
-        return make_spec_tensor(dataset)
+        if isinstance(dataset, tuple):
+            return make_spec_tensor(dataset[0]), dataset[1]
+        else:
+            return make_spec_tensor(dataset)
     else:
         return dataset
 
