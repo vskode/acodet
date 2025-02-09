@@ -413,6 +413,8 @@ def run_data_pipeline(
     if return_spec:
         if isinstance(dataset, tuple):
             return make_spec_tensor(dataset[0]), dataset[1]
+        elif 'n_noise' in kwargs:
+            return make_spec_tensor(dataset), kwargs['n_noise']
         else:
             return make_spec_tensor(dataset)
     else:

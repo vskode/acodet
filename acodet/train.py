@@ -93,7 +93,7 @@ def run_training(
     )
     test_data = run_data_pipeline(data_dir, data_dir="test", AUTOTUNE=AUTOTUNE)
     noise_data, n_noise = run_data_pipeline(
-        data_dir, data_dir="noise", AUTOTUNE=AUTOTUNE
+        data_dir, data_dir="noise", n_noise=n_noise, AUTOTUNE=AUTOTUNE
     )
 
     train_data = run_augment_pipeline(
