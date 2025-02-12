@@ -303,7 +303,7 @@ class ProcessLimits:
         self.file_ind = 0
         self.row = 0
         self.n_prec_preds = conf.SEQUENCE_CON_WIN
-        self.n_exceed_thresh = 4
+        self.n_exceed_thresh = conf.SEQUENCE_LIMIT
 
     def concat_files_within_hour(self, count):
         """
