@@ -352,7 +352,7 @@ class ProcessLimits:
         sequ_crit = 0
         annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= self.thresh_sc]
         for i, row in annot.iterrows():
-            bool1 = 0 < (row["Begin Time (s)"] - annot["Begin Time (s)"])
+            bool1 = 0 <= (row["Begin Time (s)"] - annot["Begin Time (s)"])
             bool2 = (
                 row["Begin Time (s)"] - annot["Begin Time (s)"]
             ) < self.n_prec_preds * conf.CONTEXT_WIN / conf.SR
