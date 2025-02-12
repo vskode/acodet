@@ -20,7 +20,7 @@ class ModelHelper:
         if isinstance(ckpt_path, Path):
             ckpt_path = ckpt_path.stem
         ckpt_path = (
-            Path("../trainings").joinpath(ckpt_path).joinpath("unfreeze_no-TF")
+            Path("../trainings").joinpath(ckpt_path).joinpath(f"unfreeze_{conf.UNFREEZE}")
         )  # TODO namen ändern
         try:
             file_path = ckpt_path.joinpath(f"cp-{ckpt_name}.ckpt.index")

@@ -69,6 +69,8 @@ def run_training(
 
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
     time_start = time.strftime("%Y-%m-%d_%H", time.gmtime())
+    if load_ckpt_path:
+        time_start = load_ckpt_path
     Path(f"../trainings/{time_start}").mkdir(exist_ok=True, parents=True)
 
     n_train, n_noise = get_train_set_size(data_dir)
@@ -134,7 +136,7 @@ def run_training(
 
     model = models.init_model(
         model_instance=ModelClassName,
-        checkpoint_dir=f"../trainings/{load_ckpt_path}/unfreeze_no-TF",
+        checkpoint_dir=f"../trainings/{load_ckpt_path}/unfreeze_False",
         keras_mod_name=keras_mod_name,
         input_specs=True,
     )
@@ -178,25 +180,25 @@ def run_training(
         save_freq="epoch",
     )
 
-    model.save_weights(checkpoint_path)
-    hist = model.fit(
-        train_data,
-        epochs=epochs,
-        steps_per_epoch=steps_per_epoch,
-        validation_data=test_data,
-        callbacks=[cp_callback],
-    )
-    result = hist.history
-    save_model_results(checkpoint_dir, result)
+    # model.save_weights(checkpoint_path)
+    # hist = model.fit(
+    #     train_data,
+    #     epochs=epochs,
+    #     steps_per_epoch=steps_per_epoch,
+    #     validation_data=test_data,
+    #     callbacks=[cp_callback],
+    # )
+    # result = hist.history
+    # save_model_results(checkpoint_dir, result)
 
     ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 
     plot_model_results(
         time_start, data=data_description, init_lr=init_lr, final_lr=final_lr
     )
-    ModelClass = getattr(models, ModelClassName)
+    
     create_and_save_figure(
-        ModelClass,
+        ModelClassName,
         data_dir,
         batch_size,
         time_start,
@@ -204,6 +206,12 @@ def run_training(
         data=data_description,
         keras_mod_name=keras_mod_name,
     )
+    
+    if load_ckpt_path:
+        st = load_ckpt_path
+    else:
+        st = time_start
+    save_model(st, model)
 
 
 def save_model(

@@ -394,10 +394,12 @@ def create_and_save_figure(
     plot_cm=False,
     **kwargs,
 ):
+    if conf.LOAD_CKPT_PATH:
+        train_date = conf.LOAD_CKPT_PATH
     training_runs = list(Path(f"../trainings/{train_date}").glob("unfreeze*"))
     val_data = tfrec.run_data_pipeline(tfrec_path, "val", return_spec=False)
 
-    fig = plt.figure(constrained_layout=True)
+    fig = plt.figure(figsize=[14, 10], constrained_layout=True)
 
     plot_evaluation_metric(
         model_name,
@@ -414,7 +416,7 @@ def create_and_save_figure(
         info_string += f" | {key}: {val}"
     fig.suptitle(f"Evaluation Metrics{info_string}")
 
-    fig.savefig(f"{training_runs[0].parent}/eval_metrics.png")
+    fig.savefig(f"{training_runs[0].parent}/eval_metrics.png", dpi=300)
 
 
 def plot_pre_training_spectrograms(
