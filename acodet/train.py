@@ -68,7 +68,7 @@ def run_training(
     data_dir = list(Path(data_dir).iterdir())
 
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
-    time_start = time.strftime("%Y-%m-%d_%H", time.gmtime())
+    time_start = time.strftime("%Y-%m-%d_%H-%M", time.gmtime())
     if load_ckpt_path:
         time_start = load_ckpt_path
     Path(f"../trainings/{time_start}").mkdir(exist_ok=True, parents=True)
@@ -180,16 +180,16 @@ def run_training(
         save_freq="epoch",
     )
 
-    # model.save_weights(checkpoint_path)
-    # hist = model.fit(
-    #     train_data,
-    #     epochs=epochs,
-    #     steps_per_epoch=steps_per_epoch,
-    #     validation_data=test_data,
-    #     callbacks=[cp_callback],
-    # )
-    # result = hist.history
-    # save_model_results(checkpoint_dir, result)
+    model.save_weights(checkpoint_path)
+    hist = model.fit(
+        train_data,
+        epochs=epochs,
+        steps_per_epoch=steps_per_epoch,
+        validation_data=test_data,
+        callbacks=[cp_callback],
+    )
+    result = hist.history
+    save_model_results(checkpoint_dir, result)
 
     ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 
