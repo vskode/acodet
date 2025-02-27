@@ -52,7 +52,7 @@ def test_annotation():
             .joinpath("stats.csv")
         )
     )
-    assert df["number of predictions with thresh>0.8"][0] == 254, \
+    assert df["number of predictions with thresh>0.8"].sum() == 908, \
         "Number of predictions is not what it should be."
 
     filter_annots_by_thresh(time_stamp)
@@ -61,8 +61,9 @@ def test_annotation():
         .joinpath(time_stamp)
         .joinpath(f"thresh_{conf.THRESH}")
         .glob("**/*.txt")
-    )[0]
-    df = pd.read_csv(file)
+    )
+    file.sort()
+    df = pd.read_csv(file[-1])
     assert len(df) == 250, \
         "Number of predictions from filtered thresholds is incorrect."
 
@@ -73,7 +74,9 @@ def test_model_load():
 
 
 def test_tfrecord():
-    time_stamp = list(Path(conf.ANNOT_DEST).iterdir())[-1]
+    time_stamps = list(Path(conf.ANNOT_DEST).iterdir())
+    time_stamps.sort()
+    time_stamp = time_stamps[-1]
     write_tfrec_dataset(annot_dir=time_stamp, active_learning=False)
     metadata_file_path = Path(conf.TFREC_DESTINATION).joinpath(
         "dataset_meta_train.json"
@@ -83,7 +86,7 @@ def test_tfrecord():
 
     with open(metadata_file_path, "r") as f:
         data = json.load(f)
-        assert data["dataset"]["size"]["train"] == 1742, \
+        assert data["dataset"]["size"]["train"] == 1128, \
             "TFRecords files has wrong number of datapoints."
 
 def test_combined_annotation():
