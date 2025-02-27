@@ -190,7 +190,7 @@ class KerasAppModel(ModelHelper):
         helper class providing necessary functionalities
     """
 
-    def __init__(self, keras_mod_name="EfficientNetB0", **params) -> None:
+    def __init__(self, keras_mod_name=conf.KERAS_MOD_NAME, **params) -> None:
         keras_model = getattr(tf.keras.applications, keras_mod_name)(
             include_top=True,
             weights=None,
