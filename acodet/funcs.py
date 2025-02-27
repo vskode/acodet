@@ -110,7 +110,10 @@ def get_channel(dir):
     return channel
 
 
-def load_audio(file, channel=0, **kwargs) -> np.ndarray:
+def load_audio(file, 
+               channel=0, 
+               save_downsampled_files=conf.SAVE_DOWNSAMPLED_FILES, 
+               **kwargs) -> np.ndarray:
     """
     Load audio file, print error if file is corrupted. If the sample rate
     specified in the config file is not the same as the downsample sample
@@ -143,7 +146,17 @@ def load_audio(file, channel=0, **kwargs) -> np.ndarray:
                 audio_flat, _ = lb.load(f, sr=conf.SR, mono=False, **kwargs)
             if len(audio_flat.shape) > 1:
                 audio_flat = audio_flat[channel]
-
+        if save_downsampled_files:
+            from  scipy.io import wavfile 
+            path = (
+                Path(conf.SOUND_FILES_SOURCE)
+                .parent
+                .joinpath(f'resampled_{Path(conf.SOUND_FILES_SOURCE).stem}_{conf.SR}Hz')
+                .joinpath(file.relative_to(conf.SOUND_FILES_SOURCE))
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w") as f:
+                wavfile.write(path, conf.SR, audio_flat)
         if len(audio_flat) == 0:
             return
         return audio_flat

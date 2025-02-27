@@ -50,6 +50,7 @@ CONTEXT_WIN_S_CORRECTED = CONTEXT_WIN / SR
 
 # downsample every audio file to this frame rate to ensure comparability
 DOWNSAMPLE_SR = False
+SAVE_DOWNSAMPLED_FILES = session['save_downsampled_files']
 
 ## Settings for Creation of Tfrecord Dataset
 # limit of context windows in a tfrecords file
