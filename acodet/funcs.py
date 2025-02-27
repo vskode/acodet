@@ -152,7 +152,7 @@ def load_audio(file,
                 Path(conf.SOUND_FILES_SOURCE)
                 .parent
                 .joinpath(f'resampled_{Path(conf.SOUND_FILES_SOURCE).stem}_{conf.SR}Hz')
-                .joinpath(file.relative_to(conf.SOUND_FILES_SOURCE))
+                .joinpath(Path(file).relative_to(conf.SOUND_FILES_SOURCE))
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, "w") as f:

@@ -98,6 +98,7 @@ pyproject_hooks==1.2.0
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.15
 PyQt5_sip==12.15.0
+pytest==8.3.4
 python-dateutil==2.9.0.post0
 pytz==2024.2
 PyYAML==6.0.2

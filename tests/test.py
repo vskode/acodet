@@ -1,5 +1,4 @@
 import os, sys
-import unittest
 from pathlib import Path
 import pandas as pd
 
@@ -13,7 +12,7 @@ import json
 
 with open("acodet/src/tmp_session.json", "r") as f:
     session = json.load(f)
-session["sound_files_source"] = "tests/test_files/test_audio_files"
+session["sound_files_source"] = "tests/test_datasets/audio"
 session[
     "generated_annotation_source"
 ] = "tests/test_files/test_generated_annotations"
@@ -44,89 +43,64 @@ from acodet import global_config as conf
 
 
 
-class TestDetection(unittest.TestCase):
-    def test_annotation(self):
-        self.time_stamp = run_annotation()
-        df = pd.read_csv(
-            (
-                Path(conf.GEN_ANNOTS_DIR)
-                .joinpath(self.time_stamp)
-                .joinpath("stats.csv")
-            )
-        )
-        self.assertEqual(
-            df["number of predictions with thresh>0.8"][0],
-            326,
-            "Number of predictions is not what it should be.",
-        )
-
-        filter_annots_by_thresh(self.time_stamp)
-        file = list(
-            Path(conf.GEN_ANNOT_SRC)
-            .joinpath(self.time_stamp)
-            .joinpath(f"thresh_{conf.THRESH}")
-            .glob("**/*.txt")
-        )[0]
-        df = pd.read_csv(file)
-        self.assertEqual(
-            len(df),
-            309,
-            "Number of predictions from filtered thresholds " "is incorrect.",
-        )
-
-
-class TestTraining(unittest.TestCase):
-    def test_model_load(self):
-        model = GoogleMod(load_g_ckpt=False).model
-        self.assertGreater(len(model.layers), 15)
-
-    # def test_tfrecord_loading(self):
-    #     data_dir = list(Path(conf.TFREC_DESTINATION).iterdir())
-    #     n_train, n_noise = get_train_set_size(data_dir)
-    #     self.assertEqual(n_train, 517)
-    #     self.assertEqual(n_noise, 42)
-
-class TestTFRecordCreation(unittest.TestCase):
-    def test_tfrecord(self):
-        time_stamp = list(Path(conf.ANNOT_DEST).iterdir())[-1]
-        write_tfrec_dataset(annot_dir=time_stamp, active_learning=False)
-        metadata_file_path = Path(conf.TFREC_DESTINATION).joinpath(
-            "dataset_meta_train.json"
-        )
-        self.assertEqual(
-            metadata_file_path.exists(),
-            1,
-            "TFRecords metadata file was not created.",
-        )
-
-        with open(metadata_file_path, "r") as f:
-            data = json.load(f)
-            self.assertEqual(
-                data["dataset"]["size"]["train"],
-                517,
-                "TFRecords files has wrong number of datapoints.",
-            )
-
-    def test_combined_annotation(self):
-        generate_final_annotations(active_learning=False)
-        time_stamp = list(Path(conf.GEN_ANNOTS_DIR).iterdir())[-1].stem
-        combined_annots_path = (
-            Path(conf.ANNOT_DEST)
+def test_annotation():
+    time_stamp = run_annotation()
+    df = pd.read_csv(
+        (
+            Path(conf.GEN_ANNOTS_DIR)
             .joinpath(time_stamp)
-            .joinpath("combined_annotations.csv")
+            .joinpath("stats.csv")
         )
-        self.assertEqual(
-            combined_annots_path.exists(),
-            1,
-            "csv file containing combined_annotations does not exist.",
-        )
-        df = pd.read_csv(combined_annots_path)
-        self.assertEqual(
-            df.start.iloc[-1],
-            1795.2825,
-            "The annotations in combined_annotations.csv don't seem to be identical",
-        )
+    )
+    assert df["number of predictions with thresh>0.8"][0] == 254, \
+        "Number of predictions is not what it should be."
+
+    filter_annots_by_thresh(time_stamp)
+    file = list(
+        Path(conf.GEN_ANNOT_SRC)
+        .joinpath(time_stamp)
+        .joinpath(f"thresh_{conf.THRESH}")
+        .glob("**/*.txt")
+    )[0]
+    df = pd.read_csv(file)
+    assert len(df) == 250, \
+        "Number of predictions from filtered thresholds is incorrect."
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_model_load():
+    model = GoogleMod(load_g_ckpt=False).model
+    assert len(model.layers) == 26, "Model has wrong number of layers."
+
+
+def test_tfrecord():
+    time_stamp = list(Path(conf.ANNOT_DEST).iterdir())[-1]
+    write_tfrec_dataset(annot_dir=time_stamp, active_learning=False)
+    metadata_file_path = Path(conf.TFREC_DESTINATION).joinpath(
+        "dataset_meta_train.json"
+    )
+    assert metadata_file_path.exists() ==1, \
+        "TFRecords metadata file was not created."
+
+    with open(metadata_file_path, "r") as f:
+        data = json.load(f)
+        assert data["dataset"]["size"]["train"] == 1742, \
+            "TFRecords files has wrong number of datapoints."
+
+def test_combined_annotation():
+    generate_final_annotations(active_learning=False)
+    time_stamp = list(Path(conf.GEN_ANNOTS_DIR).iterdir())[-1].stem
+    combined_annots_path = (
+        Path(conf.ANNOT_DEST)
+        .joinpath(time_stamp)
+        .joinpath("combined_annotations.csv")
+    )
+    assert combined_annots_path.exists() == 1, \
+        "csv file containing combined_annotations does not exist."
+    df = pd.read_csv(combined_annots_path)
+    assert df.start.iloc[-1] == 1709.9775, \
+        "The annotations in combined_annotations.csv don't seem to be identical"
+
+# test_annotation()
+# test_model_load()
+# test_tfrecord()
+# test_combined_annotation()  

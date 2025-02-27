@@ -60,7 +60,7 @@ annots_timestamp_folder: ''
 # default threshold folder name
 thresh_label: 'thresh_0.5'
 # save downsmapled audio files for reprocessing?
-save_downsampled_files: True
+save_downsampled_files: False
 
 #######################  TRAINING  ###########################################
 
