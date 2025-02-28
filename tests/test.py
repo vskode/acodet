@@ -73,6 +73,20 @@ def test_model_load():
     assert len(model.layers) == 26, "Model has wrong number of layers."
 
 
+def test_combined_annotation():
+    generate_final_annotations(active_learning=False)
+    time_stamp = list(Path(conf.GEN_ANNOTS_DIR).iterdir())[-1].stem
+    combined_annots_path = (
+        Path(conf.ANNOT_DEST)
+        .joinpath(time_stamp)
+        .joinpath("combined_annotations.csv")
+    )
+    assert combined_annots_path.exists() == 1, \
+        "csv file containing combined_annotations does not exist."
+    df = pd.read_csv(combined_annots_path)
+    assert df.start.iloc[-1] == 1709.9775, \
+        "The annotations in combined_annotations.csv don't seem to be identical"
+
 def test_tfrecord():
     time_stamps = list(Path(conf.ANNOT_DEST).iterdir())
     time_stamps.sort()
@@ -88,20 +102,6 @@ def test_tfrecord():
         data = json.load(f)
         assert data["dataset"]["size"]["train"] > 500, \
             "TFRecords files has wrong number of datapoints."
-
-def test_combined_annotation():
-    generate_final_annotations(active_learning=False)
-    time_stamp = list(Path(conf.GEN_ANNOTS_DIR).iterdir())[-1].stem
-    combined_annots_path = (
-        Path(conf.ANNOT_DEST)
-        .joinpath(time_stamp)
-        .joinpath("combined_annotations.csv")
-    )
-    assert combined_annots_path.exists() == 1, \
-        "csv file containing combined_annotations does not exist."
-    df = pd.read_csv(combined_annots_path)
-    assert df.start.iloc[-1] == 1709.9775, \
-        "The annotations in combined_annotations.csv don't seem to be identical"
 
 # test_annotation()
 # test_model_load()

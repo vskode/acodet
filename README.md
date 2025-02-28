@@ -48,8 +48,8 @@ https://doi.org/10.1121/10.0025275
 # Installation
 ## Installation on Windows
 ### Preliminary software installations:
-- install python 3.8: (standard install, no admin privileges needed)
-<https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
+- install python 3.11: (standard install, no admin privileges needed)
+<https://www.python.org/ftp/python/3.11.0/python-3.11.0-amd64.exe>
 - install git bash: (default install)
 <https://github.com/git-for-windows/git/releases/download/v2.38.1.windows.1/Git-2.38.1-64-bit.exe>
 
@@ -61,11 +61,11 @@ https://doi.org/10.1121/10.0025275
 `git clone https://github.com/vskode/acodet.git`
 - Install virtualenv (copy and paste in Git Bash console):
 
-`"$HOME/AppData/Local/Programs/Python/Python38/python" -m pip install virtualenv`
+`"$HOME/AppData/Local/Programs/Python/Python311/python" -m pip install virtualenv`
 
 - Create a new virtual environment (default name env_acodet can be changed):
 
- `"$HOME/AppData/Local/Programs/Python/Python38/python" -m virtualenv env_acodet`
+ `"$HOME/AppData/Local/Programs/Python/Python311/python" -m virtualenv env_acodet`
 
 - activate newly created virtual environment (change env_acodet if necessary):
 
@@ -75,52 +75,19 @@ https://doi.org/10.1121/10.0025275
 
 `pip install -r acodet/requirements.txt`
 
--------------------------
-
-## Installation on Mac
-### Preliminary software installations:
-- install python 3.8: (standard install, no admin privileges needed)
-<https://www.python.org/ftp/python/3.8.7/python-3.8.7-macosx10.9.pkg>
-- install git: (default install)
-    - simply type `git` into the terminal and follow the installation instructions
-
-### Installation instructions
-- create project directory in location of your choice
-- open a terminal in the project directory
-- clone the repository:
-
-    `git clone https://github.com/vskode/acodet.git`
-- Install virtualenv (copy and paste in Git Bash console):
-
-    `/usr/bin/python/Python38/python -m pip install virtualenv`
-
-- Create a new virtual environment (default name env_acodet can be changed):
-
-    `/usr/bin/python/Python38/python -m virtualenv env_acodet`
-
-- activate newly created virtual environment (change env_acodet if necessary):
-
-    `source env_acodet/bin/activate`
-
-- Install required packages:
-    - if you have a M1 chip in your mac, run:
-
-        `pip install -r acodet/macM1_requirements/requirements_m1-1.txt`
-    - then run 
-
-        `pip install -r acodet/macM1_requirements/requirements_m1-1.txt`
-    
-    - if you have an older mac, run:
-
-        `pip install -r acodet/requirements.txt`
 
 --------------------------------------------
-## Installation on Linux
+## Installation on Linux/Mac
 ### Preliminary software installations:
-- install python 3.8: (standard install, no admin privileges needed)
-<https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe>
-- install git bash: (default install)
-<https://github.com/git-for-windows/git/releases/download/v2.38.1.windows.1/Git-2.38.1-64-bit.exe>
+
+- Install python 3.11 
+
+    `sudo add-apt-repository ppa:deadsnakes/ppa`
+
+    `sudo apt install python3.11`
+- Install git
+
+    `sudo apt install git`
 
 ### Installation instructions
 - create project directory in location of your choice
@@ -130,11 +97,11 @@ https://doi.org/10.1121/10.0025275
     `git clone https://github.com/vskode/acodet.git`
 - Install virtualenv (copy and paste in Git Bash console):
 
-    `/usr/bin/python/Python38/python -m pip install virtualenv`
+    `/usr/bin/python/Python311/python -m pip install virtualenv` (this would be for python 3.8 - adjust accordingly. The most recent version supports python 3.11)
 
 - Create a new virtual environment (default name env_acodet can be changed):
 
-    `/usr/bin/python/Python38/python -m virtualenv env_acodet`
+    `/usr/bin/python/Python311/python -m virtualenv env_acodet`
 
 - activate newly created virtual environment (change env_acodet if necessary):
 
@@ -143,6 +110,18 @@ https://doi.org/10.1121/10.0025275
 - Install required packages:
 
     `pip install -r acodet/requirements.txt`
+    
+    - if you have a M1 chip in your mac, run:
+
+        `pip install -r acodet/macM1_requirements/requirements_m1-1.txt`
+    - then run 
+
+        `pip install -r acodet/macM1_requirements/requirements_m1-1.txt`
+    
+
+- Once the repository is installed, I would recommend running the inbuilt tests. That way if all tests run successfully, it is ensured that everything behaves as it should. To run the tests, run the following:
+
+    `pytest -v tests/*`
 
 # Usage
 ## AcoDet usage with GUI
