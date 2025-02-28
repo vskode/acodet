@@ -54,7 +54,7 @@ def daily_prs(df: pd.DataFrame):
         return 0
 
 
-def get_val(path: str or Path):
+def get_val(path: Path):
     """
     Get validation dataframe.
 
@@ -349,7 +349,6 @@ class ProcessLimits:
             either 1 if only binary presence is relevant or the number of
             annotations that passed the sequence limit in the given hour
         """
-        sequ_crit = 0
         annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= self.thresh_sc]
         for i, row in annot.iterrows():
             bool1 = 0 <= (row["Begin Time (s)"] - annot["Begin Time (s)"])
@@ -358,14 +357,17 @@ class ProcessLimits:
             ) < self.n_prec_preds * conf.CONTEXT_WIN / conf.SR
             self.prec_anns = annot.loc[bool1 * bool2]
             if len(self.prec_anns) > self.n_exceed_thresh:
-                sequ_crit += 1
                 self.filtered_annots = pd.concat(
-                    [self.filtered_annots, self.prec_anns.iloc[-1:]]
+                    [self.filtered_annots, self.prec_anns]
                 )
                 # this stops the function as soon as the limit is met once
                 if not self.return_counts:
                     return 1
-        return sequ_crit
+        if len(self.filtered_annots) > 0:
+            self.filtered_annots = (self.filtered_annots
+                                    .drop_duplicates()
+                                    .sort_values(['Begin Time (s)']))
+        return len(self.filtered_annots)
 
     def get_end_of_last_annotation(self):
         """

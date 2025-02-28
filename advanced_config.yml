@@ -43,6 +43,9 @@ default_threshold: 0.5
 annotation_df_fmin: 50
 # maximum frequency of annotation boxes
 annotation_df_fmax: 1000
+# scale the maximum frequency with the prediction value
+# that way it is easier to validate in Raven
+scale_fmax_with_predictions: True
 
 ########################  PATHS  #############################################
 # dataset destination directory - save tfrecord dataset to this directory 

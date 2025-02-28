@@ -99,6 +99,7 @@ THRESH_LABEL = session["thresh_label"]
 DEFAULT_THRESH = session["default_threshold"]
 ANNOTATION_DF_FMIN = session["annotation_df_fmin"]
 ANNOTATION_DF_FMAX = session["annotation_df_fmax"]
+SCALE_FMAX_WITH_PREDICTIONS = session["scale_fmax_with_predictions"]
 ## Column Names
 # column name for annotation prediction values
 ANNOTATION_COLUMN = "Prediction/Comments"

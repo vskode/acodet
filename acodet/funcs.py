@@ -590,7 +590,10 @@ def create_Raven_annotation_df(preds: np.ndarray, ind: int) -> pd.DataFrame:
     df["Begin Time (s)"] += (ind * conf.PRED_BATCH_SIZE) / conf.SR
     df["End Time (s)"] += (ind * conf.PRED_BATCH_SIZE) / conf.SR
 
-    df["High Freq (Hz)"] = conf.ANNOTATION_DF_FMAX
+    if conf.SCALE_FMAX_WITH_PREDICTIONS:
+        df["High Freq (Hz)"] = (preds-0.4)/0.6*conf.ANNOTATION_DF_FMAX
+    else:
+        df["High Freq (Hz)"] = conf.ANNOTATION_DF_FMAX
     df["Low Freq (Hz)"] = conf.ANNOTATION_DF_FMIN
     df[conf.ANNOTATION_COLUMN] = preds
 
