@@ -96,7 +96,7 @@ class HumpBackNorthAtlantic(ModelHelper):
         g_drive_link = (
             'https://drive.google.com/uc?id=1qAqAy_REaIqgVM1O5qsNQIBNB8Hb0spz'
             )
-
+        Path(conf.MODEL_DIR).mkdir(parents=True, exist_ok=True)
         output = Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME + '.zip')  # Change this to your preferred filename
         gdown.download(g_drive_link, str(output), quiet=False)
 
