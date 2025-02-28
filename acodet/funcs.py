@@ -165,7 +165,7 @@ def load_audio(file,
         return
 
 
-def return_windowed_file(file) -> tuple([np.ndarray, np.ndarray]):
+def return_windowed_file(file) -> tuple:
     """
     Load audio file and turn the 1D array into a 2D array. The rows length
     corresponds to the window length specified by the config file. The

@@ -14,3 +14,4 @@ plotly==5.16.1
 black==23.7.0
 pre-commit==3.3.3
 pyqt5==5.15.6
+gdown==5.2.0

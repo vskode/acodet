@@ -77,16 +77,30 @@ class HumpBackNorthAtlantic(ModelHelper):
 
     def load_model(self, **kwargs):
         if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
-            for model_path in Path(conf.MODEL_DIR).iterdir():
+            self.download_model()
+            # for model_path in Path(conf.MODEL_DIR).iterdir():
+            for model_path in list(Path(conf.MODEL_DIR).glob(conf.MODEL_NAME+'*')):
                 if not model_path.suffix == ".zip":
                     continue
                 else:
                     with zipfile.ZipFile(model_path, "r") as model_zip:
                         model_zip.extractall(conf.MODEL_DIR)
+            
         self.model = tf.keras.models.load_model(
             Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
             custom_objects={"FBetaScote": metrics.FBetaScore},
         )
+    
+    def download_model(self):
+        import gdown
+        g_drive_link = (
+            'https://drive.google.com/uc?id=1qAqAy_REaIqgVM1O5qsNQIBNB8Hb0spz'
+            )
+
+        output = Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME + '.zip')  # Change this to your preferred filename
+        gdown.download(g_drive_link, str(output), quiet=False)
+
+        print(f"File downloaded as {output}")
 
 
 class GoogleMod(ModelHelper):  # TODO change name
