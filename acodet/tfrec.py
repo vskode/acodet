@@ -161,44 +161,69 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
     """
     files = np.unique(annots.filename)
 
-    if len(files) == 0:
-        return
+    # random.shuffle(files)
 
-    random.shuffle(files)
-
-    split_mode = "within_file"
-    specs = ["size", "noise", "calls"]
-    folders = ["train", "test", "val"]
-    train_file_index = int(len(files) * conf.TRAIN_RATIO)
-    test_file_index = int(
-        len(files) * (1 - conf.TRAIN_RATIO) * conf.TEST_VAL_RATIO
-    )
-
-    dataset = {k: {k1: 0 for k1 in folders} for k in specs}
-    data_meta_dict = dict({"data_split": split_mode})
-    files_dict = {}
-    tfrec_num = 0
+    acc_calls, acc_noise = [], []
     for i, file in enumerate(files):
         print(
             "writing tf records files, progress:" f"{i/len(files)*100:.0f} %"
         )
-
-        if i < train_file_index:
-            folder = folders[0]
-        elif i < train_file_index + test_file_index:
-            folder = folders[1]
-        else:
-            folder = folders[2]
-
         call_tup, noise_tup = read_raw_file(
             file, annots, inbetween_noise=inbetween_noise, **kwargs
         )
 
         calls = randomize_arrays(call_tup, file)
         noise = randomize_arrays(noise_tup, file)
-        samples = [*calls, *noise]
-        random.shuffle(samples)
-        data = dict()
+        acc_calls.extend(calls)
+        acc_noise.extend(noise)
+    if not acc_calls and not acc_noise:
+        print("No data to write")
+        return [], []
+    else:
+        return acc_calls, acc_noise
+    
+def scotwest():
+    files = []
+    files.extend(list(Path('/mnt/swap/Work/Data/marine/humpbacks/Humpback_Datasets/ScotWest_v4_2khz').rglob('*tfrec')))
+    files.extend(list(Path('/mnt/swap/Work/Data/marine/humpbacks/Humpback_Datasets/ScotWest_v4_2khz').rglob('*tfrec')))
+    
+    a = files[:159]
+    a.extend(files[160:])
+    dataset = (
+        tf.data.TFRecordDataset(files)
+        .map(parse_tfrecord_fn)
+        .map(partial(prepare_sample))
+    )
+    samples = []
+    for i, (audio, label) in enumerate(dataset):
+        samples.append((audio.numpy(), np.float32(label.numpy()), 'None', 0.0))
+    return samples
+    
+        
+def shuffle_and_write_tfrecords(calls, noise, save_dir, **kwargs):
+    data = dict()
+    
+
+    split_mode = "complete_shuffle_split"
+    specs = ["size", "noise", "calls"]
+    folders = ["train", "test", "val"]
+    
+    # train_file_index = int(len(files) * conf.TRAIN_RATIO)
+    # test_file_index = int(
+    #     len(files) * (1 - conf.TRAIN_RATIO) * conf.TEST_VAL_RATIO
+    # )
+    # if i < train_file_index:
+    #     folder = folders[0]
+    # elif i < train_file_index + test_file_index:
+    #     folder = folders[1]
+    # else:
+    #     folder = folders[2]
+    if True:
+        calls.extend(scotwest())
+    for all_noise, samples in [[False, calls], [True, noise]]:
+        rand_ar = np.arange(len(samples))
+        random.shuffle(rand_ar)
+        samples = [samples[i] for i in rand_ar]
 
         end_tr, end_te = map(
             lambda x: int(x * len(samples)),
@@ -208,7 +233,12 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
                 + conf.TRAIN_RATIO,
             ),
         )
-
+        
+        dataset = {k: {k1: 0 for k1 in folders} for k in specs}
+        data_meta_dict = dict({"data_split": split_mode})
+        files_dict = {}
+        tfrec_num = 0
+        
         data["train"] = samples[:end_tr]
         data["test"] = samples[end_tr:end_te]
         data["val"] = samples[end_tr:-1]
@@ -221,7 +251,7 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
             for samps in split_by_max_length:
                 tfrec_num += 1
                 writer = get_tfrecords_writer(
-                    tfrec_num, folder, save_dir, **kwargs
+                    tfrec_num, folder, save_dir, all_noise=all_noise, **kwargs
                 )
                 files_dict, dataset = update_dict(
                     samps, files_dict, dataset, folder, tfrec_num
@@ -231,12 +261,12 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
                     examples = create_example(audio, label, file, time)
                     writer.write(examples.SerializeToString())
 
-    # TODO automatisch die noise sachen miterstellen
-    data_meta_dict.update({"dataset": dataset})
-    data_meta_dict.update({"files": files_dict})
-    path = add_child_dirs(save_dir, **kwargs)
-    with open(path.joinpath(f"dataset_meta_{folders[0]}.json"), "w") as f:
-        json.dump(data_meta_dict, f)
+        # TODO automatisch die noise sachen miterstellen
+        data_meta_dict.update({"dataset": dataset})
+        data_meta_dict.update({"files": files_dict})
+        path = add_child_dirs(save_dir, all_noise=all_noise, **kwargs)
+        with open(path.joinpath(f"dataset_meta_{folders[0]}.json"), "w") as f:
+            json.dump(data_meta_dict, f)
 
 
 def randomize_arrays(tup, file):
@@ -315,6 +345,7 @@ def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
     else:
         inbetween_noise = True
 
+    accumulated_mixed, accumulated_noise = [], []
     for file in annotation_files:
         annots = pd.read_csv(file)
         if "explicit_noise" in file.stem:
@@ -325,14 +356,22 @@ def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
         save_dir = Path(conf.TFREC_DESTINATION).joinpath(
             get_src_dir_structure(file, annot_dir)
         )
-
-        write_tfrecords(
-            annots,
-            save_dir,
-            all_noise=all_noise,
-            inbetween_noise=inbetween_noise,
+        mixed, only_noise = write_tfrecords(
+                annots,
+                save_dir,
+                all_noise=all_noise,
+                inbetween_noise=inbetween_noise,
+            )
+        if mixed:
+            accumulated_mixed.extend(mixed)
+        if only_noise:
+            accumulated_noise.extend(only_noise)
+            
+    shuffle_and_write_tfrecords(
+        accumulated_mixed,
+        accumulated_noise, 
+        save_dir
         )
-
 
 ########################################################
 #################  READING   ###########################
