@@ -107,7 +107,7 @@ def run_training(
         seed,
         spec_aug=spec_aug,
         time_start=time_start,
-        plot=False,
+        plot=True,
         random=False,
     )
     train_data = prepare(
@@ -127,12 +127,22 @@ def run_training(
     ######################### TRAINING ##########################################
     #############################################################################
 
-    lr = tf.keras.optimizers.schedules.ExponentialDecay(
-        init_lr,
-        decay_steps=steps_per_epoch or n_train_set // batch_size,
-        decay_rate=(final_lr / init_lr) ** (1 / epochs),
-        staircase=True,
+    # lr = tf.keras.optimizers.schedules.ExponentialDecay(
+    #     init_lr,
+    #     decay_steps=steps_per_epoch or n_train_set // batch_size,
+    #     decay_rate=(final_lr / init_lr) ** (1 / epochs),
+    #     staircase=True,
+    # )
+    
+    lr = tf.keras.optimizers.schedules.CosineDecay(
+        initial_learning_rate=final_lr,
+        decay_steps=steps_per_epoch,
+        alpha=final_lr,
+        name='CosineDecay',
+        warmup_target=init_lr,
+        warmup_steps=2000
     )
+
 
     model = models.init_model(
         model_instance=ModelClassName,
@@ -171,8 +181,19 @@ def run_training(
         f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.ckpt"
     )
     checkpoint_dir = os.path.dirname(checkpoint_path)
+    
+    earlystopping_callback = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        min_delta=0.01,
+        patience=3,
+        verbose=1,
+        mode='auto',
+        baseline=0.15,
+        start_from_epoch=35
+    )
 
-    cp_callback = tf.keras.callbacks.ModelCheckpoint(
+
+    modelsaving_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_path,
         mode="min",
         verbose=1,
@@ -186,7 +207,7 @@ def run_training(
         epochs=epochs,
         steps_per_epoch=steps_per_epoch,
         validation_data=test_data,
-        callbacks=[cp_callback],
+        callbacks=[earlystopping_callback, modelsaving_callback],
     )
     result = hist.history
     save_model_results(checkpoint_dir, result)
