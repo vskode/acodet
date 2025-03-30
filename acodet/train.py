@@ -107,7 +107,7 @@ def run_training(
         seed,
         spec_aug=spec_aug,
         time_start=time_start,
-        plot=True,
+        plot=False,
         random=False,
     )
     train_data = prepare(
@@ -121,28 +121,44 @@ def run_training(
             epochs * steps_per_epoch // (n_train_set // batch_size) + 1
         )
 
-    test_data = prepare(test_data, batch_size)
+    test_data = prepare(test_data, batch_size, shuffle=True, seed=42, shuffle_buffer=10000)
 
     #############################################################################
     ######################### TRAINING ##########################################
     #############################################################################
 
-    # lr = tf.keras.optimizers.schedules.ExponentialDecay(
-    #     init_lr,
-    #     decay_steps=steps_per_epoch or n_train_set // batch_size,
-    #     decay_rate=(final_lr / init_lr) ** (1 / epochs),
-    #     staircase=True,
-    # )
-    
-    lr = tf.keras.optimizers.schedules.CosineDecay(
-        initial_learning_rate=final_lr,
-        decay_steps=steps_per_epoch,
-        alpha=final_lr,
-        name='CosineDecay',
-        warmup_target=init_lr,
-        warmup_steps=2000
+    lr = tf.keras.optimizers.schedules.ExponentialDecay(
+        init_lr,
+        decay_steps=steps_per_epoch or n_train_set // batch_size,
+        decay_rate=(final_lr / init_lr) ** (1 / epochs),
+        staircase=True,
     )
+    
+    # lr = tf.keras.optimizers.schedules.CosineDecay(
+    #     initial_learning_rate=init_lr,
+    #     # decay_steps=steps_per_epoch,
+    #     first_decay_steps=steps_per_epoch*5,
+    #     # t_mul=1.5,
+    #     # m_mul=2.0,
+    #     alpha=final_lr,
+    #     name='CosineDecay',
+    #     warmup_target=init_lr,
+    #     warmup_steps=2000
+    # )
+    # lr = tf.keras.optimizers.schedules.CosineDecayRestarts(
+    #     initial_learning_rate=5e-4,
+    #     first_decay_steps=steps_per_epoch * 5,
+    #     t_mul=1.5,
+    #     m_mul=1.0,
+    #     alpha=5e-6,
+    # )
 
+    # def warmup_schedule(step):
+    #     if step < 2000:
+    #         return (step / 2000) * 5e-4  # Linear warmup
+    #     return lr(step - 2000)  # Then use CosineDecay
+
+    # final_lr_schedule = tf.keras.optimizers.schedules.LearningRateSchedule(warmup_schedule)
 
     model = models.init_model(
         model_instance=ModelClassName,
@@ -153,7 +169,7 @@ def run_training(
 
     model.compile(
         optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),
-        loss=tf.keras.losses.BinaryCrossentropy(),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
         metrics=[
             tf.keras.metrics.BinaryAccuracy(),
             tf.keras.metrics.Precision(),
@@ -189,7 +205,7 @@ def run_training(
         verbose=1,
         mode='auto',
         baseline=0.15,
-        start_from_epoch=35
+        start_from_epoch=65
     )
 
 

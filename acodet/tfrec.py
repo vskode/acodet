@@ -419,11 +419,12 @@ def prepare(
     batch_size,
     shuffle=False,
     shuffle_buffer=750,
+    seed=None,
     augmented_data=None,
     AUTOTUNE=None,
 ):
     if shuffle:
-        ds = ds.shuffle(shuffle_buffer)
+        ds = ds.shuffle(shuffle_buffer, seed=seed)
     ds = ds.batch(batch_size)
     return ds.prefetch(buffer_size=AUTOTUNE)
 
