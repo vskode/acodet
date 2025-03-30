@@ -132,6 +132,11 @@ def label_explicit_noise(df):
 
 
 def differentiate_label_flags(df, flag=None):
+    if not conf.ANNOTATION_COLUMN in df.columns:
+        if 'label' in df.columns:
+            df[conf.ANNOTATION_COLUMN] = df['label']
+        else:
+            raise ValueError("No annotation column in dataframe.")
     df.loc[:, conf.ANNOTATION_COLUMN].fillna(value="c", inplace=True)
     df.loc[df[conf.ANNOTATION_COLUMN] == "c", "label"] = 1
     df.loc[df[conf.ANNOTATION_COLUMN] == "n", "label"] = "explicit 0"
@@ -191,7 +196,11 @@ def filter_out_high_freq_and_high_transient(df):
 
 
 def finalize_annotation(file, freq_time_crit=False, **kwargs):
-    ann = pd.read_csv(file, sep="\t")
+    try:
+        ann = pd.read_csv(file, sep="\t")
+    except pd.errors.EmptyDataError:
+        print(f"Empty file: {file}")
+        return pd.DataFrame(), pd.DataFrame()
 
     ann["filename"] = get_corresponding_sound_file(file)
     # if not ann['filename']:

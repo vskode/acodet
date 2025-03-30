@@ -15,12 +15,13 @@ from . import global_config as conf
 
 def remove_str_flags_from_predictions(df):
     # TODO wenn annotation_column nicht in columns ist fehler raisen
-    n = df.loc[df[conf.ANNOTATION_COLUMN] == "n"].index
-    n_ = df.loc[df[conf.ANNOTATION_COLUMN] == "n "].index
-    u = df.loc[df[conf.ANNOTATION_COLUMN] == "u"].index
-    u_ = df.loc[df[conf.ANNOTATION_COLUMN] == "u "].index
-    c = df.loc[df[conf.ANNOTATION_COLUMN] == "c"].index
-    c_ = df.loc[df[conf.ANNOTATION_COLUMN] == "c "].index
+    vals = np.array([str(s).lower() for s in df[conf.ANNOTATION_COLUMN].values])
+    n = df.loc[vals == "n"].index
+    n_ = df.loc[vals == "n "].index
+    u = df.loc[vals == "u"].index
+    u_ = df.loc[vals == "u "].index
+    c = df.loc[vals == "c"].index
+    c_ = df.loc[vals == "c "].index
 
     clean = df.drop([*n, *u, *c, *n_, *u_, *c_])
     clean.loc[:, conf.ANNOTATION_COLUMN] = clean[

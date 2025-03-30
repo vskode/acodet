@@ -9,6 +9,7 @@ from .humpback_model_dir import front_end
 from pathlib import Path
 import json
 from . import global_config as conf
+from tqdm import tqdm
 
 ########################################################
 #################  WRITING   ###########################
@@ -164,10 +165,8 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
     # random.shuffle(files)
 
     acc_calls, acc_noise = [], []
-    for i, file in enumerate(files):
-        print(
-            "writing tf records files, progress:" f"{i/len(files)*100:.0f} %"
-        )
+    for file in tqdm(files,
+                     desc="writing tf records files"):
         call_tup, noise_tup = read_raw_file(
             file, annots, inbetween_noise=inbetween_noise, **kwargs
         )
