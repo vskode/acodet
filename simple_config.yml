@@ -26,7 +26,7 @@
 #     - 1 generate annotations
 #     - 2 generate new training data from reviewed annotations
 #     - 3 train (and evaluate)
-run_config: 3
+run_config: 1
 
 # depending on the main task, chose your predefined settings:
 # for generation of annotations, chose:
@@ -45,7 +45,7 @@ run_config: 3
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 1
+predefined_settings: 0
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
@@ -58,19 +58,13 @@ sound_files_source: 'path to your sound files'
 # relevant for generation of hourly or daily presence, or recomputing
 # with a different threshold
 # (options run_config: 1 and predifined_settings: 2 and 4)
-generated_annotation_source: '../Cathy/HBW_detector'
+generated_annotation_source: 'path to your generated annotations'
 
 
 # source path for annotations created or reviewed by you
 # relevant for creation of new dataset (option run_config: 2)
 #   -> might be easier to just copy annotation files to default location
-reviewed_annotation_source: '../annotations'
-
-# source path for automatically generated combined annotations 
-# Only relevant for creation of new dataset (option run_config: 2)
-# if unsure, leave unchanged. 
-annotation_destination: '../combined_annotations'
-
+reviewed_annotation_source: 'path to your reviewed annotations'
 
 
 
