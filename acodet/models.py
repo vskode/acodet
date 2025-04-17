@@ -54,6 +54,7 @@ class ModelHelper:
             1, tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1))
         )
         model_list.insert(2, front_end.MelSpectrogram())
+        model_list[4]._name = 'lambda_2'
         self.model = tf.keras.Sequential(
             layers=[layer for layer in model_list]
         )

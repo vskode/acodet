@@ -276,7 +276,7 @@ def plot_pr_curve(
         m[k] = i.astype(float)
     m["Recall"] = list(m["Recall"])
     m["Precision"] = list(m["Precision"])
-    with open(f"../perform_metrics_{training_path.stem}.json", "w") as f:
+    with open(f"../trainings/{training_path}/perform_metrics.json", "w") as f:
         json.dump(m, f)
     print(perform_str)
     if "plot_labels" in kwargs:
@@ -288,8 +288,7 @@ def plot_pr_curve(
         label = "untrained_model" + perform_str
     else:
         label = str(
-            training_path.parent.stem
-            + training_path.stem.split("_")[-1]
+            training_path
             + perform_str
         )
 
@@ -377,7 +376,7 @@ def plot_evaluation_metric(
                     iteration=i,
                 )
 
-        print("creating pr curve for ", run.stem)
+        print("creating pr curve for ", run)
 
     if "legend" in kwargs and kwargs["legend"]:
         ax_pr.legend(loc="center left", bbox_to_anchor=(1, 0.5))
@@ -394,16 +393,18 @@ def create_and_save_figure(
     plot_cm=False,
     **kwargs,
 ):
-    if conf.LOAD_CKPT_PATH:
+    if not train_date and conf.LOAD_CKPT_PATH:
         train_date = conf.LOAD_CKPT_PATH
     training_runs = list(Path(f"../trainings/{train_date}").glob("unfreeze*"))
+    if len(training_runs) == 0:
+        return
     val_data = tfrec.run_data_pipeline(tfrec_path, "val", return_spec=False)
 
     fig = plt.figure(figsize=[14, 10], constrained_layout=True)
 
     plot_evaluation_metric(
         model_name,
-        training_runs,
+        [train_date],
         val_data,
         fig=fig,
         plot_pr=plot_pr,

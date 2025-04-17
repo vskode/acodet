@@ -66,6 +66,8 @@ def run_training(
     #############################  RUN  #########################################
     #############################################################################
     data_dir = list(Path(data_dir).iterdir())
+    if 'dataset_meta_train' in [d.stem for d in data_dir]:
+        data_dir = [data_dir[0].parent]
 
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
     time_start = time.strftime("%Y-%m-%d_%H-%M", time.gmtime())
