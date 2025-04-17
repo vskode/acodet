@@ -61,6 +61,9 @@ def main(sc=True, **kwargs):
         elif preset == 2:
             generate_final_annotations(active_learning=False, **kwargs)
             write_tfrec_dataset(active_learning=False, **kwargs)
+        elif preset == 3:
+            write_tfrec_dataset(**kwargs)
+            
 
     elif conf.RUN_CONFIG == 3:
         if preset == 1:
@@ -68,7 +71,7 @@ def main(sc=True, **kwargs):
         elif preset == 2:
             create_overview_plot(**kwargs)
         elif preset == 3:
-            create_overview_plot("2022-05-00_00", **kwargs)
+            create_overview_plot(["2025-04-14_11-37"], **kwargs)
         elif preset == 4:
             save_model("FlatHBNA", init_model(), **kwargs)
 

@@ -14,15 +14,23 @@ from . import global_config as conf
 
 
 def remove_str_flags_from_predictions(df):
-    # TODO wenn annotation_column nicht in columns ist fehler raisen
-    n = df.loc[df[conf.ANNOTATION_COLUMN] == "n"].index
-    n_ = df.loc[df[conf.ANNOTATION_COLUMN] == "n "].index
-    u = df.loc[df[conf.ANNOTATION_COLUMN] == "u"].index
-    u_ = df.loc[df[conf.ANNOTATION_COLUMN] == "u "].index
-    c = df.loc[df[conf.ANNOTATION_COLUMN] == "c"].index
-    c_ = df.loc[df[conf.ANNOTATION_COLUMN] == "c "].index
+    if len(df) == 0:
+        return df
+    if type(df.loc[:, conf.ANNOTATION_COLUMN].values[0]) == str:
+        n = df.loc[
+            df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n"
+            ].index
+        u = df.loc[
+            df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "u"
+            ].index
+        c = df.loc[
+            df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c"
+            ].index
 
-    clean = df.drop([*n, *u, *c, *n_, *u_, *c_])
+        clean = df.drop([*n, *u, *c])
+    else:
+        clean = df.copy()
+        
     clean.loc[:, conf.ANNOTATION_COLUMN] = clean[
         conf.ANNOTATION_COLUMN
     ].astype(float)
@@ -96,7 +104,7 @@ def get_dt_filename(file):
     except Exception as e:
         print(
             "File date naming not understood.\n",
-            "This will be prevent hourly prediction computation.\n",
+            "This will prevent hourly prediction computation.\n",
             e,
         )
         return "ERROR"
@@ -160,8 +168,8 @@ def load_audio(file,
         if len(audio_flat) == 0:
             return
         return audio_flat
-    except:
-        print("File is corrputed and can't be loaded.")
+    except Exception as e:
+        print("File is corrputed and can't be loaded.", e)
         return
 
 

@@ -50,9 +50,12 @@ scale_fmax_with_predictions: True
 ########################  PATHS  #############################################
 # dataset destination directory - save tfrecord dataset to this directory 
 # only change when really necessary
-tfrecords_destination_folder: '../Data/Datasets'
+tfrecords_destination_folder: '../Data/MyNewTFRecordsDataset'
 # default folder to store newly created annotations
 generated_annotations_folder: '../generated_annotations'
+# source path for automatically generated combined annotations 
+# Only relevant for creation of new dataset (option run_config: 2)
+annotation_destination: '../combined_annotations'
 # name of current North Atlantic humpback whale song model
 model_name: 'Humpback_20221130'
 # name of top level directory when annotating multiple datasets
@@ -71,10 +74,11 @@ save_downsampled_files: False
 # are GoogleMod for the modified ResNet-50 architecture, or KerasAppModel for 
 # any of the Keras application models (name will get specified under keras_mod_name)
 ModelClassName: 'HumpBackNorthAtlantic' 
+# ModelClassName: 'KerasAppModel' 
 # batch size for training and evaluating purposes
 batch_size: 32
 # number of epochs to run the model
-epochs: 50
+epochs: 150
 # specify the path to your training checkpoint here to load a pretrained model
 load_ckpt_path: False
 # to run the google model, select True
@@ -82,18 +86,19 @@ load_g_ckpt: False
 # specify the name of the keras application model that you want to run - select the
 # ModelClassName KerasAppModel for this
 keras_mod_name: False
+# keras_mod_name: "EfficientNetB4"
 # number of steps per epoch
-steps_per_epoch: 1000
+steps_per_epoch: 400
 # select True if you want your training data to be time shift augmented (recommended)
-time_augs: True 
+time_augs: False 
 # select True if you want your training data to be MixUp augmented (recommended)
-mixup_augs: True
+mixup_augs: False
 # select True if you want your training data to be 
 # time and frequency masked augmented (recommended)
-spec_aug: True
+spec_aug: False
 # specify a string to describe the dataset used for this model run (to later be able
 # to understand what was significant about this model training)
-data_description: 'describe your dataset'
+data_description: 'Large active learning from false positives from Ilaria. Complete shuffling of data'
 # starting learning rate
 init_lr: 5e-4
 # final learning rate

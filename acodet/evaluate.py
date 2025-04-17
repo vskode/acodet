@@ -79,6 +79,41 @@ def write_trainings_csv():
 
 
 def create_overview_plot(
+    time_starts,    
+    ModelClassName=conf.MODELCLASSNAME,
+    data_dir=conf.TFREC_DESTINATION,
+    batch_size=conf.BATCH_SIZE,
+    keras_mod_name=conf.KERAS_MOD_NAME,
+    data_description=conf.DATA_DESCRIPTION,
+    init_lr=conf.INIT_LR,
+    final_lr=conf.FINAL_LR,
+    ):
+    from acodet.plot_utils import create_and_save_figure
+    data_dir = list(Path(data_dir).iterdir())
+    if 'dataset_meta_train' in [d.stem for d in data_dir]:
+        data_dir = [data_dir[0].parent]
+    
+    plot_model_results(
+        time_starts, data=data_description, init_lr=init_lr, final_lr=final_lr
+    )
+    for time_start in time_starts:
+        with open(f'../trainings/{time_start}/training_info.txt', 'r') as f:
+            info = f.readlines()
+        keras_mod_name = [s.split('= ')[-1][:-1] for s in info if 'keras_mod_name' in s][0]
+        keras_mod_name = [True if keras_mod_name == 'True' else False][0]
+        ModelClassName = [s.split('= ')[-1][:-1] for s in info if '   Model ' in s][0]
+        create_and_save_figure(
+            ModelClassName,
+            data_dir,
+            batch_size,
+            time_start,
+            plot_cm=True,
+            data=data_description,
+            keras_mod_name=keras_mod_name,
+        )
+    
+
+def old_create_overview_plot(
     train_dates=[],
     val_set=None,
     display_keys=["Model"],
@@ -90,8 +125,8 @@ def create_overview_plot(
     if not isinstance(train_dates, list):
         train_dates = [train_dates]
 
-    df = pd.read_csv("../trainings/20230207_meta_trainings.csv")
-    df.index = df["training_date"]
+    # df = pd.read_csv("../trainings/20230207_meta_trainings.csv")
+    # df.index = df["training_date"]
 
     if not val_set:
         val_set = list(Path(conf.TFREC_DESTINATION).iterdir())

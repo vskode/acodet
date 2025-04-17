@@ -132,14 +132,29 @@ def label_explicit_noise(df):
 
 
 def differentiate_label_flags(df, flag=None):
-    df.loc[:, conf.ANNOTATION_COLUMN].fillna(value="c", inplace=True)
-    df.loc[df[conf.ANNOTATION_COLUMN] == "c", "label"] = 1
-    df.loc[df[conf.ANNOTATION_COLUMN] == "n", "label"] = "explicit 0"
+    # df.loc[:, conf.ANNOTATION_COLUMN].fillna(value="c", inplace=True)
+    if flag == "calls":
+        if not conf.ANNOTATION_COLUMN in df.columns:
+            df.loc[:, conf.ANNOTATION_COLUMN] = 'c'
+    elif flag == "noise":
+        if not conf.ANNOTATION_COLUMN in df.columns:
+            df.loc[:, conf.ANNOTATION_COLUMN] = 'n'
+    
+    if type(df[conf.ANNOTATION_COLUMN][0]) == str:
+        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c", 
+                "label"] = 1
+        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n", 
+                "label"] = "explicit 0"
     df_std = seperate_long_annotations(df)
 
-    df_std = df_std.drop(
-        df_std.loc[df_std[conf.ANNOTATION_COLUMN] == "u"].index
-    )
+    
+    if type(df[conf.ANNOTATION_COLUMN][0]) == str:
+        df_std = df_std.drop(
+            df_std.loc[
+                df_std[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "u"
+                ].index
+        )
+        
     df_std.index = pd.RangeIndex(0, len(df_std))
     if flag == "noise":
         df_std = label_explicit_noise(df_std)
@@ -191,7 +206,11 @@ def filter_out_high_freq_and_high_transient(df):
 
 
 def finalize_annotation(file, freq_time_crit=False, **kwargs):
-    ann = pd.read_csv(file, sep="\t")
+    try:
+        ann = pd.read_csv(file, sep="\t")
+    except pd.errors.EmptyDataError as e:
+        print(f"Empty file {file}: {e}")
+        return pd.DataFrame(), pd.DataFrame()
 
     ann["filename"] = get_corresponding_sound_file(file)
     # if not ann['filename']:

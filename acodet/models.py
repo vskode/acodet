@@ -54,6 +54,7 @@ class ModelHelper:
             1, tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1))
         )
         model_list.insert(2, front_end.MelSpectrogram())
+        model_list[4]._name = 'lambda_2'
         self.model = tf.keras.Sequential(
             layers=[layer for layer in model_list]
         )
@@ -206,14 +207,16 @@ class KerasAppModel(ModelHelper):
 
     def __init__(self, keras_mod_name=conf.KERAS_MOD_NAME, **params) -> None:
         keras_model = getattr(tf.keras.applications, keras_mod_name)(
-            include_top=True,
+            include_top=False,
             weights=None,
             input_tensor=None,
             input_shape=[128, 64, 3],
-            pooling=None,
-            classes=1,
+            pooling="avg",
+            # classes=1, # steckt jetzt im dense layer
             classifier_activation="sigmoid",
         )
+        
+        preprocess_fn = tf.keras.applications.efficientnet_v2.preprocess_input
 
         self.model = tf.keras.Sequential(
             [
@@ -228,12 +231,15 @@ class KerasAppModel(ModelHelper):
                     name="pcen",
                 ),
                 # tf.keras.layers.Lambda(lambda t: 255. *t /tf.math.reduce_max(t)),
+                # tf.keras.layers.Lambda(lambda t: (t - tf.reduce_min(t)) / (tf.reduce_max(t) - tf.reduce_min(t) + 1e-6)),  # Normalize PCEN output
                 tf.keras.layers.Lambda(
                     lambda t: tf.tile(
                         tf.expand_dims(t, -1), [1 for _ in range(3)] + [3]
                     )
                 ),
+                tf.keras.layers.Lambda(preprocess_fn),  # Apply preprocessing here
                 keras_model,
+                tf.keras.layers.Dense(1, activation="sigmoid"),  # Add final classifier layer explicitly
             ]
         )
 

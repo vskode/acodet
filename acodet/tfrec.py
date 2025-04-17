@@ -9,6 +9,7 @@ from .humpback_model_dir import front_end
 from pathlib import Path
 import json
 from . import global_config as conf
+from tqdm import tqdm
 
 ########################################################
 #################  WRITING   ###########################
@@ -180,7 +181,8 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
     tfrec_num = 0
     for i, file in enumerate(files):
         print(
-            "writing tf records files, progress:" f"{i/len(files)*100:.0f} %"
+            "writing tf records files, progress:" f"{i/len(files)*100:.0f} %",
+            end='\r'
         )
 
         if i < train_file_index:
@@ -315,7 +317,10 @@ def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
     else:
         inbetween_noise = True
 
-    for file in annotation_files:
+    for file in tqdm(annotation_files,
+                     'Reading annotation files',
+                     position=0,
+                     leave=False):
         annots = pd.read_csv(file)
         if "explicit_noise" in file.stem:
             all_noise = True
@@ -419,11 +424,12 @@ def prepare(
     batch_size,
     shuffle=False,
     shuffle_buffer=750,
+    seed=None,
     augmented_data=None,
     AUTOTUNE=None,
 ):
     if shuffle:
-        ds = ds.shuffle(shuffle_buffer)
+        ds = ds.shuffle(shuffle_buffer, seed=seed)
     ds = ds.batch(batch_size)
     return ds.prefetch(buffer_size=AUTOTUNE)
 
