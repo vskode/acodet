@@ -54,7 +54,9 @@ class ModelHelper:
             1, tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1))
         )
         model_list.insert(2, front_end.MelSpectrogram())
-        model_list[4]._name = 'lambda_2'
+        for i, layer in enumerate(model_list):
+            if 'lambda' in layer.name:
+                layer._name = f'lambda_{i}'
         self.model = tf.keras.Sequential(
             layers=[layer for layer in model_list]
         )
@@ -206,42 +208,48 @@ class KerasAppModel(ModelHelper):
     """
 
     def __init__(self, keras_mod_name=conf.KERAS_MOD_NAME, **params) -> None:
-        keras_model = getattr(tf.keras.applications, keras_mod_name)(
-            include_top=False,
-            weights=None,
-            input_tensor=None,
-            input_shape=[128, 64, 3],
-            pooling="avg",
-            # classes=1, # steckt jetzt im dense layer
-            classifier_activation="sigmoid",
+        if Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
+            self.model = tf.keras.models.load_model(
+                Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
+                custom_objects={"FBetaScote": metrics.FBetaScore},
         )
+        else:
+            keras_model = getattr(tf.keras.applications, keras_mod_name)(
+                include_top=False,
+                weights=None,
+                input_tensor=None,
+                input_shape=[128, 64, 3],
+                pooling="avg",
+                # classes=1, # steckt jetzt im dense layer
+                classifier_activation="sigmoid",
+            )
         
-        preprocess_fn = tf.keras.applications.efficientnet_v2.preprocess_input
+            preprocess_fn = tf.keras.applications.efficientnet_v2.preprocess_input
 
-        self.model = tf.keras.Sequential(
-            [
-                tf.keras.layers.Input([128, 64]),
-                leaf_pcen.PCEN(
-                    alpha=0.98,
-                    delta=2.0,
-                    root=2.0,
-                    smooth_coef=0.025,
-                    floor=1e-6,
-                    trainable=True,
-                    name="pcen",
-                ),
-                # tf.keras.layers.Lambda(lambda t: 255. *t /tf.math.reduce_max(t)),
-                # tf.keras.layers.Lambda(lambda t: (t - tf.reduce_min(t)) / (tf.reduce_max(t) - tf.reduce_min(t) + 1e-6)),  # Normalize PCEN output
-                tf.keras.layers.Lambda(
-                    lambda t: tf.tile(
-                        tf.expand_dims(t, -1), [1 for _ in range(3)] + [3]
-                    )
-                ),
-                tf.keras.layers.Lambda(preprocess_fn),  # Apply preprocessing here
-                keras_model,
-                tf.keras.layers.Dense(1, activation="sigmoid"),  # Add final classifier layer explicitly
-            ]
-        )
+            self.model = tf.keras.Sequential(
+                [
+                    tf.keras.layers.Input([128, 64]),
+                    leaf_pcen.PCEN(
+                        alpha=0.98,
+                        delta=2.0,
+                        root=2.0,
+                        smooth_coef=0.025,
+                        floor=1e-6,
+                        trainable=True,
+                        name="pcen",
+                    ),
+                    # tf.keras.layers.Lambda(lambda t: 255. *t /tf.math.reduce_max(t)),
+                    # tf.keras.layers.Lambda(lambda t: (t - tf.reduce_min(t)) / (tf.reduce_max(t) - tf.reduce_min(t) + 1e-6)),  # Normalize PCEN output
+                    tf.keras.layers.Lambda(
+                        lambda t: tf.tile(
+                            tf.expand_dims(t, -1), [1 for _ in range(3)] + [3]
+                        )
+                    ),
+                    tf.keras.layers.Lambda(preprocess_fn),  # Apply preprocessing here
+                    keras_model,
+                    tf.keras.layers.Dense(1, activation="sigmoid"),  # Add final classifier layer explicitly
+                ]
+            )
 
 
 def init_model(
