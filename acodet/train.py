@@ -1,5 +1,5 @@
 import os
-import time
+from datetime import datetime as dt
 from pathlib import Path
 import numpy as np
 import tensorflow as tf
@@ -70,7 +70,7 @@ def run_training(
         data_dir = [data_dir[0].parent]
 
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
-    time_start = time.strftime("%Y-%m-%d_%H-%M", time.gmtime())
+    time_start = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
     if load_ckpt_path:
         time_start = load_ckpt_path
     Path(f"../trainings/{time_start}").mkdir(exist_ok=True, parents=True)

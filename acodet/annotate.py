@@ -1,4 +1,5 @@
 import time
+from datetime import datetime as dt
 from acodet import models
 from acodet.funcs import (
     get_files,
@@ -100,9 +101,7 @@ class MetaData:
 def run_annotation(train_date=None, **kwargs):
     files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="**/*")
     if not "timestamp_folder" in conf.session:
-        timestamp_foldername = time.strftime(
-            "%Y-%m-%d_%H-%M-%S", time.gmtime()
-        )
+        timestamp_foldername = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
         timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
         mdf = MetaData()
         f_ind = 0
