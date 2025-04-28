@@ -58,7 +58,7 @@ class ModelHelper:
             if 'lambda' in layer.name:
                 layer._name = f'lambda_{i}'
         self.model = tf.keras.Sequential(
-            layers=[layer for layer in model_list]
+            layers=model_list
         )
 
 
@@ -213,6 +213,10 @@ class KerasAppModel(ModelHelper):
                 Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
                 custom_objects={"FBetaScote": metrics.FBetaScore},
         )
+            if conf.MODEL_NAME == 'birdnet':
+                self.model = self.model.model
+                conf.SR = 48000
+                conf.CONTEXT_WIN = 144000
         else:
             keras_model = getattr(tf.keras.applications, keras_mod_name)(
                 include_top=False,
@@ -278,7 +282,7 @@ def init_model(
     """
     model_class = getattr(sys.modules[__name__], model_name)
     mod_obj = model_class(**kwargs)
-    if conf.MODEL_NAME == "FlatHBNA":
+    if conf.MODEL_NAME in ["FlatHBNA", 'birdnet']:
         input_specs = True
     if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()

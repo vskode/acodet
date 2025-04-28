@@ -640,6 +640,11 @@ def create_annotation_df(
         preds = model.predict(
             window_data_for_prediction(audio), callbacks=callbacks
         )
+        if len(preds.shape) > 1:
+            probs = tf.nn.softmax(preds, axis=1)
+            labels = tf.argmax(probs, axis=1).numpy()
+            preds = tf.reduce_max(probs, axis=1).numpy()
+            #TODO build support for multi label classification
         df = create_Raven_annotation_df(preds, ind)
         annots = pd.concat([annots, df], ignore_index=True)
 
