@@ -640,7 +640,7 @@ def create_annotation_df(
         preds = model.predict(
             window_data_for_prediction(audio), callbacks=callbacks
         )
-        if len(preds.shape) > 1:
+        if len(preds.squeeze().shape) > 1:
             probs = tf.nn.softmax(preds, axis=1)
             labels = tf.argmax(probs, axis=1).numpy()
             preds = tf.reduce_max(probs, axis=1).numpy()
