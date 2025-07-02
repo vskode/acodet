@@ -2,6 +2,8 @@ import streamlit as st
 from acodet.create_session_file import create_session_file, read_session_file
 from acodet.front_end import help_strings
 
+available_models = ["HumpbackNet", "BirdNET", "Perch", "GoogleWhale"]
+
 if not "session_started" in st.session_state:
     st.session_state.session_started = True
     create_session_file()
@@ -20,12 +22,13 @@ def select_preset():
     utils.write_to_session_file("run_config", st.session_state.run_option)
     show_run_btn = False
 
-    if st.session_state.run_option == 1:
-        show_run_btn = st_annotate.annotate_options()
-    elif st.session_state.run_option == 2:
-        show_run_btn = st_generate_data.generate_data_options()
-    elif st.session_state.run_option == 3:
-        show_run_btn = st_train.train_options()
+    show_run_btn = st_annotate.annotate_options()
+    selected_model = st.selectbox(
+            "Which model would you like to run?",
+            available_models,
+            key="main",
+            help=help_strings.RUN_OPTION,
+            )        
     if show_run_btn:
         run_computions()
 
@@ -81,14 +84,15 @@ if __name__ == "__main__":
         ---
         """
     )
-    run_option = int(
-        st.selectbox(
-            "How would you like run the program?",
-            ("1 - Inference", "2 - Generate new training data", "3 - Train"),
-            key="main",
-            help=help_strings.RUN_OPTION,
-        )[0]
-    )
+    # run_option = int(
+    #     st.selectbox(
+    #         "How would you like run the program?",
+    #         ("1 - Inference", "2 - Generate new training data", "3 - Train"),
+    #         key="main",
+    #         help=help_strings.RUN_OPTION,
+    #     )[0]
+    # )
+    run_option = 1
 
     st.session_state.run_option = run_option
     select_preset()
