@@ -204,10 +204,17 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         save_dir.mkdir(exist_ok=True, parents=True)
 
         if "Selection" in annot.columns:
-            annot.index.name = "Selection"
-            annot = annot.drop(columns=["Selection"])
+            annot = annot.set_index('Selection')
         else:
             annot.index = np.arange(1, len(annot) + 1)
+            annot.index.name = "Selection"
+        try:
+            check_selection_starts_at_1(annot)
+        except AssertionError as e:
+            print(e)
+            vals = annot.index.values
+            vals += 1
+            annot.index = vals
             annot.index.name = "Selection"
         annot.to_csv(save_dir.joinpath(file.stem + file.suffix), sep="\t")
         if conf.STREAMLIT and "progbar1" in kwargs.keys():
@@ -217,6 +224,23 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
     if conf.STREAMLIT:
         return path
 
+def check_selection_starts_at_1(annot):
+    """
+    Ensure that the index of the annotation DataFrame starts at 1.
+    
+    Parameters
+    ----------
+    annot : pd.DataFrame
+        The annotation DataFrame to modify.
+        
+    Raises
+    AssertionError
+        If the index of the annotation DataFrame does not start at 1.
+    """
+    assert (annot.index.values[0] > 0), (
+            "Annotation index needs to start above 0 to work with Raven."
+            )
+    
 
 if __name__ == "__main__":
     train_dates = ["2022-11-30_01"]
