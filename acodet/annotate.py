@@ -208,7 +208,7 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         else:
             annot.index = np.arange(1, len(annot) + 1)
             annot.index.name = "Selection"
-        if annot.index.values > 0:
+        if len(annot) > 0:
             try:
                 check_selection_starts_at_1(annot)
             except AssertionError as e:
