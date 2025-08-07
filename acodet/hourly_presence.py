@@ -658,7 +658,7 @@ def calc_val_diff(
         df_val = get_val(fold.joinpath("analysis").joinpath(conf.HR_VAL_PATH))
         hours_of_day = ["%.2i:00" % i for i in np.arange(24)]
         files = get_files(
-            location=path.joinpath(fold.stem), search_str="**/*txt"
+            location=path, search_str="**/*txt"
         )
         files.sort()
 
@@ -681,21 +681,34 @@ def calc_val_diff(
             df_val.index = df_metric.index
             df_diff.update(
                 {
-                    agg_met: df_val.loc[:, hours_of_day]
-                    - df_metric.loc[:, hours_of_day]
+                    # the calculation will result in tp being 2, fp -1, fn 1 and tn 0
+                    agg_met:
+                        (
+                            df_val.loc[:, hours_of_day] - df_metric.loc[:, hours_of_day] 
+                            + 2 * df_val.loc[:, hours_of_day] * df_metric.loc[:, hours_of_day]
+                        )
                 }
             )
 
             results = np.unique(df_diff[agg_met])
             d.update(
-                {agg_met: dict({"true": 0, "false_pos": 0, "false_neg": 0})}
+                {agg_met: dict({"true_pos": 0, "false_pos": 0, "false_neg": 0, "true_neg": 0})}
             )
-            for met, val in zip(d[agg_met].keys(), (0, -1, 1)):
-                if val in results:
-                    d[agg_met][met] = len(np.where(df_diff[agg_met] == val)[0])
+            
+            if 2 in results:
+                d[agg_met]['true_pos'] = len(np.where(df_diff[agg_met] == 2)[0])
+            if -1 in results:
+                d[agg_met]['false_pos'] = len(np.where(df_diff[agg_met]== -1)[0])
+            if 1 in results:
+                d[agg_met]['false_neg'] = len(np.where(df_diff[agg_met] == 1)[0])
+            if 0 in results:
+                d[agg_met]['true_neg'] = len(np.where(df_diff[agg_met] == 0)[0])
+            
             incorrect.update(
                 {agg_met: d[agg_met]["false_pos"] + d[agg_met]["false_neg"]}
             )
+            d[agg_met]['precision'] = d[agg_met]['true_pos'] / (d[agg_met]['false_pos'] + d[agg_met]['true_pos'])
+            d[agg_met]['recall'] = d[agg_met]['true_pos'] / (d[agg_met]['false_neg'] + d[agg_met]['true_pos'])
         perf_df = pd.DataFrame(d)
 
         print(
@@ -706,7 +719,7 @@ def calc_val_diff(
             thresh,
             "incorrect:",
             incorrect["sl"],
-            "%.2f" % (incorrect["sl"] / (len(df_diff["sl"]) * 24) * 100),
+            # "%.2f" % (incorrect["sl"] / (len(df_diff["sl"]) * 24) * 100),
         )
         print(
             "l:",
@@ -715,35 +728,28 @@ def calc_val_diff(
             thresh_sc,
             "sc_incorrect:",
             incorrect["sq"],
-            "%.2f" % (incorrect["sq"] / (len(df_diff["sl"]) * 24) * 100),
+            # "%.2f" % (incorrect["sq"] / (len(df_diff["sl"]) * 24) * 100),
         )
 
+        save_dir = fold.joinpath(files[-1].parent.stem).joinpath('validation')
+        save_dir.mkdir(exist_ok=True, parents=True)
+        
         annots.df.to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh}_l{lim}_hourly_presence.csv")
+            save_dir.joinpath(f"th{thresh}_l{lim}_hourly_pres_sl.csv")
         )
         annots.df_sc.to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh_sc}_l{lim_sc}_hourly_pres_sequ_crit.csv")
+            save_dir.joinpath(f"th{thresh_sc}_l{lim_sc}_hourly_pres_sequ_crit.csv")
         )
         df_diff["sl"].to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh}_l{lim}_diff_hourly_presence.csv")
+            save_dir.joinpath(f"th{thresh}_l{lim}_diff_hourly_pres_sl.csv")
         )
         df_diff["sq"].to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(
+            save_dir.joinpath(
                 f"th{thresh_sc}_l{lim_sc}_diff_hourly_pres_sequ_crit.csv"
             )
         )
         perf_df.to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh_sc}_l{lim_sc}_diff_performance.csv")
+            save_dir.joinpath(f"th{thresh_sc}_l{lim_sc}_diff_performance.csv")
         )
 
 
