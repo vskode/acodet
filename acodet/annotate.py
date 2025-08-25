@@ -11,7 +11,7 @@ from acodet import global_config as conf
 import pandas as pd
 import numpy as np
 from pathlib import Path
-
+from tqdm import tqdm
 
 class MetaData:
     def __init__(self):
@@ -122,7 +122,7 @@ def run_annotation(train_date=None, **kwargs):
         f_ind = file_idx - 1
 
     if not train_date:
-        model = models.init_model()
+        model = models.init_model(timestamp_foldername=timestamp_foldername)
         mod_label = conf.MODEL_NAME
     else:
         df = pd.read_csv("../trainings/20221124_meta_trainings.csv")
@@ -141,7 +141,10 @@ def run_annotation(train_date=None, **kwargs):
         import streamlit as st
 
         st.session_state.progbar1 = 0
-    for i, file in enumerate(files):
+    for i, file in tqdm(enumerate(files),
+                        "Annotating files",
+                        total=len(files),
+                        leave=False):
         if file.is_dir():
             continue
 
@@ -196,6 +199,8 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
                 e,
             )
         annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
+        if len(annot) == 0:
+            continue
         save_dir = (
             path.joinpath(f"thresh_{conf.THRESH}")
             .joinpath(file.relative_to(path.joinpath(conf.THRESH_LABEL)))

@@ -24,7 +24,7 @@ def initial_dropdown(key):
     """
     return int(
         st.selectbox(
-            "What predefined Settings would you like to run?",
+            "What would you like to run?",
             (
                 "1 - generate new annotations",
                 "2 - filter existing annotations with different threshold",
@@ -36,6 +36,29 @@ def initial_dropdown(key):
         )[0]
     )
 
+def model_dropdown(key):
+    from bacpipe.tests.test_embedding_creation import models, models_requiring_checkpoints
+    st.header("Which model would you like to use?")
+    rad = st.radio("Models requiring checkpoints?", 
+                   ["Yes", "No"], 
+                   horizontal=True, 
+                   key=key+'rad',
+                   help=help_strings.MODEL_SELECT)
+    if rad == 'Yes':
+        model = st.selectbox(
+            "Models requiring checkpoints:",
+            models_requiring_checkpoints,
+            key=key+'ckpt',
+            help=help_strings.MODEL_CHECKPOINTS
+        )
+    else:
+        model = st.selectbox(
+            "Models requiring no checkpoints:",
+            models,
+            key=key+'no_ckpt',
+            help=help_strings.MODEL_NO_CHECKPOINTS
+        )
+    return model
 
 class PresetInterfaceSettings:
     def __init__(self, config, key) -> None:
@@ -232,8 +255,11 @@ def annotate_options(key="annot"):
         True once all settings have been entered
     """
     preset_option = initial_dropdown(key)
+    model_select = model_dropdown(key)
 
     st.session_state.preset_option = preset_option
+    st.session_state.modelclassname = 'BacpipeModel'
+    st.session_state.model_name = model_select
     utils.make_nested_btn_false_if_dropdown_changed(1, preset_option, 1)
     utils.make_nested_btn_false_if_dropdown_changed(
         run_id=1, preset_id=preset_option, btn_id=4

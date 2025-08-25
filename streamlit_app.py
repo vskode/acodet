@@ -1,8 +1,5 @@
 import streamlit as st
 from acodet.create_session_file import create_session_file, read_session_file
-from acodet.front_end import help_strings
-
-available_models = ["HumpbackNet", "BirdNET", "Perch", "GoogleWhale"]
 
 if not "session_started" in st.session_state:
     st.session_state.session_started = True
@@ -23,12 +20,7 @@ def select_preset():
     show_run_btn = False
 
     show_run_btn = st_annotate.annotate_options()
-    selected_model = st.selectbox(
-            "Which model would you like to run?",
-            available_models,
-            key="main",
-            help=help_strings.RUN_OPTION,
-            )        
+    
     if show_run_btn:
         run_computions()
 
@@ -78,20 +70,16 @@ if __name__ == "__main__":
     st.markdown(
         """
         # Welcome to AcoDet - Acoustic Detection of Animal Vocalizations :loud_sound:
-        ### This program is currently equipped with a humpback whale song detector for the North Atlantic :whale2:
+        ### This program can be used to generate predictions from bioacoustic deep 
+        learning models. AcoDet supports models implemented in bacpipe that have 
+        available classification heads. In the future, custom classification heads
+        will be able to add to the feature extractors. 
+        
         For more information, please visit https://github.com/vskode/acodet
         
         ---
         """
     )
-    # run_option = int(
-    #     st.selectbox(
-    #         "How would you like run the program?",
-    #         ("1 - Inference", "2 - Generate new training data", "3 - Train"),
-    #         key="main",
-    #         help=help_strings.RUN_OPTION,
-    #     )[0]
-    # )
     run_option = 1
 
     st.session_state.run_option = run_option

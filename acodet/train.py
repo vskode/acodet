@@ -3,7 +3,7 @@ from datetime import datetime as dt
 from pathlib import Path
 import numpy as np
 import tensorflow as tf
-import tensorflow_addons as tfa
+# import tensorflow_addons as tfa
 
 from acodet.funcs import save_model_results, get_train_set_size
 from acodet import models
@@ -176,18 +176,18 @@ def run_training(
             tf.keras.metrics.BinaryAccuracy(),
             tf.keras.metrics.Precision(),
             tf.keras.metrics.Recall(),
-            tfa.metrics.FBetaScore(
-                num_classes=1,
-                beta=f_score_beta,
-                threshold=f_score_thresh,
-                name="fbeta",
-            ),
-            tfa.metrics.FBetaScore(
-                num_classes=1,
-                beta=1.0,
-                threshold=f_score_thresh,
-                name="fbeta1",
-            ),
+            # tfa.metrics.FBetaScore(
+            #     num_classes=1,
+            #     beta=f_score_beta,
+            #     threshold=f_score_thresh,
+            #     name="fbeta",
+            # ),
+            # tfa.metrics.FBetaScore(
+            #     num_classes=1,
+            #     beta=1.0,
+            #     threshold=f_score_thresh,
+            #     name="fbeta1",
+            # ),
         ],
     )
 
@@ -268,18 +268,18 @@ def save_model(
             tf.keras.metrics.BinaryAccuracy(),
             tf.keras.metrics.Precision(),
             tf.keras.metrics.Recall(),
-            tfa.metrics.FBetaScore(
-                num_classes=1,
-                beta=f_score_beta,
-                threshold=f_score_thresh,
-                name="fbeta",
-            ),
-            tfa.metrics.FBetaScore(
-                num_classes=1,
-                beta=1.0,
-                threshold=f_score_thresh,
-                name="fbeta1",
-            ),
+            # tfa.metrics.FBetaScore(
+            #     num_classes=1,
+            #     beta=f_score_beta,
+            #     threshold=f_score_thresh,
+            #     name="fbeta",
+            # ),
+            # tfa.metrics.FBetaScore(
+            #     num_classes=1,
+            #     beta=1.0,
+            #     threshold=f_score_thresh,
+            #     name="fbeta1",
+            # ),
         ],
     )
     model.save(f"acodet/src/models/{string}")

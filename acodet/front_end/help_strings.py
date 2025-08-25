@@ -1,6 +1,17 @@
-RUN_OPTION = (
-    "Choose what option to run (currently only Inference is supported)."
+MODEL_SELECT = (
+    """Select the model you would like to use for your session. Remember, the model has classes that it was trained 
+    on, if those classes don't exist in your data, the model will not generate meaningful results. If you select a model
+    remember that some of them will require you to provide the path to the model checkpoints."""
 )
+MODEL_CHECKPOINTS = (
+    """When you select one of these models, you have to provide the path to the location of the checkpoint. Otherwise
+    the model will not run successfully."""
+)
+MODEL_NO_CHECKPOINTS = (
+    """These models are all supported in AcoDet by default. Some of them are being downloaded in the background. You don't
+    have to do anything else."""
+)
+
 SELECT_PRESET = "Based on the preset, different computations will run."
 SAMPLE_RATE = """
 If you need to change this, make sure that the sample rate 

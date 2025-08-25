@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow_addons import metrics
+# from tensorflow_addons import metrics
 from pathlib import Path
 import zipfile
 import sys
@@ -61,7 +61,6 @@ class ModelHelper:
             layers=model_list
         )
 
-
 class HumpBackNorthAtlantic(ModelHelper):
     """
     Defualt class for North Atlantic Humpback Whale Song detection. If no new
@@ -91,7 +90,7 @@ class HumpBackNorthAtlantic(ModelHelper):
             
         self.model = tf.keras.models.load_model(
             Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
-            custom_objects={"FBetaScote": metrics.FBetaScore},
+            custom_objects={"Addons>FBetaScore": FBetaScore},
         )
     
     def download_model(self):
@@ -211,7 +210,7 @@ class KerasAppModel(ModelHelper):
         if Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
             self.model = tf.keras.models.load_model(
                 Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
-                custom_objects={"FBetaScote": metrics.FBetaScore},
+                # custom_objects={"FBetaScote": metrics.FBetaScore},
         )
             if conf.MODEL_NAME == 'birdnet':
                 self.model = self.model.model
@@ -256,6 +255,12 @@ class KerasAppModel(ModelHelper):
             )
 
 
+class BacpipeModel:
+    def __init__(self, **kwargs):
+        from bacpipe.generate_embeddings import Embedder
+        self.model = Embedder(conf.MODEL_NAME)
+        
+
 def init_model(
     model_name: str = conf.MODELCLASSNAME,
     training_path: str = conf.LOAD_CKPT_PATH,
@@ -282,7 +287,7 @@ def init_model(
     """
     model_class = getattr(sys.modules[__name__], model_name)
     mod_obj = model_class(**kwargs)
-    if conf.MODEL_NAME in ["FlatHBNA", 'birdnet']:
+    if conf.MODEL_NAME in ["FlatHBNA"] or conf.MODELCLASSNAME == "BacpipeModel":
         input_specs = True
     if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()
@@ -348,3 +353,47 @@ def prep_ds_4_preds(dataset):
         return dataset.map(lambda x, y, z, w: (x, y)).batch(batch_size=32)
     else:
         return dataset.batch(batch_size=32)
+
+class FBetaScore(tf.keras.metrics.Metric):
+    def __init__(self, num_classes=1, average=None, beta=0.5, threshold=0.5, name="fbeta", dtype=tf.float32, **kwargs):
+        super().__init__(name=name, dtype=dtype, **kwargs)
+        self.num_classes = num_classes
+        self.average = average
+        self.beta = beta
+        self.threshold = threshold
+
+        # Must match variable names used in TFA version
+        self.true_positives = self.add_weight(name="true_positives", shape=(num_classes,), initializer="zeros")
+        self.false_positives = self.add_weight(name="false_positives", shape=(num_classes,), initializer="zeros")
+        self.false_negatives = self.add_weight(name="false_negatives", shape=(num_classes,), initializer="zeros")
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_pred = tf.cast(y_pred > self.threshold, self.dtype)
+        y_true = tf.cast(y_true, self.dtype)
+
+        tp = tf.reduce_sum(y_true * y_pred, axis=0)
+        fp = tf.reduce_sum((1 - y_true) * y_pred, axis=0)
+        fn = tf.reduce_sum(y_true * (1 - y_pred), axis=0)
+
+        self.true_positives.assign_add(tp)
+        self.false_positives.assign_add(fp)
+        self.false_negatives.assign_add(fn)
+
+    def result(self):
+        beta_sq = self.beta ** 2
+        precision = self.true_positives / (self.true_positives + self.false_positives + 1e-7)
+        recall = self.true_positives / (self.true_positives + self.false_negatives + 1e-7)
+
+        return (1 + beta_sq) * precision * recall / (beta_sq * precision + recall + 1e-7)
+
+    def reset_state(self):
+        for v in self.variables:
+            v.assign(tf.zeros_like(v))
+
+    def get_config(self):
+        return {
+            "num_classes": self.num_classes,
+            "average": self.average,
+            "beta": self.beta,
+            "threshold": self.threshold,
+        }
