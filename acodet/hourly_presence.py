@@ -143,16 +143,18 @@ def compute_hourly_pres(
     path = find_thresh05_path_in_dir(time_dir)
 
     if "multi_datasets" in conf.session:
-        directories = [
+        dirs = [
             [d for d in p.iterdir() if d.is_dir()]
             for p in path.iterdir()
             if p.is_dir()
         ][0]
     else:
-        directories = [p for p in path.iterdir() if p.is_dir()]
-    directories = [d for d in directories if not d.stem == "analysis"]
+        dirs = [p for p in path.iterdir() if p.is_dir()]
+    directories = [d for d in dirs if not d.stem == "analysis"]
 
     for ind, fold in enumerate(directories):
+        if 'Combined' in fold.stem or 'multilabel' in fold.stem:
+            continue
         files = get_files(location=fold, search_str="**/*txt")
         files.sort()
 

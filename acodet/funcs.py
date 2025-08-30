@@ -598,7 +598,8 @@ def create_Raven_annotation_df(preds: np.ndarray) -> pd.DataFrame:
             "Low Freq (Hz)",
         ]
     )
-
+    df['Selection'] = range(1, len(preds)+1)
+    df = df.set_index('Selection')
     df["Begin Time (s)"] = (
         np.arange(0, len(preds)) * conf.CONTEXT_WIN
     ) / conf.SR
@@ -624,13 +625,19 @@ def run_inference(
 ) -> pd.DataFrame:
     predictions = []
     for ind, audio in enumerate(audio_batches):
-        if callbacks is not None and ind == 0:
-            callbacks = callbacks(**kwargs)
         if 'predict' in dir(model):
+            if callbacks is not None and ind == 0:
+                callbacks = callbacks(**kwargs)
             preds = model.predict(
                 window_data_for_prediction(audio), callbacks=callbacks
             )
         elif conf.MODELCLASSNAME == 'BacpipeModel':
+            
+            if conf.STREAMLIT:
+                import streamlit as st
+                kwargs['progbar1'].progress(ind / len(audio_batches), 
+                                                   text="Current file")
+            
             frames = model.model.window_audio(np.array([audio]))
             _, preds = model.model(frames, return_class_results=True)
         predictions.extend(preds)

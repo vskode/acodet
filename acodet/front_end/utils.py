@@ -127,11 +127,17 @@ def prepare_run():
         st.markdown("""---""")
         st.markdown("## Computation started, please wait.")
         if st.session_state.preset_option in [0, 1]:
-            kwargs = {
-                "callbacks": TFPredictProgressBar,
-                "progbar1": st.progress(0, text="Current file"),
-                "progbar2": st.progress(0, text="Overall progress"),
-            }
+            if not st.session_state.ModelClassName == 'BacpipeModel':
+                kwargs = {
+                    "callbacks": TFPredictProgressBar,
+                    "progbar1": st.progress(0, text="Current file"),
+                    "progbar2": st.progress(0, text="Overall progress"),
+                }
+            else:
+                kwargs = {
+                    "progbar1": st.progress(0, text="Current file"),
+                    "progbar2": st.progress(0, text="Overall progress"),
+                }
         else:
             kwargs = {"progbar1": st.progress(0, text="Progress")}
     return kwargs

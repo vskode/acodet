@@ -124,13 +124,32 @@ class ShowAnnotationPredictions:
             display_annots = [
                 f.relative_to(path).as_posix() for f in annot_files
             ]
-            chosen_file = st.selectbox(
-                label=f"""Choose a generated annotations file from 
-                `{path.resolve()}`""",
-                options=display_annots,
-                key=f"file_selec_{tab_number}",
-                help=help_strings.ANNOT_FILES_DROPDOWN,
-            )
+            if st.session_state.multilabel:
+                labels = [d.stem for d in path.iterdir() 
+                           if not 'Combined' in d.stem
+                           or 'multilabel' in d.stem]
+                lbl = st.selectbox(
+                    label="Choose a class",
+                    options=labels,
+                    key=f'lbl_{tab_number}'
+                )
+                lbl_files = [d for d in display_annots if lbl in d]
+                chosen_file = st.selectbox(
+                    label=f"""Choose a generated annotations file from 
+                    `{path.resolve()}`""",
+                    index=0,
+                    options=lbl_files,
+                    key=f"file_selec_{tab_number}",
+                    help=help_strings.ANNOT_FILES_DROPDOWN,
+                )
+            else:
+                chosen_file = st.selectbox(
+                    label=f"""Choose a generated annotations file from 
+                    `{path.resolve()}`""",
+                    options=display_annots,
+                    key=f"file_selec_{tab_number}",
+                    help=help_strings.ANNOT_FILES_DROPDOWN,
+                )
             st.write("All of these files can be imported into Raven directly.")
             df = pd.read_csv(path.joinpath(chosen_file), sep="\t")
             st.dataframe(df, hide_index=True)
@@ -176,7 +195,7 @@ class Results(utils.Limits):
 
     def init_tab(self, tab, key):
         with tab:
-            datasets = [l.stem for l in self.plots_paths]
+            datasets = [l.stem for l in self.plots_paths if not 'Combined' in l.stem]
 
             chosen_dataset = st.selectbox(
                 label=f"""Choose a dataset:""",

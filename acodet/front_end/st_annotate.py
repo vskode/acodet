@@ -48,6 +48,7 @@ def model_dropdown(key):
         model = st.selectbox(
             "Models requiring checkpoints:",
             models_requiring_checkpoints,
+            index=None,
             key=key+'ckpt',
             help=help_strings.MODEL_CHECKPOINTS
         )
@@ -55,9 +56,13 @@ def model_dropdown(key):
         model = st.selectbox(
             "Models requiring no checkpoints:",
             models,
+            index=None,
             key=key+'no_ckpt',
             help=help_strings.MODEL_NO_CHECKPOINTS
         )
+    if model and not model == 'hbdet':
+        utils.write_to_session_file('ModelClassName', 'BacpipeModel')
+        utils.write_to_session_file('multilabel', True)
     return model
 
 class PresetInterfaceSettings:
@@ -255,11 +260,16 @@ def annotate_options(key="annot"):
         True once all settings have been entered
     """
     preset_option = initial_dropdown(key)
-    model_select = model_dropdown(key)
+    if preset_option in [0, 1]:
+        model_select = model_dropdown(key)
+        st.session_state.model_name = model_select
+    else:
+        ml = st.radio('Was this a multilabel classification?', 
+                 options=[True, False],
+                 key=f'multilabel_{key}')
+        utils.write_to_session_file('multilabel', ml)
 
     st.session_state.preset_option = preset_option
-    st.session_state.modelclassname = 'BacpipeModel'
-    st.session_state.model_name = model_select
     utils.make_nested_btn_false_if_dropdown_changed(1, preset_option, 1)
     utils.make_nested_btn_false_if_dropdown_changed(
         run_id=1, preset_id=preset_option, btn_id=4

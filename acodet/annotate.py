@@ -139,8 +139,10 @@ def run_annotation(train_date=None, **kwargs):
 
     if conf.STREAMLIT:
         import streamlit as st
-
-        st.session_state.progbar1 = 0
+        if 'callbacks' in kwargs:
+            st.session_state.progbar1 = st.progress(0, text='Current file')
+                
+            st.session_state.progbar2 = st.progress(0, text='Overall progress')
     for i, file in tqdm(enumerate(files),
                         "Annotating files",
                         total=len(files),
@@ -150,8 +152,8 @@ def run_annotation(train_date=None, **kwargs):
 
         if conf.STREAMLIT:
             import streamlit as st
-
-            st.session_state.progbar1 += 1
+            kwargs['progbar2'].progress(i / len(files), 
+                                               text='Overall progress')
         f_ind += 1
         start = time.time()
         annot = gen_annotations(
@@ -198,7 +200,29 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
                 "Error: ",
                 e,
             )
-        annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
+        if 'multilabel' in file.stem:
+            # preds, species = np.array([s.split('__') for s in annot[conf.ANNOTATION_COLUMN]])
+            preds = np.array([s.split('__') for s in annot[conf.ANNOTATION_COLUMN]])[:, 0]
+            preds = np.array(preds, dtype=np.float32)
+            
+            annot = annot.loc[preds >= conf.THRESH]
+        elif not conf.ANNOTATION_COLUMN in annot.columns:
+            if 'combined' in file.stem:
+                label_columns = (
+                    annot.columns[~annot.columns.isin([
+                        'Selection', 
+                        'Begin Time (s)', 'End Time (s)', 
+                        'High Freq (Hz)', 'Low Freq (Hz)'
+                        ])]
+                )
+                df_bool = pd.DataFrame()
+                for col in label_columns:
+                    df_bool[col] = annot[col] >= conf.THRESH
+                bool_any = np.where(df_bool.values)[0]
+                bool_any = np.unique(bool_any)
+                annot = annot.iloc[bool_any]
+        else:
+            annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= conf.THRESH]
         if len(annot) == 0:
             continue
         save_dir = (
