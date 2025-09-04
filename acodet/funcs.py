@@ -541,7 +541,8 @@ def get_files(
         the pattern
     """
     folder = Path(location)
-    return list(folder.glob(search_str))
+    # return list(folder.glob(search_str))
+    return [f for f in folder.rglob(search_str) if f.suffix == '.WAV']
 
 
 def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
@@ -785,19 +786,25 @@ def gen_annotations(
         computed
     """
     parent_dirs = manage_dir_structure(file)
+    
+    bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs'
+    existing_file = Path(bacpipe_path) / (parent_dirs.stem + '/' + file.stem + '_birdnet.json')
+    if existing_file.exists():
+        with open(existing_file, 'r') as f:
+            predictions = json.load(f)
+    else:
+        channel = get_channel(get_top_dir(parent_dirs))
 
-    channel = get_channel(get_top_dir(parent_dirs))
+        audio = load_audio(file, channel)
+        if audio is None:
+            raise ImportError(
+                f"The audio file `{str(file)}` cannot be loaded. Check if file has "
+                "one of the supported endings "
+                "(wav, mp3, flac, etc.)) and is not empty."
+            )
+        audio_batches = batch_audio(audio)
 
-    audio = load_audio(file, channel)
-    if audio is None:
-        raise ImportError(
-            f"The audio file `{str(file)}` cannot be loaded. Check if file has "
-            "one of the supported endings "
-            "(wav, mp3, flac, etc.)) and is not empty."
-        )
-    audio_batches = batch_audio(audio)
-
-    predictions = run_inference(audio_batches, model, **kwargs)
+        predictions = run_inference(audio_batches, model, **kwargs)
        
     save_path_func = lambda x: (
         Path(conf.GEN_ANNOTS_DIR)
@@ -806,8 +813,18 @@ def gen_annotations(
         .joinpath(x)
         .joinpath(parent_dirs)
     )
+    if 'multi_datasets_annot' in kwargs and kwargs['multi_datasets_annot']:
+        dataset_dir = Path(parent_dirs).parts[0]
+        save_path_func = lambda x: (
+            Path(conf.GEN_ANNOTS_DIR)
+            .joinpath(timestamp_foldername)
+            .joinpath(conf.THRESH_LABEL)
+            .joinpath(dataset_dir)
+            .joinpath(x)
+            .joinpath(parent_dirs.relative_to(dataset_dir))
+            )
 
-    if len(predictions.squeeze().shape) > 1:
+    if True:#len(predictions.squeeze().shape) > 1:
         annotation_df = save_multilabel_dfs(file, model, save_path_func, 
                                             mod_label, predictions)
         

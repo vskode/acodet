@@ -124,8 +124,21 @@ class ShowAnnotationPredictions:
             display_annots = [
                 f.relative_to(path).as_posix() for f in annot_files
             ]
+            if st.session_state.multi_datasets_annot:
+                datasets = [d.stem for d in path.iterdir() 
+                           if not 'analysis' in d.stem]
+                dataset = st.selectbox(
+                    label="Choose a dataset",
+                    options=datasets,
+                    key=f'dataset_{tab_number}'
+                )
+                
             if st.session_state.multilabel:
-                labels = [d.stem for d in path.iterdir() 
+                if st.session_state.multi_datasets_annot:
+                    p = path / dataset
+                else:
+                    p = path
+                labels = [d.stem for d in p.iterdir() 
                            if not 'Combined' in d.stem
                            or 'multilabel' in d.stem]
                 lbl = st.selectbox(
@@ -133,26 +146,23 @@ class ShowAnnotationPredictions:
                     options=labels,
                     key=f'lbl_{tab_number}'
                 )
-                lbl_files = [d for d in display_annots if lbl in d]
-                chosen_file = st.selectbox(
-                    label=f"""Choose a generated annotations file from 
-                    `{path.resolve()}`""",
-                    index=0,
-                    options=lbl_files,
-                    key=f"file_selec_{tab_number}",
-                    help=help_strings.ANNOT_FILES_DROPDOWN,
-                )
-            else:
-                chosen_file = st.selectbox(
-                    label=f"""Choose a generated annotations file from 
-                    `{path.resolve()}`""",
-                    options=display_annots,
-                    key=f"file_selec_{tab_number}",
-                    help=help_strings.ANNOT_FILES_DROPDOWN,
-                )
+                display_annots = [d for d in display_annots if lbl in d]
+                
+            chosen_file = st.selectbox(
+                label=f"""Choose a generated annotations file from 
+                `{path.resolve()}`""",
+                index=0,
+                options=display_annots,
+                key=f"file_selec_{tab_number}",
+                help=help_strings.ANNOT_FILES_DROPDOWN,
+            )
             st.write("All of these files can be imported into Raven directly.")
-            df = pd.read_csv(path.joinpath(chosen_file), sep="\t")
-            st.dataframe(df, hide_index=True)
+            try:
+                df = pd.read_csv(path.joinpath(chosen_file), sep="\t")
+                st.dataframe(df, hide_index=True)
+            except Exception as e:
+                print('File couldnt be loaded due to: ', e)
+                
 
 
 class Results(utils.Limits):
@@ -195,11 +205,24 @@ class Results(utils.Limits):
 
     def init_tab(self, tab, key):
         with tab:
-            datasets = [l.stem for l in self.plots_paths if not 'Combined' in l.stem]
-
+            if st.session_state.multi_datasets_annot:
+                top_dir = self.plots_paths[0].parent.parent
+                datasets = [d.stem for d in top_dir.iterdir() 
+                           if not 'analysis' in d.stem]
+                dataset = st.selectbox(
+                    label="Choose a dataset",
+                    index=0,
+                    options=datasets,
+                    key=f'dataset_{key}'
+                )
+                labels = [d.stem for d in top_dir.joinpath(dataset).iterdir()
+                          if not 'Combined' in d.stem or not 'multilabel' in d.stem]
+            else:
+                labels = [l.stem for l in self.plots_paths if not 'Combined' in l.stem]
+                
             chosen_dataset = st.selectbox(
                 label=f"""Choose a dataset:""",
-                options=datasets,
+                options=labels,
                 key=f"dataset_selec_{key}",
             )
             self.chosen_dataset = (
@@ -281,6 +304,13 @@ class PlotDisplay:
                 f"{self.path_prefix}_{limit_label}.csv"
             )
         )
+        if len(df) == 0:
+            st.text(
+                'There were too few annotations of this species to pass '
+                f"the threshold of {conf['thresh']}. "
+                'For this reasons no data ist displayed.'
+                )
+            st.stop()
         df.index = pd.DatetimeIndex(df.Date)
         df = df.reindex(
             pd.date_range(df.index[0], df.index[-1]), fill_value=np.nan

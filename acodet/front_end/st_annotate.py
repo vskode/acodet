@@ -166,15 +166,13 @@ class PresetInterfaceSettings:
             self.ask_for_multiple_datasets()
 
     def ask_for_multiple_datasets(self):
-        multiple_datasets = st.radio(
+        st.radio(
             "Would you like to process multiple datasets in this session?",
-            ("No", "Yes"),
+            (False, True),
             key=f"multi_datasets_{self.key}",
             horizontal=True,
             help=help_strings.MULTI_DATA,
         )
-        if multiple_datasets == "Yes":
-            self.config["multi_datasets"] = True
 
 
     def rerun_annotations(self):

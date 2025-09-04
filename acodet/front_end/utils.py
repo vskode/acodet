@@ -140,6 +140,7 @@ def prepare_run():
                 }
         else:
             kwargs = {"progbar1": st.progress(0, text="Progress")}
+        kwargs['multi_datasets_annot'] = st.session_state.multi_datasets_annot
     return kwargs
 
 

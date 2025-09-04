@@ -142,7 +142,10 @@ def compute_hourly_pres(
 
     path = find_thresh05_path_in_dir(time_dir)
 
-    if "multi_datasets" in conf.session:
+    if (
+        "multi_datasets_annot" in conf.session 
+        and conf.session['multi_datasets_annot']
+        ):
         dirs = [
             [d for d in p.iterdir() if d.is_dir()]
             for p in path.iterdir()
@@ -153,7 +156,12 @@ def compute_hourly_pres(
     directories = [d for d in dirs if not d.stem == "analysis"]
 
     for ind, fold in enumerate(directories):
-        if 'Combined' in fold.stem or 'multilabel' in fold.stem:
+        if (
+            get_path(path.joinpath(fold.stem), conf.HR_PRS_SL).exists()
+            or "save_filtered_selection_tables" in kwargs
+            or 'Combined' in fold.stem 
+            or 'multilabel' in fold.stem
+            ):
             continue
         files = get_files(location=fold, search_str="**/*txt")
         files.sort()
@@ -634,6 +642,8 @@ def plot_hp(path, lim, thresh, metric):
         d = {"vmin": 0, "vmax": 1}
     else:
         d = {"vmax": conf.HR_CNTS_VMAX}
+    if len(h_pres) == 0:
+        return
     sns.heatmap(h_pres.T, cmap="crest", **d)
     plt.ylabel("hour of day")
     plt.tight_layout()

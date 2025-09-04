@@ -156,14 +156,18 @@ def run_annotation(train_date=None, **kwargs):
                                                text='Overall progress')
         f_ind += 1
         start = time.time()
-        annot = gen_annotations(
-            file,
-            model,
-            mod_label=mod_label,
-            timestamp_foldername=timestamp_foldername,
-            num_of_files=len(files),
-            **kwargs,
-        )
+        try:
+            annot = gen_annotations(
+                file,
+                model,
+                mod_label=mod_label,
+                timestamp_foldername=timestamp_foldername,
+                num_of_files=len(files),
+                **kwargs,
+            )
+        except Exception as e:
+            print('Annotations could not be generated due to error:', e)
+            continue
         computing_time = time.time() - start
         mdf.append_and_save_meta_file(
             file,
