@@ -14,12 +14,16 @@ from pathlib import Path
 from tqdm import tqdm
 
 class MetaData:
-    def __init__(self):
+    def __init__(self, timestamp_foldername: str):
         """
         Initialize the MetaData class with the columns that will be used to
         store the metadata of the generated annotations.
+        
+        timestamp_foldername : str
+            Timestamp of the annotation run for folder name.
         """
-        self.filename = "filename"
+        self.save_dir = Path(conf.GEN_ANNOTS_DIR) / timestamp_foldername
+        self.file_col = "filename"
         self.f_dt = "date from timestamp"
         self.n_pred_col = "number of predictions"
         self.avg_pred_col = "average prediction value"
@@ -29,7 +33,7 @@ class MetaData:
         if not "timestamp_folder" in conf.session:
             self.df = pd.DataFrame(
                 columns=[
-                    self.filename,
+                    self.file_col,
                     self.f_dt,
                     self.n_pred_col,
                     self.avg_pred_col,
@@ -50,7 +54,6 @@ class MetaData:
         file: Path,
         annot: pd.DataFrame,
         f_ind: int,
-        timestamp_foldername: str,
         relativ_path: str = conf.SOUND_FILES_SOURCE,
         computing_time: str = "not calculated",
         **kwargs,
@@ -67,15 +70,13 @@ class MetaData:
             Dataframe containing the annotations.
         f_ind : int
             Index of the file.
-        timestamp_foldername : str
-            Timestamp of the annotation run for folder name.
         relativ_path : str, optional
             Path of folder containing files , by default conf.SOUND_FILES_SOURCE
         computing_time : str, optional
             Amount of time that prediction took, by default "not calculated"
         """
         self.df.loc[f_ind, self.f_dt] = str(get_dt_filename(file).date())
-        self.df.loc[f_ind, self.filename] = Path(file).relative_to(
+        self.df.loc[f_ind, self.file_col] = Path(file).relative_to(
             relativ_path
         )
         # TODO relative_path muss noch dauerhaft geändert werden
@@ -91,34 +92,73 @@ class MetaData:
             df_clean.loc[df_clean[conf.ANNOTATION_COLUMN] > 0.9]
         )
         self.df.loc[f_ind, self.time_per_file] = computing_time
-        self.df.to_csv(
-            Path(conf.GEN_ANNOTS_DIR)
-            .joinpath(timestamp_foldername)
-            .joinpath("stats.csv")
-        )
-
+        self.df.to_csv(self.save_dir.joinpath("stats.csv"))
+        
+    
+    def multi_class_metadata(self):
+        from tqdm import tqdm
+        
+        multi_df = pd.DataFrame()
+        thresh_exceeding_classes = [
+            d.stem for d in (self.save_dir / 'thresh_0.5').iterdir() 
+            if not d.stem in ['All_Combined', 'multilabel']
+            ]
+        label_dict = {}
+        if conf.STREAMLIT:
+            import streamlit as st
+            prog1 = st.progress(0, text='Building multiclass metadata file')
+        for idx, lab in enumerate(tqdm(thresh_exceeding_classes)):
+            preds = []
+            df_pred = 0
+            files = [
+                d for d in (self.save_dir / 'thresh_0.5').rglob(f'*{lab}*.txt')
+                if not 'combined' in d.stem and not 'multilabel' in d.stem
+                ]
+            for f in files:
+                df = pd.read_csv(f, sep='\t')
+                if len(df) > df_pred:
+                    most_active = str(f)
+                preds.extend(df[conf.ANNOTATION_COLUMN].values.tolist())
+            if preds:
+                label_dict[lab] = dict()
+                label_dict[lab]['all_preds'] = preds
+                label_dict[lab]['most_active'] = most_active
+            prog1.progress(idx / len(thresh_exceeding_classes))
+        
+        multi_df['labels'] = list(label_dict.keys())
+        multi_df['avg_confidence'] = [np.mean(label_dict[l]['all_preds']) for l in label_dict.keys()]
+        multi_df['std_confidence'] = [np.std(label_dict[l]['all_preds']) for l in label_dict.keys()]
+        multi_df['labels_by_occurrence'] = [len(label_dict[l]['all_preds']) for l in label_dict.keys()]
+        multi_df['most_active_file'] = [Path(label_dict[l]['most_active']).relative_to(self.save_dir) for l in label_dict.keys()]
+        multi_df = multi_df.sort_values('labels_by_occurrence', ascending=False)
+        multi_df.to_csv(self.save_dir.joinpath('mutliclass_df.csv'))
+            
 
 def run_annotation(train_date=None, **kwargs):
-    files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="**/*")
+    files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="*.[wW][aA][vV]")
     if not "timestamp_folder" in conf.session:
         timestamp_foldername = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
         timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
-        mdf = MetaData()
+        mdf = MetaData(timestamp_foldername)
         f_ind = 0
 
     else:
         timestamp_foldername = conf.session[
             "timestamp_folder"
         ].parent.parent.stem
+        
         last_annotated_file = list(
             conf.session["timestamp_folder"].rglob("*.txt")
         )[-1]
+        
         file_stems = [f.stem for f in files]
         file_idx = np.where(
             np.array(file_stems) == last_annotated_file.stem.split("_annot")[0]
         )[0][0]
+        
         files = files[file_idx:]
-        mdf = MetaData()
+        mdf = MetaData(timestamp_foldername=timestamp_foldername)
+        
         f_ind = file_idx - 1
 
     if not train_date:
@@ -173,10 +213,10 @@ def run_annotation(train_date=None, **kwargs):
             file,
             annot,
             f_ind,
-            timestamp_foldername,
             computing_time=computing_time,
             **kwargs,
         )
+    mdf.multi_class_metadata()
     return timestamp_foldername
 
 
@@ -192,6 +232,9 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         path = Path(conf.GEN_ANNOT_SRC)
     else:
         path = Path(conf.GEN_ANNOTS_DIR).joinpath(time_dir)
+    if path.parent == Path('.'):
+        path = Path(conf.GEN_ANNOTS_DIR).joinpath(path)
+        
     files = get_files(location=path, search_str="**/*txt")
     files = [f for f in files if conf.THRESH_LABEL in str(f.parent)]
     path = check_for_multiple_time_dirs_error(path)
@@ -206,6 +249,8 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
             )
         if 'multilabel' in file.stem:
             # preds, species = np.array([s.split('__') for s in annot[conf.ANNOTATION_COLUMN]])
+            if len(annot) == 0:
+                continue
             preds = np.array([s.split('__') for s in annot[conf.ANNOTATION_COLUMN]])[:, 0]
             preds = np.array(preds, dtype=np.float32)
             
@@ -253,7 +298,7 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         if conf.STREAMLIT and "progbar1" in kwargs.keys():
             kwargs["progbar1"].progress((i + 1) / len(files), text="Progress")
         else:
-            print(f"Writing file {i+1}/{len(files)}")
+            print(f"Writing file {i+1}/{len(files)}", end='\r')
     if conf.STREAMLIT:
         return path
 

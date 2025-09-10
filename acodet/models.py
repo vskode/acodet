@@ -3,6 +3,9 @@ import tensorflow as tf
 from pathlib import Path
 import zipfile
 import sys
+import json
+
+import numpy as np
 
 from acodet.funcs import get_val_labels
 from . import global_config as conf
@@ -257,8 +260,55 @@ class KerasAppModel(ModelHelper):
 
 class BacpipeModel:
     def __init__(self, **kwargs):
+        import torch
+        from bacpipe import config, settings
+        from bacpipe.embedding_evaluation.classification.train_classifier import LinearClassifier
         from bacpipe.generate_embeddings import Embedder
-        self.model = Embedder(conf.MODEL_NAME)
+        config.models = [conf.MODEL_NAME]
+        settings.global_batch_size = conf.BATCH_SIZE
+        if conf.DEVICE == 'auto':
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        else:
+            device = conf.DEVICE
+        if conf.BOOL_BACPIPE_CHPNTS:
+            settings.model_base_path = conf.BACPIPE_CHPNT_DIR
+            
+        settings.device = device
+        self.device = 'cpu'
+        self.model = Embedder(model_name=conf.MODEL_NAME, **vars(settings))
+        
+        conf.SR = self.model.model.sr
+        conf.CONTEXT_WIN = self.model.model.segment_length
+        
+        if conf.LINEAR_CLFIER_BOOL:
+            
+            clfier = torch.load(Path(conf.LIN_CLFIER_DIR) / 'linear_classifier.pt')
+            with open(Path(conf.LIN_CLFIER_DIR) / 'label2index.json', 'r') as f:
+                label2index = json.load(f)
+            self.clfier = LinearClassifier(clfier['clfier.weight'].shape[-1], len(label2index))
+            self.clfier.load_state_dict(clfier)
+            self.clfier.to(self.device)
+            self.model.model.classes = list(label2index.keys())
+
+        self.model.classify = self.classify
+            
+    def classify(self, file, **kwargs):
+        if 'progbar1' in kwargs:
+            callback = (lambda frac: (kwargs['progbar1']
+                                      .progress(frac, text='Current File')))
+            
+        import torch
+        frames = self.model.prepare_audio(file)
+        batched_frames = self.model.model.init_dataloader(frames)
+        embeds = self.model.model.batch_inference(batched_frames, callback=callback)
+        
+        if conf.LINEAR_CLFIER_BOOL:
+            logits = self.clfier(embeds.to(self.device))
+            predictions = torch.nn.functional.softmax(logits, dim=0)
+        else:
+            predictions = self.model.model.classifier_outputs[-embeds.shape[0]:]
+            
+        return predictions.detach().numpy()
         
 
 def init_model(

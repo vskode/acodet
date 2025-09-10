@@ -1,3 +1,33 @@
+BATCH_SIZE = (
+    """Select a batch size for the classification process. During inference the audio
+    file will get winowed into chunks and the number of chunks that are passed to the
+     model at once is determined by the batch size. For laptop computers these values 
+     need to be small. If unsure stick with the default of 8."""
+)
+DEVICE = (
+    """The inference speed can be vastly increased if a GPU is available. It can also be 
+    run on a cpu without problems though, it might just take a lot longer. If you select 
+    auto, the computer will test if there is a gpu available and if not use the cpu."""
+)
+LINEAR_CLFIER_BOOL = (
+    """If you trained a linear classifier in bacpipe or somewhere else on top of a feature
+    extractor and you now want to use that linear classifier to predict classes for your
+    dataset, set this to True."""
+)
+BACPIPE_CHPNT_DIR = (
+    """If you selected a bacpipe model that requires a checkpoint, please specify the location
+    of the checkpoints. Enter the folder path which contains the checkpoints of the model
+    use are using."""
+)
+LIN_CLFIER_DIR = (
+    """You selected that you want to use a linear classifier to be fitted on top of the 
+    feature extractor. Now please link the folder containing the file of the linear 
+    classifier and the label2index.json file. They will then be used to generate class 
+    predictions."""
+)
+
+
+
 MODEL_SELECT = (
     """Select the model you would like to use for your session. Remember, the model has classes that it was trained 
     on, if those classes don't exist in your data, the model will not generate meaningful results. If you select a model

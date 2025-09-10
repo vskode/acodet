@@ -37,7 +37,9 @@ def initial_dropdown(key):
     )
 
 def model_dropdown(key):
-    from bacpipe.tests.test_embedding_creation import models, models_requiring_checkpoints
+    from bacpipe import supported_models, models_needing_checkpoint
+    models_without_checkpoint = [m for m in supported_models 
+                                 if not m in models_needing_checkpoint]
     st.header("Which model would you like to use?")
     rad = st.radio("Models requiring checkpoints?", 
                    ["Yes", "No"], 
@@ -47,7 +49,7 @@ def model_dropdown(key):
     if rad == 'Yes':
         model = st.selectbox(
             "Models requiring checkpoints:",
-            models_requiring_checkpoints,
+            models_needing_checkpoint,
             index=None,
             key=key+'ckpt',
             help=help_strings.MODEL_CHECKPOINTS
@@ -55,11 +57,13 @@ def model_dropdown(key):
     else:
         model = st.selectbox(
             "Models requiring no checkpoints:",
-            models,
+            models_without_checkpoint,
             index=None,
             key=key+'no_ckpt',
             help=help_strings.MODEL_NO_CHECKPOINTS
         )
+    rad = True if rad == 'Yes' else False
+    utils.write_to_session_file('bool_bacpipe_chpnts', rad)
     if model and not model == 'hbdet':
         utils.write_to_session_file('ModelClassName', 'BacpipeModel')
         utils.write_to_session_file('multilabel', True)
@@ -148,7 +152,7 @@ class PresetInterfaceSettings:
         )
         self.config["thresh"] = utils.validate_float(
             utils.user_input(
-                "Model threshold:", "0.9", help=help_strings.THRESHOLD
+                "Model threshold:", "0.6", help=help_strings.THRESHOLD
             )
         )
         self.advanced_settings()
@@ -164,6 +168,69 @@ class PresetInterfaceSettings:
                 self.custom_timestamp_dialog()
 
             self.ask_for_multiple_datasets()
+            
+            if st.session_state.ModelClassName == 'BacpipeModel':
+                self.bacpipe_model_settings()
+
+    def bacpipe_model_settings(self):
+        batch_size = int(utils.user_input(
+            "Inference batch size", 
+            '8', 
+            key='bs', 
+            help=help_strings.BATCH_SIZE
+            ))
+        
+        device = st.radio(
+            'Device to run computation on',
+            options=['cpu', 'cuda', 'auto'],
+            index=2,
+            key='dv',
+            help=help_strings.DEVICE,
+            horizontal=True
+            )
+        
+        linear_clfier_bool = st.radio(
+            'Would you like to use a pretrained linear classifer '
+            'on top of the chosen feature extractor to predict classes?',
+            options=['Yes', 'No'],
+            index=1,
+            key='linclfb',
+            horizontal=True
+            )
+        linear_clfier_bool = True if linear_clfier_bool == 'Yes' else False
+        
+        if st.session_state.bool_bacpipe_chpnts:
+            bacpipe_chpnt_dir = utils.user_input(
+                'Folder containing the model checkpoint', 
+                '../model_checkpoints',
+                key='b_chck',
+                help=help_strings.BACPIPE_CHPNT_DIR
+                )
+            if not Path(bacpipe_chpnt_dir).exists():
+                st.write("Folder does not exist, retrying.")
+        else:
+            bacpipe_chpnt_dir = ''
+        
+        if linear_clfier_bool:
+            lin_clfier_dir = utils.user_input(
+                'Path to linear classifer', 
+                '../linear_classifer',
+                key='lin_clf',
+                help=help_strings.LIN_CLFIER_DIR
+                )
+            if (
+                not Path(lin_clfier_dir).exists() 
+                and len([d for d in Path(lin_clfier_dir).glob('*.pt')]) > 0
+                ):
+                st.write("Path does not exist, retrying.")
+        else:
+            lin_clfier_dir = ''
+        
+        utils.write_to_session_file('bacpipe_chpnt_dir', bacpipe_chpnt_dir)
+        utils.write_to_session_file('lin_clfier_dir', lin_clfier_dir)
+        utils.write_to_session_file('batch_size', batch_size)
+        utils.write_to_session_file('device', device)
+        utils.write_to_session_file('linear_clfier_bool', linear_clfier_bool)
 
     def ask_for_multiple_datasets(self):
         st.radio(

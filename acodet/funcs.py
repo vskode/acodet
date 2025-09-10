@@ -542,7 +542,7 @@ def get_files(
     """
     folder = Path(location)
     # return list(folder.glob(search_str))
-    return [f for f in folder.rglob(search_str) if f.suffix == '.WAV']
+    return [f for f in folder.rglob(search_str)]
 
 
 def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
@@ -619,29 +619,32 @@ def create_Raven_annotation_df(preds: np.ndarray) -> pd.DataFrame:
 
 
 def run_inference(
-    audio_batches: np.ndarray,
+    file, 
+    channel,
     model: tf.keras.Sequential,
     callbacks: None = None,
     **kwargs,
 ) -> pd.DataFrame:
     predictions = []
-    for ind, audio in enumerate(audio_batches):
-        if 'predict' in dir(model):
+    if 'predict' in dir(model):
+        audio = load_audio(file, channel)
+        if audio is None:
+            raise ImportError(
+                f"The audio file `{str(file)}` cannot be loaded. Check if file has "
+                "one of the supported endings "
+                "(wav, mp3, flac, etc.)) and is not empty."
+            )
+        audio_batches = batch_audio(audio)
+        for ind, batch in enumerate(audio_batches):
             if callbacks is not None and ind == 0:
                 callbacks = callbacks(**kwargs)
             preds = model.predict(
-                window_data_for_prediction(audio), callbacks=callbacks
+                window_data_for_prediction(batch), callbacks=callbacks
             )
-        elif conf.MODELCLASSNAME == 'BacpipeModel':
-            
-            if conf.STREAMLIT:
-                import streamlit as st
-                kwargs['progbar1'].progress(ind / len(audio_batches), 
-                                                   text="Current file")
-            
-            frames = model.model.window_audio(np.array([audio]))
-            _, preds = model.model(frames, return_class_results=True)
         predictions.extend(preds)
+    elif conf.MODELCLASSNAME == 'BacpipeModel':
+        predictions = model.classify(file, **kwargs)
+            
     return np.array(predictions)
 
 def create_annotation_df(
@@ -788,23 +791,14 @@ def gen_annotations(
     parent_dirs = manage_dir_structure(file)
     
     bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs'
-    existing_file = Path(bacpipe_path) / (parent_dirs.stem + '/' + file.stem + '_birdnet.json')
+    existing_file = Path(bacpipe_path) / (Path(parent_dirs).stem + '/' + file.stem + '_birdnet.json')
     if existing_file.exists():
         with open(existing_file, 'r') as f:
             predictions = json.load(f)
     else:
         channel = get_channel(get_top_dir(parent_dirs))
-
-        audio = load_audio(file, channel)
-        if audio is None:
-            raise ImportError(
-                f"The audio file `{str(file)}` cannot be loaded. Check if file has "
-                "one of the supported endings "
-                "(wav, mp3, flac, etc.)) and is not empty."
-            )
-        audio_batches = batch_audio(audio)
-
-        predictions = run_inference(audio_batches, model, **kwargs)
+        
+        predictions = run_inference(file, channel, model, **kwargs)
        
     save_path_func = lambda x: (
         Path(conf.GEN_ANNOTS_DIR)
@@ -824,7 +818,8 @@ def gen_annotations(
             .joinpath(parent_dirs.relative_to(dataset_dir))
             )
 
-    if True:#len(predictions.squeeze().shape) > 1:
+    if len(predictions.squeeze().shape) > 1:
+        
         annotation_df = save_multilabel_dfs(file, model, save_path_func, 
                                             mod_label, predictions)
         
@@ -842,9 +837,13 @@ def gen_annotations(
 
 
 def save_multilabel_dfs(file, model, save_path_func, mod_label, predictions):
-    filtered = np.where(predictions > conf.DEFAULT_THRESH)
-    all_labels = model.model.classes
-    filtered_labels = [all_labels[l] for l in np.unique(filtered[1])]
+    df_preds = model.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
+    head = df_preds.pop('head')
+    filtered_labels = list(df_preds.keys())
+    pred_arr = np.zeros([len(filtered_labels), head['Time bins in this file']])
+    for row, label in enumerate(filtered_labels):
+        pred_arr[row, df_preds[label]['time_bins_exceeding_threshold']] = df_preds[label]['classifier_predictions']
+    
     
     if len(filtered_labels) == 0:
         save_path = save_path_func('.')
@@ -852,38 +851,42 @@ def save_multilabel_dfs(file, model, save_path_func, mod_label, predictions):
         return create_Raven_annotation_df(np.array([]))
     
     elif len(filtered_labels) > 1:
-        save_combined_and_multilabel_dfs(all_labels, predictions, 
-                                         filtered, save_path_func, 
+        save_combined_and_multilabel_dfs(pred_arr, 
+                                         filtered_labels, 
+                                         save_path_func, 
                                          file, mod_label)
 
         
-    for label, label_int in zip(filtered_labels, np.unique(filtered[1])):
-        preditions_of_this_label = predictions[:, label_int]
-        annotation_df = create_Raven_annotation_df(preditions_of_this_label)
+    for preds, label in zip(pred_arr, filtered_labels):
         
-        save_path = save_path_func(label)
+        annotation_df = create_Raven_annotation_df(preds)
+        
+        save_path = save_path_func(label.replace('/', '_'))
         
         save_path.mkdir(exist_ok=True, parents=True)
         annotation_df.to_csv(
-            save_path.joinpath(f"{file.stem}_annot_{mod_label}_{label}.txt"), sep="\t"
+            save_path.joinpath(f"{file.stem}_annot_{mod_label}_{label.replace('/', '_')}.txt"), sep="\t"
         )
     
     return annotation_df
 
-def save_combined_and_multilabel_dfs(all_labels, predictions, 
-                                     filtered, save_path_func, 
+def save_combined_and_multilabel_dfs(predictions, 
+                                     labels, 
+                                     save_path_func, 
                                      file, mod_label):
-    
-    max_preds = tf.reduce_max(predictions, axis=1).numpy()
-    predicted_labels = [all_labels[l] for l in filtered[1]]
+    max_preds = tf.reduce_max(predictions, axis=0).numpy()
+    cls_idxes = np.argmax(predictions, axis=0)
+    _, tmp_idxes = np.where(predictions > conf.DEFAULT_THRESH)
+    single_maxes = np.unique(tmp_idxes)
     
     save_paths = dict()
     save_paths['multilabel'] = save_path_func('multilabel')
     
     multilabel_df = create_Raven_annotation_df(max_preds)
     multilabel_df[conf.ANNOTATION_COLUMN] = [
-        str(fl) + '__' + lab for fl, lab in 
-        zip(max_preds[max_preds > conf.DEFAULT_THRESH], predicted_labels)
+        f"{predictions[cls_idx, tmp_idx]:.4f}__{labels[cls_idx]}"
+        for cls_idx, tmp_idx in 
+        zip(cls_idxes[single_maxes], single_maxes)
         ]
     save_paths['multilabel'].mkdir(exist_ok=True, parents=True)
     multilabel_df.to_csv(
@@ -895,13 +898,8 @@ def save_combined_and_multilabel_dfs(all_labels, predictions,
     all_combined_df = create_Raven_annotation_df(max_preds)
     all_combined_df.pop(conf.ANNOTATION_COLUMN)
     
-    for label_int in np.unique(filtered[1]): 
-        label = np.array(predicted_labels)[filtered[1]==label_int][0]
-        # the np.unique is important, to make sure in case of polyphony, that
-        # only the index of one is chosen to prevent duplicates and in this case
-        # an error when trying to assign the dataframe column
-        preditions_of_this_label = predictions[np.unique(filtered[0]), label_int]
-        all_combined_df[label] = preditions_of_this_label
+    for label_idx, label in enumerate(labels): 
+        all_combined_df[label] = predictions[label_idx, all_combined_df.index.values-1]
         
     save_paths['All_Combined'].mkdir(exist_ok=True, parents=True)
     all_combined_df.to_csv(

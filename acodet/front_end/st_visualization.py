@@ -104,7 +104,15 @@ class ShowAnnotationPredictions:
         """
         with self.tab0:
             try:
-                df = pd.read_csv(self.annots_path.joinpath("stats.csv"))
+                metadata_files = [
+                    d for d in self.annots_path.glob('*.csv')
+                ]
+                file = st.selectbox(
+                    label='Choose a metadata file',
+                    options=metadata_files,
+                    key='stats'
+                )
+                df = pd.read_csv(file)
                 if "Unnamed: 0" in df.columns:
                     df = df.drop(columns=["Unnamed: 0"])
                 st.dataframe(df, hide_index=True)
@@ -124,6 +132,12 @@ class ShowAnnotationPredictions:
             display_annots = [
                 f.relative_to(path).as_posix() for f in annot_files
             ]
+            if not display_annots:
+                st.text(
+                    'No annotations left after filtering with '
+                    f'the threshold={thresh_path}.'
+                    )
+                return
             if st.session_state.multi_datasets_annot:
                 datasets = [d.stem for d in path.iterdir() 
                            if not 'analysis' in d.stem]

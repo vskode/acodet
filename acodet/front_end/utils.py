@@ -58,9 +58,9 @@ def next_button(id, text="Next", **kwargs):
 
 def user_input(label, val, **input_params):
     c1, c2 = st.columns(2)
+    c1.markdown(label)
     c1.markdown("##")
     input_params.setdefault("key", label)
-    c1.markdown(label)
     return c2.text_input(" ", val, **input_params)
 
 

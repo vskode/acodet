@@ -129,6 +129,7 @@ def compute_hourly_pres(
     lim_sc=conf.SEQUENCE_LIMIT,
     sc=False,
     fetch_config_again=False,
+    dont_save_plot=True,
     **kwargs,
 ):
     if fetch_config_again:
@@ -160,24 +161,27 @@ def compute_hourly_pres(
             get_path(path.joinpath(fold.stem), conf.HR_PRS_SL).exists()
             or "save_filtered_selection_tables" in kwargs
             or 'Combined' in fold.stem 
-            or 'multilabel' in fold.stem
             ):
             continue
         files = get_files(location=fold, search_str="**/*txt")
         files.sort()
 
-        annots = return_hourly_pres_df(
-            files,
-            thresh,
-            thresh_sc,
-            lim,
-            lim_sc,
-            sc,
-            fold,
-            dir_ind=ind,
-            total_dirs=len(directories),
-            **kwargs,
-        )
+        try:
+            annots = return_hourly_pres_df(
+                files,
+                thresh,
+                thresh_sc,
+                lim,
+                lim_sc,
+                sc,
+                fold,
+                dir_ind=ind,
+                total_dirs=len(directories),
+                **kwargs,
+            )
+        except:
+            print('skipping', fold)
+            continue
         if "save_filtered_selection_tables" in kwargs:
             top_dir_path = path.parent.joinpath(conf.THRESH_LABEL).joinpath(
                 fold.stem
@@ -410,6 +414,10 @@ class ProcessLimits:
             ]
             date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
 
+            if 'multilabel' in str(self.files[0]):
+                preds = np.array([d.split('__')[0] for d in fil_h_ann[conf.ANNOTATION_COLUMN]], dtype=np.float32)
+                fil_h_ann[conf.ANNOTATION_COLUMN] = preds
+                
             fil_h_ann = fil_h_ann.loc[
                 fil_h_ann[conf.ANNOTATION_COLUMN] >= self.thresh
             ]
