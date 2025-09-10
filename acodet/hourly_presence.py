@@ -129,6 +129,7 @@ def compute_hourly_pres(
     lim_sc=conf.SEQUENCE_LIMIT,
     sc=False,
     fetch_config_again=False,
+    dont_save_plot=True,
     **kwargs,
 ):
     if fetch_config_again:
@@ -142,32 +143,45 @@ def compute_hourly_pres(
 
     path = find_thresh05_path_in_dir(time_dir)
 
-    if "multi_datasets" in conf.session:
-        directories = [
+    if (
+        "multi_datasets_annot" in conf.session 
+        and conf.session['multi_datasets_annot']
+        ):
+        dirs = [
             [d for d in p.iterdir() if d.is_dir()]
             for p in path.iterdir()
             if p.is_dir()
         ][0]
     else:
-        directories = [p for p in path.iterdir() if p.is_dir()]
-    directories = [d for d in directories if not d.stem == "analysis"]
+        dirs = [p for p in path.iterdir() if p.is_dir()]
+    directories = [d for d in dirs if not d.stem == "analysis"]
 
     for ind, fold in enumerate(directories):
+        if (
+            get_path(path.joinpath(fold.stem), conf.HR_PRS_SL).exists()
+            or "save_filtered_selection_tables" in kwargs
+            or 'Combined' in fold.stem 
+            ):
+            continue
         files = get_files(location=fold, search_str="**/*txt")
         files.sort()
 
-        annots = return_hourly_pres_df(
-            files,
-            thresh,
-            thresh_sc,
-            lim,
-            lim_sc,
-            sc,
-            fold,
-            dir_ind=ind,
-            total_dirs=len(directories),
-            **kwargs,
-        )
+        try:
+            annots = return_hourly_pres_df(
+                files,
+                thresh,
+                thresh_sc,
+                lim,
+                lim_sc,
+                sc,
+                fold,
+                dir_ind=ind,
+                total_dirs=len(directories),
+                **kwargs,
+            )
+        except:
+            print('skipping', fold)
+            continue
         if "save_filtered_selection_tables" in kwargs:
             top_dir_path = path.parent.joinpath(conf.THRESH_LABEL).joinpath(
                 fold.stem
@@ -400,6 +414,10 @@ class ProcessLimits:
             ]
             date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
 
+            if 'multilabel' in str(self.files[0]):
+                preds = np.array([d.split('__')[0] for d in fil_h_ann[conf.ANNOTATION_COLUMN]], dtype=np.float32)
+                fil_h_ann[conf.ANNOTATION_COLUMN] = preds
+                
             fil_h_ann = fil_h_ann.loc[
                 fil_h_ann[conf.ANNOTATION_COLUMN] >= self.thresh
             ]
@@ -632,6 +650,8 @@ def plot_hp(path, lim, thresh, metric):
         d = {"vmin": 0, "vmax": 1}
     else:
         d = {"vmax": conf.HR_CNTS_VMAX}
+    if len(h_pres) == 0:
+        return
     sns.heatmap(h_pres.T, cmap="crest", **d)
     plt.ylabel("hour of day")
     plt.tight_layout()

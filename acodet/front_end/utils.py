@@ -58,9 +58,9 @@ def next_button(id, text="Next", **kwargs):
 
 def user_input(label, val, **input_params):
     c1, c2 = st.columns(2)
+    c1.markdown(label)
     c1.markdown("##")
     input_params.setdefault("key", label)
-    c1.markdown(label)
     return c2.text_input(" ", val, **input_params)
 
 
@@ -127,13 +127,20 @@ def prepare_run():
         st.markdown("""---""")
         st.markdown("## Computation started, please wait.")
         if st.session_state.preset_option in [0, 1]:
-            kwargs = {
-                "callbacks": TFPredictProgressBar,
-                "progbar1": st.progress(0, text="Current file"),
-                "progbar2": st.progress(0, text="Overall progress"),
-            }
+            if not st.session_state.ModelClassName == 'BacpipeModel':
+                kwargs = {
+                    "callbacks": TFPredictProgressBar,
+                    "progbar1": st.progress(0, text="Current file"),
+                    "progbar2": st.progress(0, text="Overall progress"),
+                }
+            else:
+                kwargs = {
+                    "progbar1": st.progress(0, text="Current file"),
+                    "progbar2": st.progress(0, text="Overall progress"),
+                }
         else:
             kwargs = {"progbar1": st.progress(0, text="Progress")}
+        kwargs['multi_datasets_annot'] = st.session_state.multi_datasets_annot
     return kwargs
 
 
