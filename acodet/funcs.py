@@ -820,7 +820,7 @@ def gen_annotations(
 
     if len(predictions.squeeze().shape) > 1:
         
-        annotation_df = save_multilabel_dfs(file, model, save_path_func, 
+        annotation_df = save_multiclass_dfs(file, model, save_path_func, 
                                             mod_label, predictions)
         
     else:
@@ -836,7 +836,7 @@ def gen_annotations(
     return annotation_df
 
 
-def save_multilabel_dfs(file, model, save_path_func, mod_label, predictions):
+def save_multiclass_dfs(file, model, save_path_func, mod_label, predictions):
     df_preds = model.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
     head = df_preds.pop('head')
     filtered_labels = list(df_preds.keys())
@@ -851,7 +851,7 @@ def save_multilabel_dfs(file, model, save_path_func, mod_label, predictions):
         return create_Raven_annotation_df(np.array([]))
     
     elif len(filtered_labels) > 1:
-        save_combined_and_multilabel_dfs(pred_arr, 
+        save_combined_and_multiclass_dfs(pred_arr, 
                                          filtered_labels, 
                                          save_path_func, 
                                          file, mod_label)
@@ -870,7 +870,7 @@ def save_multilabel_dfs(file, model, save_path_func, mod_label, predictions):
     
     return annotation_df
 
-def save_combined_and_multilabel_dfs(predictions, 
+def save_combined_and_multiclass_dfs(predictions, 
                                      labels, 
                                      save_path_func, 
                                      file, mod_label):
@@ -880,17 +880,17 @@ def save_combined_and_multilabel_dfs(predictions,
     single_maxes = np.unique(tmp_idxes)
     
     save_paths = dict()
-    save_paths['multilabel'] = save_path_func('multilabel')
+    save_paths['multiclass'] = save_path_func('multiclass')
     
-    multilabel_df = create_Raven_annotation_df(max_preds)
-    multilabel_df[conf.ANNOTATION_COLUMN] = [
+    multiclass_df = create_Raven_annotation_df(max_preds)
+    multiclass_df[conf.ANNOTATION_COLUMN] = [
         f"{predictions[cls_idx, tmp_idx]:.4f}__{labels[cls_idx]}"
         for cls_idx, tmp_idx in 
         zip(cls_idxes[single_maxes], single_maxes)
         ]
-    save_paths['multilabel'].mkdir(exist_ok=True, parents=True)
-    multilabel_df.to_csv(
-        save_paths['multilabel'].joinpath(f"{file.stem}_annot_{mod_label}_multilabel.txt"), sep="\t"
+    save_paths['multiclass'].mkdir(exist_ok=True, parents=True)
+    multiclass_df.to_csv(
+        save_paths['multiclass'].joinpath(f"{file.stem}_annot_{mod_label}_multiclass.txt"), sep="\t"
     )
     
     save_paths['All_Combined'] = save_path_func('All_Combined')

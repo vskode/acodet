@@ -72,11 +72,11 @@ reviewed_annotation_source: 'path to your reviewed annotations'
 
 ## Model Parameters
 # threshold for predictions
-thresh: 0.9
-# number of annotations above threshold for hourly presence (default = 15)
-simple_limit: 15
+thresh: 0.6
+# number of annotations above threshold for hourly presence (default = 9)
+simple_limit: 9
 # threshold for sequence criterion (default = 0.9)
-sequence_thresh: 0.9
+sequence_thresh: 0.6
 # number of annotations above threshold within 20 consecutive windows
 # for hourly presence (default = 3)
 sequence_limit: 3

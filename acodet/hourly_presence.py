@@ -414,7 +414,7 @@ class ProcessLimits:
             ]
             date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
 
-            if 'multilabel' in str(self.files[0]):
+            if 'multiclass' in str(self.files[0]):
                 preds = np.array([d.split('__')[0] for d in fil_h_ann[conf.ANNOTATION_COLUMN]], dtype=np.float32)
                 fil_h_ann[conf.ANNOTATION_COLUMN] = preds
                 

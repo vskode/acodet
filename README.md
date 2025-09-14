@@ -1,83 +1,93 @@
 # **acodet** - **Aco**ustic **Det**ector
-## Framework for the **usage** and **training** of acoustic species detectors based on CNN models
+## Framework for the **usage** and **training** of acoustic species detectors based on deep learning models
 
-### Highlights
+---
+
+### ✨ Highlights
+
 - **Integrated graphical user interface (GUI), so no coding required!**
-- Supports Raven table format
-    - resulting spreadsheets can be directly imported into raven to view annotations
-- automatic generation of presence/absence visualizations
-    - GUI supports interactive visualizations, allowing you to adjust model thresholds and instantly view the results
-- headless version included for those that prefer command line tools
-- interactive post-processing methods to reduce false-positives
----------------------------------------------------
-sample output:
+- Import pretrained models from [`bacpipe`](https://github.com/bioacoustic-ai/bacpipe) for classification
+- Annotations are generated in **Raven table** format  
+  - resulting spreadsheets can be directly imported into raven to view annotations
+- Automatic generation of **presence/absence** visualizations  
+  - GUI supports interactive visualizations, allowing you to **adjust model thresholds** and instantly view the results
+- Interactive **post-processing** methods to reduce false positives
+- Headless version included for easy bulk processing and debugging
+
+---
+
+### Sample Output
 
 ![Annotation Output](acodet/src/imgs/annotation_output.png)
 
-Play around with the GUI in the __Online Demo__ here:
-https://acodet-web.streamlit.app/
-(the program will look identical when executed on your computer)
+[__Video tutorials__](https://www.youtube.com/watch?v=bJf4d8qf9h0&list=PLQOW4PvEYW-GNWIYRehs2-4-sa9T20c8A) for installation and usage of the AcoDet GUI  
+*(some features have changed and there will be updated tutorials soon)*
 
-__Video tutorials__ for installation and usage of the AcoDet GUI:
-https://www.youtube.com/watch?v=bJf4d8qf9h0&list=PLQOW4PvEYW-GNWIYRehs2-4-sa9T20c8A
+The corresponding paper to acodet can be found here:  
+👉 https://doi.org/10.1121/10.0025275
 
-The corresponding paper to acodet can be found here: 
-https://doi.org/10.1121/10.0025275
+---
 
-
-## Table of Contents
+## 📖 Table of Contents
 - [Installation](#installation)
-    - [Installation on Windows](#installation-on-windows)
-    - [Installation on Mac](#installation-on-mac)
-    - [Installation on Linux](#installation-on-linux)
+  - [Windows](#windows)
+  - [Linux or Mac](#linux-or-mac)
 - [Usage](#usage)
-    - [acodet Usage with GUI](#acodet-usage-with-gui)
-        - [Usecase 1: Generating annotations (GUI)](#usecase-1-generating-annotations-gui)
-        - [Usecase 2: Generating new training data (GUI)](#usecase-2-generating-new-training-data-gui)
-        - [Usecase 3: Training (GUI)](#usecase-3-training-gui)
-    - [acodet Usage headless](#acodet-usage-headless)
-        - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
-        - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
-        - [Usecase 3: Training](#usecase-3-training)
-- [Explanation of Sequence limit](#explanation-of-sequence-limit)
+  - [GUI](#gui)
+    - [Model Selection](#model-selection)
+    - [Input Data Selection](#input-data-selection)
+    - [Model Settings](#model-settings)
+    - [Use Pretrained Linear Classifier](#use-pretrained-linear-classifier)
+    - [Inference](#inference)
+    - [Outputs](#outputs)
+    - [GUI Results Presentation](#gui-results-presentation)
+  - [AcoDet Usage Headless](#acodet-usage-headless)
+    - [Usecase 1: Generating annotations](#usecase-1-generating-annotations)
+    - [Usecase 2: Generating new training data](#usecase-2-generating-new-training-data)
+    - [Usecase 3: Training](#usecase-3-training)
+- [Explanation of Sequence Limit](#explanation-of-sequence-limit)
 - [Citation](#citation)
 - [FAQ](#faq)
 
+---
 
-----------------------------------------------------
 # Installation
-## Installation on Windows
-### Preliminary software installations:
-- install python 3.11: (standard install, no admin privileges needed)
-<https://www.python.org/ftp/python/3.11.0/python-3.11.0-amd64.exe>
-- install git bash: (default install)
-<https://github.com/git-for-windows/git/releases/download/v2.38.1.windows.1/Git-2.38.1-64-bit.exe>
+
+## Windows
+### Preliminary software installations
+- Install [Python 3.11.9](https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe) – standard install, no admin privileges needed
+- Install [Git Bash](https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/Git-2.51.0-64-bit.exe) – default install
 
 ### Installation instructions
-- create project directory in location of your choice
-- open git bash in project directory (right click, Git Bash here)
+- Create project directory in location of your choice
+- Open Git Bash in project directory (right click → *Git Bash here*)
 - clone the repository:
 
 `git clone https://github.com/vskode/acodet.git`
-- Install virtualenv (copy and paste in Git Bash console):
 
-`"$HOME/AppData/Local/Programs/Python/Python311/python" -m pip install virtualenv`
+- cd (change directory) into acodet:
 
-- Create a new virtual environment (default name env_acodet can be changed):
+`cd acodet` 
 
- `"$HOME/AppData/Local/Programs/Python/Python311/python" -m virtualenv env_acodet`
+- Install `uv` (copy and paste in Git Bash console):
 
-- activate newly created virtual environment (change env_acodet if necessary):
+`"$HOME/AppData/Local/Programs/Python/Python311/python" -m pip install uv`
 
-`source env_acodet/Scripts/activate`
+- Create a new virtual environment (default name .env_acodet can be changed):
+
+ `uv venv --python 3.11 .env_acodet`
+
+- activate newly created virtual environment (change .env_acodet if necessary):
+
+`source .env_acodet/Scripts/activate`
 
 - Install required packages:
 
-`pip install -r acodet/requirements.txt`
+`uv pip install -r pyproject.toml`
 
 
 --------------------------------------------
-## Installation on Linux/Mac
+## Linux or Mac
 ### Preliminary software installations:
 
 - Install python 3.11 
@@ -85,6 +95,7 @@ https://doi.org/10.1121/10.0025275
     `sudo add-apt-repository ppa:deadsnakes/ppa`
 
     `sudo apt install python3.11`
+
 - Install git
 
     `sudo apt install git`
@@ -95,28 +106,26 @@ https://doi.org/10.1121/10.0025275
 - clone the repository:
 
     `git clone https://github.com/vskode/acodet.git`
-- Install virtualenv (copy and paste in Git Bash console):
 
-    `/usr/bin/python/Python311/python -m pip install virtualenv` (this would be for python 3.8 - adjust accordingly. The most recent version supports python 3.11)
+- cd into acodet:
 
-- Create a new virtual environment (default name env_acodet can be changed):
+    `cd acodet`
 
-    `/usr/bin/python/Python311/python -m virtualenv env_acodet`
+- Install uv (copy and paste in terminal):
 
-- activate newly created virtual environment (change env_acodet if necessary):
+    `/usr/bin/python/Python311/python -m pip install uv`
 
-    `source env_acodet/bin/activate`
+- Create a new virtual environment (default name .env_acodet can be changed):
+
+    `uv venv --python 3.11 .env_acodet`
+
+- activate newly created virtual environment (change .env_acodet if necessary):
+
+    `source .env_acodet/bin/activate`
 
 - Install required packages:
 
-    `pip install -r acodet/requirements.txt`
-    
-    - if you have a M1 chip in your mac, run:
-
-        `pip install -r acodet/macM1_requirements/requirements_m1-1.txt`
-    - then run 
-
-        `pip install -r acodet/macM1_requirements/requirements_m1-1.txt`
+    `uv pip install -r pyproject.toml`
     
 
 - Once the repository is installed, I would recommend running the inbuilt tests. That way if all tests run successfully, it is ensured that everything behaves as it should. To run the tests, run the following:
@@ -124,58 +133,81 @@ https://doi.org/10.1121/10.0025275
     `pytest -v tests/*`
 
 # Usage
-## AcoDet usage with GUI
 
-AcoDet provides a graphical user interface (GUI) for users to intuitively use the program. All inputs and outputs are handled through the GUI. To run the gui, run (while in acodet directory):
+## GUI
+
+AcoDet provides a graphical user interface (GUI) for users to intuitively use the program. All inputs and outputs are handled through the GUI. To run the gui, run (while in acodet directory and virtual environment activated):
 
 `streamlit run streamlit_app.py`
 
 This should start a new tab in a web browser which runs the interface that you can interact with. It is important that your virtual environment where you have installed the required packages is active, for that see the Installation sections. To activate the environment run 
 
-`source ../env_acodet/Scripts/activate` (on Windows) 
+`source .env_acodet/Scripts/activate` (on Windows) 
 or 
 
-`source ../env_acodet/bin/activate` (on Mac/Linux) 
+`source .env_acodet/bin/activate` (on Mac/Linux) 
 
 while your terminal directory is inside **acodet**. 
 
-### Usecase 1: generating annotations (GUI)
+All inputs of the GUI have little help icons providing explanations about the required inputs.
 
-- Choose the 1 - Inference option from the first drop-down menu
-- Choose between the predefined Settings
-0. run all of the steps
-1. generating new annotations 
-2. filterin existing annotations
-3. generating hourly predictions
-- click Next
+### Model Selection
+
+- Choose whether to run a model requiring a checkpoint or not
+
+- Depending on your previous choice, AcoDet will list all models supported by bacpipe that either do, or do not require checkpoints
+
+### Input Data Selection
+
 - Depending on your choice you will be prompted to enter the path leading to either your sound files our existing annotation files 
     - Enter a path in the text field that is one directory above the folder you would like to use
     - In the dropdown menu you will be presented with all the folders inside the specified path. Choose the one you would like to work with
     - **Important**: time stamps are required within the file names of the source files for steps 0. and 3.
+
+### Model Settings
+
+- Open the Advanced Settings tab
+- specify different configurations
+- **Important**: If you selected a model with checkpoint
+    - enter the path to the main checkpoint_dir (that's above the model_name-dir containing the actual checkpoint)
+
+### Use Pretrained Linear Classifier
+
+- To select a pretrained linear classifer (for example from bacpipe), set the corresponding setting to `Yes`
+- Then, enter the path to the folder containing the linear classifier `.pt` file and the `label2index.json` file (both are saved by `bacpipe` if the `classification` task is set).
+
+
+### Inference
+
 - If required, choose a Model threshold
 - click Run computation
 - A progress bar should show the progress of your computations
-- click Show results
+
+### Outputs
+
+During inference the model generated annotations will be saved in `../generated_annotations` under a time-stamp named folder corresponding to when you ran the program. Within that folder, you'll find a folder `thresh_0.5` and a `stats.csv` file and a `multiclass_df.csv` file. Within the `thresh_0.5` folder you'll find folder names corresponding to all species classified with a prediction value > 0.5 in the datset. The directory structure within the folder mimics that of the source audio directories. 
+
+The `stats.csv` file contains information on every source audio file, the extracted timestamp from the file name, the number of predictions exceeding 0.8 and 0.9 and the time to process the file.
+
+The `multiclass_df.csv` file contains information on every species that was annotated with prediction values > 0.5, the avg and std confidence, the number of occurrences and the most active audio file.
+
+Aside from the species folder names you'll also find the folder names `multiclass`, `All_Combined` and `analysis` in `thresh_0.5`. In `multiclass`, the annotation files contain the high value prediction label along with the respective value for each context window. In `All_Combined` you'll find annotation files with columns for each species exceeding the threshold in that file. In `analysis` you'll again find all the species folder names and within them `.csv` files and visualizations of presence/absence for the hours within the audio source dataset.
+
+### GUI Results Presentation
+
 - The Output section will provide you with information of the location of the files, and depending on your choice of predifines Settings will show different tabs.
-    - the "Stats" is an overview of all processed files, with timestamp and number of predictions
-    - the "Annot. Files" gives you a dropdown menu where you can look into prediction values for each vocalization within each source file. By default the threshold for this will be at 0.5, meaning that all sections with prediction values below that will be discarded.
-    - the "Filtered Files" shows the same as the previous tab, however, it only shows sections with previously defined values exceeding the predefined threshold.
-    - the "Annotaion Plots" shows you a visualization revealing the number of anotations per hour in your dataset. Choose your dataset from the dropdown (in some cases there is only one dataset inside your previously defined folder). 
-        - The calculations behind this visualization is explained in detail in the corresponding journal paper that is currenlty under review and will be linked here as soon as published.
+    - the first tab shows the contents of the `stats.csv` and `multiclass_df.csv` files 
+    - the second tab: "Annot. Files" gives you a dropdown menu where you can look into prediction values for each vocalization within each source file. By default the threshold for this will be at 0.5, meaning that all sections with prediction values below that will be discarded.
+    - the third tab, "Filtered Files" shows the same as the previous tab, however, it only shows sections with previously defined values exceeding the predefined threshold.
+    - the forth tab, "Annotation Plots" shows you a visualization revealing the number of anotations per hour in your species/dataset. Choose your species/dataset from the dropdown (in some cases there is only one dataset inside your previously defined folder). Choose `multiclass` to see the entire activity within the dataset.
+        - The calculations behind this visualization is explained in [Explanation of Sequence limit](#explanation-of-sequence-limit)
         - You can choose between a "Simple limit" and a "Sequence limit" 
-            - the main distinction is whether consecute vocalizations are required for them to be counted (this should help reduce false positives)
+            - the main distinction is whether consecutive vocalizations are required for them to be counted (this should help reduce false positives)
             - the "Simple limit" will compute much faster than the "Sequence limit"
-        - You can also change the threshold of the model predictions which will then allo you to update the visualization. If the "Sequence limit" is chose, the number limit can also be changed, which will change the required number of consecutive vocalizations for them to be counted. (Try it out)
+        - You can also change the threshold of the model predictions which will then allow you to update the visualization. If the "Sequence limit" is chosen, the number limit can also be changed, which will change the required number of consecutive vocalizations for them to be counted. (Try it out)
         - All visualizations can be exported as .png files by clicking on the small camera icon in the top right.
-    - the "Presence Plots" shows a similar visualization as the previous section, however, only showing binary presence.
+    - the fifth tab, "Presence Plots" shows a similar visualization as the previous section, however, only showing binary presence.
 
-
-### Usecase 2: generating new training data (GUI)
-
-This feature is currently not integrated in the gui.
-### Usecase 3: training (GUI)
-
-This feature is currently not integrated in the gui.
 
 ## AcoDet usage headless
 Users only need to change the files **simple_congif.yml** and **advanced_config.yml** to use AcoDet. Once the config files are changed, users can run the program by running the command `python run.py` inside the **acodet** directory.
@@ -195,7 +227,7 @@ To generate annotations:
         - hourly counts gives the number of annotations according to the accumulation metrics
         - hourly presence gives a binary (0 -> no whale; 1 -> whale) corresponding to whether the accumulation metrics are satisfied
     - `4` for generating hourly counts and presence spreadsheets and visualizations (using only the simple limit)
-    - or `0` to run all of the above in sequece
+    - or `0` to run all of the above in sequence
 - change `sound_files_source` to the top level directory containing the dataset(s) you want to annotate
 
 - once finished, save the **simple_config.yml** file

@@ -66,7 +66,7 @@ def model_dropdown(key):
     utils.write_to_session_file('bool_bacpipe_chpnts', rad)
     if model and not model == 'hbdet':
         utils.write_to_session_file('ModelClassName', 'BacpipeModel')
-        utils.write_to_session_file('multilabel', True)
+        utils.write_to_session_file('multiclass', True)
     return model
 
 class PresetInterfaceSettings:
@@ -329,10 +329,10 @@ def annotate_options(key="annot"):
         model_select = model_dropdown(key)
         st.session_state.model_name = model_select
     else:
-        ml = st.radio('Was this a multilabel classification?', 
+        ml = st.radio('Was this a multiclass classification?', 
                  options=[True, False],
-                 key=f'multilabel_{key}')
-        utils.write_to_session_file('multilabel', ml)
+                 key=f'multiclass_{key}')
+        utils.write_to_session_file('multiclass', ml)
 
     st.session_state.preset_option = preset_option
     utils.make_nested_btn_false_if_dropdown_changed(1, preset_option, 1)

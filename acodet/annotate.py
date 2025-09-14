@@ -101,7 +101,7 @@ class MetaData:
         multi_df = pd.DataFrame()
         thresh_exceeding_classes = [
             d.stem for d in (self.save_dir / 'thresh_0.5').iterdir() 
-            if not d.stem in ['All_Combined', 'multilabel']
+            if not d.stem in ['All_Combined', 'multiclass']
             ]
         label_dict = {}
         if conf.STREAMLIT:
@@ -112,7 +112,7 @@ class MetaData:
             df_pred = 0
             files = [
                 d for d in (self.save_dir / 'thresh_0.5').rglob(f'*{lab}*.txt')
-                if not 'combined' in d.stem and not 'multilabel' in d.stem
+                if not 'combined' in d.stem and not 'multiclass' in d.stem
                 ]
             for f in files:
                 df = pd.read_csv(f, sep='\t')
@@ -247,7 +247,7 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
                 "Error: ",
                 e,
             )
-        if 'multilabel' in file.stem:
+        if 'multiclass' in file.stem:
             # preds, species = np.array([s.split('__') for s in annot[conf.ANNOTATION_COLUMN]])
             if len(annot) == 0:
                 continue

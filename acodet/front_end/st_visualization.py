@@ -147,14 +147,14 @@ class ShowAnnotationPredictions:
                     key=f'dataset_{tab_number}'
                 )
                 
-            if st.session_state.multilabel:
+            if st.session_state.multiclass:
                 if st.session_state.multi_datasets_annot:
                     p = path / dataset
                 else:
                     p = path
                 labels = [d.stem for d in p.iterdir() 
                            if not 'Combined' in d.stem
-                           or 'multilabel' in d.stem]
+                           or 'multiclass' in d.stem]
                 lbl = st.selectbox(
                     label="Choose a class",
                     options=labels,
@@ -230,7 +230,7 @@ class Results(utils.Limits):
                     key=f'dataset_{key}'
                 )
                 labels = [d.stem for d in top_dir.joinpath(dataset).iterdir()
-                          if not 'Combined' in d.stem or not 'multilabel' in d.stem]
+                          if not 'Combined' in d.stem or not 'multiclass' in d.stem]
             else:
                 labels = [l.stem for l in self.plots_paths if not 'Combined' in l.stem]
                 
