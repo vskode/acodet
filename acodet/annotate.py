@@ -286,14 +286,15 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         else:
             annot.index = np.arange(1, len(annot) + 1)
             annot.index.name = "Selection"
-        try:
-            check_selection_starts_at_1(annot)
-        except AssertionError as e:
-            print(e)
-            vals = annot.index.values
-            vals += 1
-            annot.index = vals
-            annot.index.name = "Selection"
+        if len(annot) > 0:
+            try:
+                check_selection_starts_at_1(annot)
+            except AssertionError as e:
+                print(e)
+                vals = annot.index.values
+                vals += 1
+                annot.index = vals
+                annot.index.name = "Selection"
         annot.to_csv(save_dir.joinpath(file.stem + file.suffix), sep="\t")
         if conf.STREAMLIT and "progbar1" in kwargs.keys():
             kwargs["progbar1"].progress((i + 1) / len(files), text="Progress")
