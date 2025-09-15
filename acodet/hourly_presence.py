@@ -155,13 +155,15 @@ def compute_hourly_pres(
     else:
         dirs = [p for p in path.iterdir() if p.is_dir()]
     directories = [d for d in dirs if not d.stem == "analysis"]
+    
+    if 'chosen_dataset_stem' in kwargs:
+        directories = [d for d in directories if kwargs['chosen_dataset_stem'] in d.as_posix()]
 
+    if 'update_plot' in kwargs and not kwargs['update_plot']:
+        return
+    
     for ind, fold in enumerate(directories):
-        if (
-            get_path(path.joinpath(fold.stem), conf.HR_PRS_SL).exists()
-            or "save_filtered_selection_tables" in kwargs
-            or 'Combined' in fold.stem 
-            ):
+        if 'Combined' in fold.stem :
             continue
         files = get_files(location=fold, search_str="**/*txt")
         files.sort()

@@ -63,7 +63,7 @@ def model_dropdown(key):
             help=help_strings.MODEL_NO_CHECKPOINTS
         )
     rad = True if rad == 'Yes' else False
-    utils.write_to_session_file('bool_bacpipe_chpnts', rad)
+    utils.write_to_session_file('bool_bacpipe_chckpts', rad)
     if model and not model == 'hbdet':
         utils.write_to_session_file('ModelClassName', 'BacpipeModel')
         utils.write_to_session_file('multiclass', True)
@@ -189,7 +189,7 @@ class PresetInterfaceSettings:
             horizontal=True
             )
         
-        linear_clfier_bool = st.radio(
+        bool_lin_clfier = st.radio(
             'Would you like to use a pretrained linear classifer '
             'on top of the chosen feature extractor to predict classes?',
             options=['Yes', 'No'],
@@ -197,21 +197,21 @@ class PresetInterfaceSettings:
             key='linclfb',
             horizontal=True
             )
-        linear_clfier_bool = True if linear_clfier_bool == 'Yes' else False
+        bool_lin_clfier = True if bool_lin_clfier == 'Yes' else False
         
-        if st.session_state.bool_bacpipe_chpnts:
-            bacpipe_chpnt_dir = utils.user_input(
+        if st.session_state.bool_bacpipe_chckpts:
+            bacpipe_chckpt_dir = utils.user_input(
                 'Folder containing the model checkpoint', 
                 '../model_checkpoints',
                 key='b_chck',
-                help=help_strings.BACPIPE_CHPNT_DIR
+                help=help_strings.BACPIPE_CHCKPT_DIR
                 )
-            if not Path(bacpipe_chpnt_dir).exists():
+            if not Path(bacpipe_chckpt_dir).exists():
                 st.write("Folder does not exist, retrying.")
         else:
-            bacpipe_chpnt_dir = ''
+            bacpipe_chckpt_dir = ''
         
-        if linear_clfier_bool:
+        if bool_lin_clfier:
             lin_clfier_dir = utils.user_input(
                 'Path to linear classifer', 
                 '../linear_classifer',
@@ -226,11 +226,11 @@ class PresetInterfaceSettings:
         else:
             lin_clfier_dir = ''
         
-        utils.write_to_session_file('bacpipe_chpnt_dir', bacpipe_chpnt_dir)
+        utils.write_to_session_file('bacpipe_chckpt_dir', bacpipe_chckpt_dir)
         utils.write_to_session_file('lin_clfier_dir', lin_clfier_dir)
         utils.write_to_session_file('batch_size', batch_size)
         utils.write_to_session_file('device', device)
-        utils.write_to_session_file('linear_clfier_bool', linear_clfier_bool)
+        utils.write_to_session_file('bool_lin_clfier', bool_lin_clfier)
 
     def ask_for_multiple_datasets(self):
         st.radio(

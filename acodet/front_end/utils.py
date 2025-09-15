@@ -222,6 +222,7 @@ class Limits:
                 fetch_config_again=True,
                 preset=3,
                 save_filtered_selection_tables=True,
+                chosen_dataset_stem=self.chosen_dataset.stem
             )
 
 

@@ -34,7 +34,7 @@ def run_computions(**kwargs):
             import run
 
             st.session_state.save_dir = run.main(
-                fetch_config_again=True, **kwargs
+                fetch_config_again=True, update_plot=False, **kwargs
             )
             st.session_state.run_finished = True
 

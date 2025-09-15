@@ -147,8 +147,8 @@ HR_DP_COL = "Daily_Presence"
 
 STREAMLIT = session["streamlit"]
 
-BACPIPE_CHPNT_DIR = session['bacpipe_chpnt_dir']
+BACPIPE_CHCKPT_DIR = session['bacpipe_chckpt_dir']
 LIN_CLFIER_DIR = session['lin_clfier_dir']
 DEVICE = session['device']
-LINEAR_CLFIER_BOOL = session['linear_clfier_bool']
-BOOL_BACPIPE_CHPNTS = session['bool_bacpipe_chpnts']
+BOOL_LIN_CLFIER = session['bool_lin_clfier']
+BOOL_BACPIPE_CHCKPTS = session['bool_bacpipe_chckpts']

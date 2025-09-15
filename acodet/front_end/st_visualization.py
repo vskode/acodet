@@ -229,14 +229,14 @@ class Results(utils.Limits):
                     options=datasets,
                     key=f'dataset_{key}'
                 )
-                labels = [d.stem for d in top_dir.joinpath(dataset).iterdir()
+                classes = [d.stem for d in top_dir.joinpath(dataset).iterdir()
                           if not 'Combined' in d.stem or not 'multiclass' in d.stem]
             else:
-                labels = [l.stem for l in self.plots_paths if not 'Combined' in l.stem]
+                classes = [l.stem for l in self.plots_paths if not 'Combined' in l.stem]
                 
             chosen_dataset = st.selectbox(
                 label=f"""Choose a dataset:""",
-                options=labels,
+                options=classes,
                 key=f"dataset_selec_{key}",
             )
             self.chosen_dataset = (
@@ -282,6 +282,7 @@ class Results(utils.Limits):
                 fetch_config_again=True,
                 preset=3,
                 update_plot=True,
+                chosen_dataset_stem=self.chosen_dataset.stem
             )
 
 

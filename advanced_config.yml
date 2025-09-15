@@ -110,9 +110,21 @@ f_score_beta: 0.5
 f_score_thresh: 0.5
 # number of layers to unfreeze, if False, the entire model is trainable
 unfreeze: False
+# select True if you are using a multiclass model
+multiclass: False
 
 ########################  Streamlit  #########################################
 # select True if you want to run the streamlit app
 streamlit: False
-# select True if you are using a multiclass model
-multiclass: False
+
+# Select True if you are using a model that requires a checkpoint to be loaded
+bool_bacpipe_chckpts: False
+# Specify path to the checkpoints
+bacpipe_chckpt_dir: ../model_checkpoints
+# Select True if you are using a linear classifier on top of a frozen features
+# extractor to generate class predictions
+bool_lin_clfier: False
+# Specify path to the linear classifier folder
+lin_clfier_dir: ../linear_classifier
+# Specify what device to run the computations on
+device: cpu

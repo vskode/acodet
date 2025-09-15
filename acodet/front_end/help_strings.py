@@ -9,12 +9,12 @@ DEVICE = (
     run on a cpu without problems though, it might just take a lot longer. If you select 
     auto, the computer will test if there is a gpu available and if not use the cpu."""
 )
-LINEAR_CLFIER_BOOL = (
+BOOL_LIN_CLFIER = (
     """If you trained a linear classifier in bacpipe or somewhere else on top of a feature
     extractor and you now want to use that linear classifier to predict classes for your
     dataset, set this to True."""
 )
-BACPIPE_CHPNT_DIR = (
+BACPIPE_CHCKPT_DIR = (
     """If you selected a bacpipe model that requires a checkpoint, please specify the location
     of the checkpoints. Enter the folder path which contains the checkpoints of the model
     use are using."""

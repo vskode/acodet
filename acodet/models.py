@@ -270,8 +270,8 @@ class BacpipeModel:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         else:
             device = conf.DEVICE
-        if conf.BOOL_BACPIPE_CHPNTS:
-            settings.model_base_path = conf.BACPIPE_CHPNT_DIR
+        if conf.BOOL_BACPIPE_CHCKPTS:
+            settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
             
         settings.device = device
         self.device = 'cpu'
@@ -280,7 +280,7 @@ class BacpipeModel:
         conf.SR = self.model.model.sr
         conf.CONTEXT_WIN = self.model.model.segment_length
         
-        if conf.LINEAR_CLFIER_BOOL:
+        if conf.BOOL_LIN_CLFIER:
             
             clfier = torch.load(Path(conf.LIN_CLFIER_DIR) / 'linear_classifier.pt')
             with open(Path(conf.LIN_CLFIER_DIR) / 'label2index.json', 'r') as f:
@@ -302,7 +302,7 @@ class BacpipeModel:
         batched_frames = self.model.model.init_dataloader(frames)
         embeds = self.model.model.batch_inference(batched_frames, callback=callback)
         
-        if conf.LINEAR_CLFIER_BOOL:
+        if conf.BOOL_LIN_CLFIER:
             logits = self.clfier(embeds.to(self.device))
             predictions = torch.nn.functional.softmax(logits, dim=0)
         else:
