@@ -641,11 +641,12 @@ def run_inference(
             preds = model.predict(
                 window_data_for_prediction(batch), callbacks=callbacks
             )
-        predictions.extend(preds)
+            predictions.extend(preds)
+        return np.array(predictions)
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         predictions = model.classify(file, **kwargs)
+        return predictions
             
-    return np.array(predictions)
 
 def create_annotation_df(
     audio_batches: np.ndarray,
@@ -790,15 +791,9 @@ def gen_annotations(
     """
     parent_dirs = manage_dir_structure(file)
     
-    bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs'
-    existing_file = Path(bacpipe_path) / (Path(parent_dirs).stem + '/' + file.stem + '_birdnet.json')
-    if existing_file.exists():
-        with open(existing_file, 'r') as f:
-            predictions = json.load(f)
-    else:
-        channel = get_channel(get_top_dir(parent_dirs))
-        
-        predictions = run_inference(file, channel, model, **kwargs)
+    channel = get_channel(get_top_dir(parent_dirs))
+    
+    predictions = run_inference(file, channel, model, **kwargs)
        
     save_path_func = lambda x: (
         Path(conf.GEN_ANNOTS_DIR)
@@ -818,7 +813,7 @@ def gen_annotations(
             .joinpath(parent_dirs.relative_to(dataset_dir))
             )
 
-    if len(predictions.squeeze().shape) > 1:
+    if isinstance(predictions, dict) or len(predictions.squeeze().shape) > 1:
         
         annotation_df = save_multiclass_dfs(file, model, save_path_func, 
                                             mod_label, predictions)
@@ -837,12 +832,26 @@ def gen_annotations(
 
 
 def save_multiclass_dfs(file, model, save_path_func, mod_label, predictions):
-    df_preds = model.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
+    if not isinstance(predictions, dict):
+        df_preds = model.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
+    else:
+        df_preds = predictions
     head = df_preds.pop('head')
     filtered_labels = list(df_preds.keys())
     pred_arr = np.zeros([len(filtered_labels), head['Time bins in this file']])
+    remove_label, remove_row = [], []
     for row, label in enumerate(filtered_labels):
-        pred_arr[row, df_preds[label]['time_bins_exceeding_threshold']] = df_preds[label]['classifier_predictions']
+        label_preds = np.array(df_preds[label]['classifier_predictions'])
+        label_preds[label_preds <= conf.DEFAULT_THRESH] = 0
+        label_preds = label_preds.tolist()
+        if len(np.where(np.array(label_preds) > 0)[0]) == 0:
+            remove_label.append(label)
+            remove_row.append(row)
+            continue
+        else:
+            pred_arr[row, df_preds[label]['time_bins_exceeding_threshold']] = label_preds
+    [filtered_labels.remove(rl) for rl in remove_label]
+    filtered_arr = np.array([pred_arr[row] for row in range(len(pred_arr)) if not row in remove_row])
     
     
     if len(filtered_labels) == 0:
@@ -851,13 +860,13 @@ def save_multiclass_dfs(file, model, save_path_func, mod_label, predictions):
         return create_Raven_annotation_df(np.array([]))
     
     elif len(filtered_labels) > 1:
-        save_combined_and_multiclass_dfs(pred_arr, 
+        save_combined_and_multiclass_dfs(filtered_arr, 
                                          filtered_labels, 
                                          save_path_func, 
                                          file, mod_label)
 
         
-    for preds, label in zip(pred_arr, filtered_labels):
+    for preds, label in zip(filtered_arr, filtered_labels):
         
         annotation_df = create_Raven_annotation_df(preds)
         
@@ -898,8 +907,14 @@ def save_combined_and_multiclass_dfs(predictions,
     all_combined_df = create_Raven_annotation_df(max_preds)
     all_combined_df.pop(conf.ANNOTATION_COLUMN)
     
-    for label_idx, label in enumerate(labels): 
-        all_combined_df[label] = predictions[label_idx, all_combined_df.index.values-1]
+    df = pd.concat([pd.DataFrame(labels), pd.DataFrame(predictions[:, all_combined_df.index.values-1])], axis=1, ignore_index=True)
+    df = df.set_index(df.iloc[:, 0])
+    df.pop(0)
+    df = df.T
+    df['Selection'] = all_combined_df.index
+    df = df.set_index('Selection')
+    
+    all_combined_df = pd.concat([all_combined_df, df], axis=1)
         
     save_paths['All_Combined'].mkdir(exist_ok=True, parents=True)
     all_combined_df.to_csv(

@@ -123,7 +123,9 @@ class MetaData:
                 label_dict[lab] = dict()
                 label_dict[lab]['all_preds'] = preds
                 label_dict[lab]['most_active'] = most_active
-            prog1.progress(idx / len(thresh_exceeding_classes))
+                
+            if conf.STREAMLIT:
+                prog1.progress(idx / len(thresh_exceeding_classes))
         
         multi_df['labels'] = list(label_dict.keys())
         multi_df['avg_confidence'] = [np.mean(label_dict[l]['all_preds']) for l in label_dict.keys()]
@@ -133,9 +135,8 @@ class MetaData:
         multi_df = multi_df.sort_values('labels_by_occurrence', ascending=False)
         multi_df.to_csv(self.save_dir.joinpath('mutliclass_df.csv'))
             
-
-def run_annotation(train_date=None, **kwargs):
-    files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="*.[wW][aA][vV]")
+            
+def prepare_classification(files):
     if not "timestamp_folder" in conf.session:
         timestamp_foldername = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
         timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
@@ -161,6 +162,9 @@ def run_annotation(train_date=None, **kwargs):
         
         f_ind = file_idx - 1
 
+    return mdf, f_ind, files, timestamp_foldername
+    
+def prepare_model_4_classification(timestamp_foldername, train_date):
     if not train_date:
         model = models.init_model(timestamp_foldername=timestamp_foldername)
         mod_label = conf.MODEL_NAME
@@ -176,6 +180,41 @@ def run_annotation(train_date=None, **kwargs):
             keras_mod_name=keras_mod_name,
         )
         mod_label = train_date
+    return model, mod_label
+
+def classify_and_annotate(file, model, mod_label, timestamp_dir, 
+                          files, mdf, f_ind, **kwargs):
+    start = time.time() 
+    # try:
+    annot = gen_annotations(
+        file,
+        model,
+        mod_label=mod_label,
+        timestamp_foldername=timestamp_dir,
+        num_of_files=len(files),
+        **kwargs,
+    )
+    # except Exception as e:
+    #     print('Annotations could not be generated due to error:', e)
+    #     return
+    computing_time = time.time() - start
+    mdf.append_and_save_meta_file(
+        file,
+        annot,
+        f_ind,
+        computing_time=computing_time,
+        **kwargs,
+    )
+    return mdf
+
+def run_annotation(train_date=None, **kwargs):
+    audio_suffixes = ['.wav', '.WAV', '.aif', '.mp3', '.MP3', '.flac', '.ogg']
+    all_files = get_files(location=conf.SOUND_FILES_SOURCE, search_str="*.*")
+    files = [f for f in all_files if f.suffix in audio_suffixes]
+    
+    mdf, f_ind, files, timestamp_dir = prepare_classification(files)
+
+    model, mod_label = prepare_model_4_classification(timestamp_dir, train_date)
 
     if conf.STREAMLIT:
         import streamlit as st
@@ -183,6 +222,7 @@ def run_annotation(train_date=None, **kwargs):
             st.session_state.progbar1 = st.progress(0, text='Current file')
                 
             st.session_state.progbar2 = st.progress(0, text='Overall progress')
+            
     for i, file in tqdm(enumerate(files),
                         "Annotating files",
                         total=len(files),
@@ -195,29 +235,11 @@ def run_annotation(train_date=None, **kwargs):
             kwargs['progbar2'].progress(i / len(files), 
                                                text='Overall progress')
         f_ind += 1
-        start = time.time()
-        try:
-            annot = gen_annotations(
-                file,
-                model,
-                mod_label=mod_label,
-                timestamp_foldername=timestamp_foldername,
-                num_of_files=len(files),
-                **kwargs,
-            )
-        except Exception as e:
-            print('Annotations could not be generated due to error:', e)
-            continue
-        computing_time = time.time() - start
-        mdf.append_and_save_meta_file(
-            file,
-            annot,
-            f_ind,
-            computing_time=computing_time,
-            **kwargs,
-        )
+
+        mdf = classify_and_annotate(file, model, mod_label, timestamp_dir,
+                                    files, mdf, f_ind, **kwargs)
     mdf.multi_class_metadata()
-    return timestamp_foldername
+    return timestamp_dir
 
 
 def check_for_multiple_time_dirs_error(path):

@@ -57,7 +57,8 @@ generated_annotations_folder: '../generated_annotations'
 # Only relevant for creation of new dataset (option run_config: 2)
 annotation_destination: '../combined_annotations'
 # name of current North Atlantic humpback whale song model
-model_name: 'Humpback_20221130'
+model_name: 'audioprotopnet'
+# model_name: 'Humpback_20221130'
 # name of top level directory when annotating multiple datasets
 top_dir_name: 'main'
 # custom string to add to timestamp for directory name 
@@ -73,7 +74,7 @@ save_downsampled_files: False
 # Name of Model class, default is HumpBackNorthAtlantic, possible other classes
 # are GoogleMod for the modified ResNet-50 architecture, or KerasAppModel for 
 # any of the Keras application models (name will get specified under keras_mod_name)
-ModelClassName: 'HumpBackNorthAtlantic' 
+ModelClassName: 'BacpipeModel' 
 # ModelClassName: 'KerasAppModel' 
 # batch size for training and evaluating purposes
 batch_size: 32
@@ -128,3 +129,7 @@ bool_lin_clfier: False
 lin_clfier_dir: ../linear_classifier
 # Specify what device to run the computations on
 device: cpu
+
+bool_use_precomputed_clfcations: True
+# Path to the original classifier outputs
+precomputed_clfcations_dir: G:\Work\Embeddings\soundscape_data\evaluations\audioprotopnet\classification\original_classifier_outputs

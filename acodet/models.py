@@ -4,6 +4,7 @@ from pathlib import Path
 import zipfile
 import sys
 import json
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -275,10 +276,18 @@ class BacpipeModel:
             
         settings.device = device
         self.device = 'cpu'
-        self.model = Embedder(model_name=conf.MODEL_NAME, **vars(settings))
         
-        conf.SR = self.model.model.sr
-        conf.CONTEXT_WIN = self.model.model.segment_length
+        if conf.BOOL_USE_PRECOMPUTED_CLFCATIONS:
+            self.model = SimpleNamespace()
+            self.model.model = SimpleNamespace()
+            self.model.classify = self.load_precomputed_classifications
+        else:
+            
+            self.model = Embedder(model_name=conf.MODEL_NAME, **vars(settings))
+        
+            conf.SR = self.model.model.sr
+            conf.CONTEXT_WIN = self.model.model.segment_length
+            self.model.classify = self.classify
         
         if conf.BOOL_LIN_CLFIER:
             
@@ -290,12 +299,13 @@ class BacpipeModel:
             self.clfier.to(self.device)
             self.model.model.classes = list(label2index.keys())
 
-        self.model.classify = self.classify
             
     def classify(self, file, **kwargs):
         if 'progbar1' in kwargs:
             callback = (lambda frac: (kwargs['progbar1']
                                       .progress(frac, text='Current File')))
+        else:
+            callback = None
             
         import torch
         frames = self.model.prepare_audio(file)
@@ -309,6 +319,19 @@ class BacpipeModel:
             predictions = self.model.model.classifier_outputs[-embeds.shape[0]:]
             
         return predictions.detach().numpy()
+    
+    def load_precomputed_classifications(self, file, **kwargs):
+        path = Path(conf.PRECOMPUTED_CLFCATIONS_DIR)
+        preds = json.load(open(path / (file.stem + f'_{conf.MODEL_NAME}.json'), 'r'))
+        
+        # arr = np.zeros([len(preds)-1, preds['head']['Time bins in this file']])
+        # preds.pop('head')
+        # classes = []
+        # for idx, (cls, v)  in enumerate(preds.items()):
+        #     arr[idx, v['time_bins_exceeding_threshold']] = v['classifier_predictions']
+        #     classes.append(cls)
+        # self.model.model.classes = classes
+        return preds
         
 
 def init_model(
