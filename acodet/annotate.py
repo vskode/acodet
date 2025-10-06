@@ -123,7 +123,8 @@ class MetaData:
                 label_dict[lab] = dict()
                 label_dict[lab]['all_preds'] = preds
                 label_dict[lab]['most_active'] = most_active
-            prog1.progress(idx / len(thresh_exceeding_classes))
+            if conf.STREAMLIT:
+                prog1.progress(idx / len(thresh_exceeding_classes))
         
         multi_df['labels'] = list(label_dict.keys())
         multi_df['avg_confidence'] = [np.mean(label_dict[l]['all_preds']) for l in label_dict.keys()]

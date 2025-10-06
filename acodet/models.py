@@ -264,6 +264,8 @@ class BacpipeModel:
         from bacpipe import config, settings
         from bacpipe.embedding_evaluation.classification.train_classifier import LinearClassifier
         from bacpipe.generate_embeddings import Embedder
+        from bacpipe import ensure_std_models
+        ensure_std_models('bacpipe/model_checkpoints')
         config.models = [conf.MODEL_NAME]
         settings.global_batch_size = conf.BATCH_SIZE
         if conf.DEVICE == 'auto':
