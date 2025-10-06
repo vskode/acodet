@@ -213,7 +213,7 @@ class KerasAppModel(ModelHelper):
         if Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
             self.model = tf.keras.models.load_model(
                 Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
-                # custom_objects={"FBetaScote": metrics.FBetaScore},
+                custom_objects={"Addons>FBetaScore": FBetaScore},
         )
             if conf.MODEL_NAME == 'birdnet':
                 self.model = self.model.model
