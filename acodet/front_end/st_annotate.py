@@ -202,7 +202,7 @@ class PresetInterfaceSettings:
         if st.session_state.bool_bacpipe_chckpts:
             bacpipe_chckpt_dir = utils.user_input(
                 'Folder containing the model checkpoint', 
-                '../model_checkpoints',
+                'bacpipe/model_checkpoints',
                 key='b_chck',
                 help=help_strings.BACPIPE_CHCKPT_DIR
                 )
