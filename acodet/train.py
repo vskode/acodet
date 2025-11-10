@@ -87,6 +87,8 @@ def run_training(
     )
 
     seed = np.random.randint(100)
+    info_text += f'\ntrain_set_size = {n_train}'
+    info_text += f'\nnoise_set_size = {n_noise}'
     open(f"../trainings/{time_start}/training_info.txt", "w").write(info_text)
 
     ###################### DATA PREPROC PIPELINE ################################
