@@ -129,6 +129,7 @@ def compute_hourly_pres(
     lim_sc=conf.SEQUENCE_LIMIT,
     sc=False,
     fetch_config_again=False,
+    dont_save_plot=True,
     **kwargs,
 ):
     if fetch_config_again:
@@ -142,32 +143,47 @@ def compute_hourly_pres(
 
     path = find_thresh05_path_in_dir(time_dir)
 
-    if "multi_datasets" in conf.session:
-        directories = [
+    if (
+        "multi_datasets_annot" in conf.session 
+        and conf.session['multi_datasets_annot']
+        ):
+        dirs = [
             [d for d in p.iterdir() if d.is_dir()]
             for p in path.iterdir()
             if p.is_dir()
         ][0]
     else:
-        directories = [p for p in path.iterdir() if p.is_dir()]
-    directories = [d for d in directories if not d.stem == "analysis"]
+        dirs = [p for p in path.iterdir() if p.is_dir()]
+    directories = [d for d in dirs if not d.stem == "analysis"]
+    
+    if 'chosen_dataset_stem' in kwargs:
+        directories = [d for d in directories if kwargs['chosen_dataset_stem'] in d.as_posix()]
 
+    if 'update_plot' in kwargs and not kwargs['update_plot']:
+        return
+    
     for ind, fold in enumerate(directories):
+        if 'Combined' in fold.stem :
+            continue
         files = get_files(location=fold, search_str="**/*txt")
         files.sort()
 
-        annots = return_hourly_pres_df(
-            files,
-            thresh,
-            thresh_sc,
-            lim,
-            lim_sc,
-            sc,
-            fold,
-            dir_ind=ind,
-            total_dirs=len(directories),
-            **kwargs,
-        )
+        try:
+            annots = return_hourly_pres_df(
+                files,
+                thresh,
+                thresh_sc,
+                lim,
+                lim_sc,
+                sc,
+                fold,
+                dir_ind=ind,
+                total_dirs=len(directories),
+                **kwargs,
+            )
+        except:
+            print('skipping', fold)
+            continue
         if "save_filtered_selection_tables" in kwargs:
             top_dir_path = path.parent.joinpath(conf.THRESH_LABEL).joinpath(
                 fold.stem
@@ -400,6 +416,10 @@ class ProcessLimits:
             ]
             date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
 
+            if 'multiclass' in str(self.files[0]):
+                preds = np.array([d.split('__')[0] for d in fil_h_ann[conf.ANNOTATION_COLUMN]], dtype=np.float32)
+                fil_h_ann[conf.ANNOTATION_COLUMN] = preds
+                
             fil_h_ann = fil_h_ann.loc[
                 fil_h_ann[conf.ANNOTATION_COLUMN] >= self.thresh
             ]
@@ -632,6 +652,8 @@ def plot_hp(path, lim, thresh, metric):
         d = {"vmin": 0, "vmax": 1}
     else:
         d = {"vmax": conf.HR_CNTS_VMAX}
+    if len(h_pres) == 0:
+        return
     sns.heatmap(h_pres.T, cmap="crest", **d)
     plt.ylabel("hour of day")
     plt.tight_layout()
@@ -658,7 +680,7 @@ def calc_val_diff(
         df_val = get_val(fold.joinpath("analysis").joinpath(conf.HR_VAL_PATH))
         hours_of_day = ["%.2i:00" % i for i in np.arange(24)]
         files = get_files(
-            location=path.joinpath(fold.stem), search_str="**/*txt"
+            location=path, search_str="**/*txt"
         )
         files.sort()
 
@@ -681,21 +703,34 @@ def calc_val_diff(
             df_val.index = df_metric.index
             df_diff.update(
                 {
-                    agg_met: df_val.loc[:, hours_of_day]
-                    - df_metric.loc[:, hours_of_day]
+                    # the calculation will result in tp being 2, fp -1, fn 1 and tn 0
+                    agg_met:
+                        (
+                            df_val.loc[:, hours_of_day] - df_metric.loc[:, hours_of_day] 
+                            + 2 * df_val.loc[:, hours_of_day] * df_metric.loc[:, hours_of_day]
+                        )
                 }
             )
 
             results = np.unique(df_diff[agg_met])
             d.update(
-                {agg_met: dict({"true": 0, "false_pos": 0, "false_neg": 0})}
+                {agg_met: dict({"true_pos": 0, "false_pos": 0, "false_neg": 0, "true_neg": 0})}
             )
-            for met, val in zip(d[agg_met].keys(), (0, -1, 1)):
-                if val in results:
-                    d[agg_met][met] = len(np.where(df_diff[agg_met] == val)[0])
+            
+            if 2 in results:
+                d[agg_met]['true_pos'] = len(np.where(df_diff[agg_met] == 2)[0])
+            if -1 in results:
+                d[agg_met]['false_pos'] = len(np.where(df_diff[agg_met]== -1)[0])
+            if 1 in results:
+                d[agg_met]['false_neg'] = len(np.where(df_diff[agg_met] == 1)[0])
+            if 0 in results:
+                d[agg_met]['true_neg'] = len(np.where(df_diff[agg_met] == 0)[0])
+            
             incorrect.update(
                 {agg_met: d[agg_met]["false_pos"] + d[agg_met]["false_neg"]}
             )
+            d[agg_met]['precision'] = d[agg_met]['true_pos'] / (d[agg_met]['false_pos'] + d[agg_met]['true_pos'])
+            d[agg_met]['recall'] = d[agg_met]['true_pos'] / (d[agg_met]['false_neg'] + d[agg_met]['true_pos'])
         perf_df = pd.DataFrame(d)
 
         print(
@@ -706,7 +741,7 @@ def calc_val_diff(
             thresh,
             "incorrect:",
             incorrect["sl"],
-            "%.2f" % (incorrect["sl"] / (len(df_diff["sl"]) * 24) * 100),
+            # "%.2f" % (incorrect["sl"] / (len(df_diff["sl"]) * 24) * 100),
         )
         print(
             "l:",
@@ -715,35 +750,28 @@ def calc_val_diff(
             thresh_sc,
             "sc_incorrect:",
             incorrect["sq"],
-            "%.2f" % (incorrect["sq"] / (len(df_diff["sl"]) * 24) * 100),
+            # "%.2f" % (incorrect["sq"] / (len(df_diff["sl"]) * 24) * 100),
         )
 
+        save_dir = fold.joinpath(files[-1].parent.stem).joinpath('validation')
+        save_dir.mkdir(exist_ok=True, parents=True)
+        
         annots.df.to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh}_l{lim}_hourly_presence.csv")
+            save_dir.joinpath(f"th{thresh}_l{lim}_hourly_pres_sl.csv")
         )
         annots.df_sc.to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh_sc}_l{lim_sc}_hourly_pres_sequ_crit.csv")
+            save_dir.joinpath(f"th{thresh_sc}_l{lim_sc}_hourly_pres_sequ_crit.csv")
         )
         df_diff["sl"].to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh}_l{lim}_diff_hourly_presence.csv")
+            save_dir.joinpath(f"th{thresh}_l{lim}_diff_hourly_pres_sl.csv")
         )
         df_diff["sq"].to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(
+            save_dir.joinpath(
                 f"th{thresh_sc}_l{lim_sc}_diff_hourly_pres_sequ_crit.csv"
             )
         )
         perf_df.to_csv(
-            Path(fold)
-            .joinpath("analysis")
-            .joinpath(f"th{thresh_sc}_l{lim_sc}_diff_performance.csv")
+            save_dir.joinpath(f"th{thresh_sc}_l{lim_sc}_diff_performance.csv")
         )
 
 

@@ -17,7 +17,7 @@ def create_session_file():
             setattr(st.session_state, k, v)
     else:
         with open("acodet/src/tmp_session.json", "w") as f:
-            json.dump(session, f)
+            json.dump(session, f, indent=2)
 
 
 def read_session_file():

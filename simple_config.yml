@@ -72,11 +72,11 @@ reviewed_annotation_source: 'path to your reviewed annotations'
 
 ## Model Parameters
 # threshold for predictions
-thresh: 0.9
-# number of annotations above threshold for hourly presence (default = 15)
-simple_limit: 15
+thresh: 0.6
+# number of annotations above threshold for hourly presence (default = 9)
+simple_limit: 9
 # threshold for sequence criterion (default = 0.9)
-sequence_thresh: 0.9
+sequence_thresh: 0.6
 # number of annotations above threshold within 20 consecutive windows
 # for hourly presence (default = 3)
 sequence_limit: 3
@@ -84,7 +84,7 @@ sequence_limit: 3
 sequence_con_win: 20
 # number of annotations that correspond to the upper limit of color bar in 
 # hourly annotations plots
-max_annots_per_hour: 150
+max_annots_per_hour: False
 # path to validation file of hourly presence dataset
 hourly_presence_validation_path: 'validation.csv'
 

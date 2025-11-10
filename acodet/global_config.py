@@ -146,3 +146,9 @@ HR_DA_COL = "daily_annotations"
 HR_DP_COL = "Daily_Presence"
 
 STREAMLIT = session["streamlit"]
+
+BACPIPE_CHCKPT_DIR = session['bacpipe_chckpt_dir']
+LIN_CLFIER_DIR = session['lin_clfier_dir']
+DEVICE = session['device']
+BOOL_LIN_CLFIER = session['bool_lin_clfier']
+BOOL_BACPIPE_CHCKPTS = session['bool_bacpipe_chckpts']
