@@ -12,7 +12,7 @@ from acodet.tfrec import run_data_pipeline, prepare
 from acodet.augmentation import run_augment_pipeline
 from acodet import global_config as conf
 
-AUTOTUNE = tf.data.AUTOTUNE
+# AUTOTUNE = tf.data.AUTOTUNE
 
 
 def run_training(
@@ -35,6 +35,7 @@ def run_training(
     f_score_beta=conf.F_SCORE_BETA,
     f_score_thresh=conf.F_SCORE_THRESH,
     unfreeze=conf.UNFREEZE,
+    torch_model=True
 ):
     info_text = f"""Model run INFO:
 
@@ -74,163 +75,173 @@ def run_training(
     if load_ckpt_path:
         time_start = load_ckpt_path
     Path(f"../trainings/{time_start}").mkdir(exist_ok=True, parents=True)
-
-    n_train, n_noise = get_train_set_size(data_dir)
-    n_train_set = n_train * (
-        1 + time_augs + mixup_augs + spec_aug * 2
-    )  # // batch_size
-    print(
-        "Train set size = {}. Epoch should correspond to this amount of steps.".format(
-            n_train_set
-        ),
-        "\n",
-    )
-
-    seed = np.random.randint(100)
-    info_text += f'\ntrain_set_size = {n_train}'
-    info_text += f'\nnoise_set_size = {n_noise}'
-    open(f"../trainings/{time_start}/training_info.txt", "w").write(info_text)
-
-    ###################### DATA PREPROC PIPELINE ################################
-
-    train_data = run_data_pipeline(
-        data_dir, data_dir="train", AUTOTUNE=AUTOTUNE
-    )
-    test_data = run_data_pipeline(data_dir, data_dir="test", AUTOTUNE=AUTOTUNE)
-    noise_data = run_data_pipeline(
-        data_dir, data_dir="noise", AUTOTUNE=AUTOTUNE
-    )
-
-    train_data = run_augment_pipeline(
-        train_data,
-        noise_data,
-        n_noise,
-        n_train,
-        time_augs,
-        mixup_augs,
-        seed,
-        spec_aug=spec_aug,
-        time_start=time_start,
-        plot=False,
-        random=False,
-    )
-    train_data = prepare(
-        train_data, batch_size, shuffle=True, shuffle_buffer=n_train_set * 3
-    )
-    if (
-        steps_per_epoch
-        and n_train_set // batch_size < epochs * steps_per_epoch
-    ):
-        train_data = train_data.repeat(
-            epochs * steps_per_epoch // (n_train_set // batch_size) + 1
-        )
-
-    test_data = prepare(test_data, batch_size, shuffle=True, seed=42, shuffle_buffer=10000)
-
-    #############################################################################
-    ######################### TRAINING ##########################################
-    #############################################################################
-
-    lr = tf.keras.optimizers.schedules.ExponentialDecay(
-        init_lr,
-        decay_steps=steps_per_epoch or n_train_set // batch_size,
-        decay_rate=(final_lr / init_lr) ** (1 / epochs),
-        staircase=True,
-    )
     
-    # lr = tf.keras.optimizers.schedules.CosineDecay(
-    #     initial_learning_rate=init_lr,
-    #     # decay_steps=steps_per_epoch,
-    #     first_decay_steps=steps_per_epoch*5,
-    #     # t_mul=1.5,
-    #     # m_mul=2.0,
-    #     alpha=final_lr,
-    #     name='CosineDecay',
-    #     warmup_target=init_lr,
-    #     warmup_steps=2000
-    # )
-    # lr = tf.keras.optimizers.schedules.CosineDecayRestarts(
-    #     initial_learning_rate=5e-4,
-    #     first_decay_steps=steps_per_epoch * 5,
-    #     t_mul=1.5,
-    #     m_mul=1.0,
-    #     alpha=5e-6,
-    # )
-
-    # def warmup_schedule(step):
-    #     if step < 2000:
-    #         return (step / 2000) * 5e-4  # Linear warmup
-    #     return lr(step - 2000)  # Then use CosineDecay
-
-    # final_lr_schedule = tf.keras.optimizers.schedules.LearningRateSchedule(warmup_schedule)
-
     model = models.init_model(
         model_instance=ModelClassName,
         checkpoint_dir=f"../trainings/{load_ckpt_path}/unfreeze_False",
         keras_mod_name=keras_mod_name,
         input_specs=True,
     )
-
-    model.compile(
-        optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),
-        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
-        metrics=[
-            tf.keras.metrics.BinaryAccuracy(),
-            tf.keras.metrics.Precision(),
-            tf.keras.metrics.Recall(),
-            # tfa.metrics.FBetaScore(
-            #     num_classes=1,
-            #     beta=f_score_beta,
-            #     threshold=f_score_thresh,
-            #     name="fbeta",
-            # ),
-            # tfa.metrics.FBetaScore(
-            #     num_classes=1,
-            #     beta=1.0,
-            #     threshold=f_score_thresh,
-            #     name="fbeta1",
-            # ),
-        ],
-    )
-
-    if unfreeze:
-        for layer in model.layers[pre_blocks:-unfreeze]:
-            layer.trainable = False
-
-    checkpoint_path = (
-        f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.ckpt"
-    )
-    checkpoint_dir = os.path.dirname(checkpoint_path)
     
-    earlystopping_callback = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss',
-        min_delta=0.01,
-        patience=3,
-        verbose=1,
-        mode='auto',
-        baseline=0.15,
-        start_from_epoch=65
-    )
+    if not torch_model:
+        n_train, n_noise = get_train_set_size(data_dir)
+        n_train_set = n_train * (
+            1 + time_augs + mixup_augs + spec_aug * 2
+        )  # // batch_size
+        print(
+            "Train set size = {}. Epoch should correspond to this amount of steps.".format(
+                n_train_set
+            ),
+            "\n",
+        )
+
+        seed = np.random.randint(100)
+        info_text += f'\ntrain_set_size = {n_train}'
+        info_text += f'\nnoise_set_size = {n_noise}'
+        open(f"../trainings/{time_start}/training_info.txt", "w").write(info_text)
+
+        ###################### DATA PREPROC PIPELINE ################################
+
+        train_data = run_data_pipeline(
+            data_dir, data_dir="train"
+        )
+        test_data = run_data_pipeline(data_dir, data_dir="test")
+        noise_data = run_data_pipeline(
+            data_dir, data_dir="noise"
+        )
+
+        train_data = run_augment_pipeline(
+            train_data,
+            noise_data,
+            n_noise,
+            n_train,
+            time_augs,
+            mixup_augs,
+            seed,
+            spec_aug=spec_aug,
+            time_start=time_start,
+            plot=False,
+            random=False,
+        )
+        train_data = prepare(
+            train_data, batch_size, shuffle=True, shuffle_buffer=n_train_set * 3
+        )
+        if (
+            steps_per_epoch
+            and n_train_set // batch_size < epochs * steps_per_epoch
+        ):
+            train_data = train_data.repeat(
+                epochs * steps_per_epoch // (n_train_set // batch_size) + 1
+            )
+
+        test_data = prepare(test_data, batch_size, shuffle=True, seed=42, shuffle_buffer=10000)
+
+        #############################################################################
+        ######################### TRAINING ##########################################
+        #############################################################################
+
+        lr = tf.keras.optimizers.schedules.ExponentialDecay(
+            init_lr,
+            decay_steps=steps_per_epoch or n_train_set // batch_size,
+            decay_rate=(final_lr / init_lr) ** (1 / epochs),
+            staircase=True,
+        )
+        
+        # lr = tf.keras.optimizers.schedules.CosineDecay(
+        #     initial_learning_rate=init_lr,
+        #     # decay_steps=steps_per_epoch,
+        #     first_decay_steps=steps_per_epoch*5,
+        #     # t_mul=1.5,
+        #     # m_mul=2.0,
+        #     alpha=final_lr,
+        #     name='CosineDecay',
+        #     warmup_target=init_lr,
+        #     warmup_steps=2000
+        # )
+        # lr = tf.keras.optimizers.schedules.CosineDecayRestarts(
+        #     initial_learning_rate=5e-4,
+        #     first_decay_steps=steps_per_epoch * 5,
+        #     t_mul=1.5,
+        #     m_mul=1.0,
+        #     alpha=5e-6,
+        # )
+
+        # def warmup_schedule(step):
+        #     if step < 2000:
+        #         return (step / 2000) * 5e-4  # Linear warmup
+        #     return lr(step - 2000)  # Then use CosineDecay
+
+        # final_lr_schedule = tf.keras.optimizers.schedules.LearningRateSchedule(warmup_schedule)
+
+        model.compile(
+            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),
+            loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
+            metrics=[
+                tf.keras.metrics.BinaryAccuracy(),
+                tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall(),
+                # tfa.metrics.FBetaScore(
+                #     num_classes=1,
+                #     beta=f_score_beta,
+                #     threshold=f_score_thresh,
+                #     name="fbeta",
+                # ),
+                # tfa.metrics.FBetaScore(
+                #     num_classes=1,
+                #     beta=1.0,
+                #     threshold=f_score_thresh,
+                #     name="fbeta1",
+                # ),
+            ],
+        )
+
+        if unfreeze:
+            for layer in model.layers[pre_blocks:-unfreeze]:
+                layer.trainable = False
+
+        checkpoint_path = (
+            f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.ckpt"
+        )
+        checkpoint_dir = os.path.dirname(checkpoint_path)
+        
+        earlystopping_callback = tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            min_delta=0.01,
+            patience=3,
+            verbose=1,
+            mode='auto',
+            baseline=0.15,
+            start_from_epoch=65
+        )
 
 
-    modelsaving_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=checkpoint_path,
-        mode="min",
-        verbose=1,
-        save_weights_only=True,
-        save_freq="epoch",
-    )
+        modelsaving_callback = tf.keras.callbacks.ModelCheckpoint(
+            filepath=checkpoint_path,
+            mode="min",
+            verbose=1,
+            save_weights_only=True,
+            save_freq="epoch",
+        )
 
-    model.save_weights(checkpoint_path)
-    hist = model.fit(
-        train_data,
-        epochs=epochs,
-        steps_per_epoch=steps_per_epoch,
-        validation_data=test_data,
-        callbacks=[earlystopping_callback, modelsaving_callback],
-    )
-    result = hist.history
-    save_model_results(checkpoint_dir, result)
+        model.save_weights(checkpoint_path)
+        hist = model.fit(
+            train_data,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+            validation_data=test_data,
+            callbacks=[earlystopping_callback, modelsaving_callback],
+        )
+        result = hist.history      
+            
+            
+        save_model_results(checkpoint_dir, result)
+    else:
+        from .torch_train import train
+        from .torch_data import Loader
+        dl = Loader(
+            '/mnt/swap/Work/Data/marine/marine mammals/ilaria_fp/audio/annots.csv'
+        )
+        model = train(model, dl.train_loader(), dl.val_loader(), nr_epochs=10)
 
     ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 
