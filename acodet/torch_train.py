@@ -26,7 +26,7 @@ def train(model, train_loader, val_loader, nr_epochs, device='cuda'):
 
         for inputs, labels in train_loader:
             inputs = inputs.to(device)
-            labels = labels.float().to(device).unsqueeze(1)  # (N, 1)
+            labels = labels.float().to(device)
 
             optimizer.zero_grad()
 
@@ -57,7 +57,9 @@ def train(model, train_loader, val_loader, nr_epochs, device='cuda'):
             for inputs, labels in val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
-                _, preds = torch.max(outputs, 1)
+                # _, preds = torch.max(outputs, 1)
+                probs = torch.sigmoid(outputs)
+                preds = (probs > 0.5).float()
                 val_correct += (preds == labels).sum().item()
                 val_total += labels.size(0)
         val_acc = val_correct / val_total

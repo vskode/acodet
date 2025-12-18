@@ -37,7 +37,8 @@ class AudioDataset(Dataset):
         self.filepaths = df["filename"].values
         self.starts = df['start'].values * conf.SR
         self.offsets = df['end'].values * conf.SR - self.starts
-        self.labels = torch.Tensor(np.ones([len(self.starts)]))
+        self.labels = torch.Tensor(np.zeros([2, len(self.starts)]))
+        self.labels[1, :] = torch.Tensor(df['label'].values)
         # self.labels = torch.zeros((df.shape[0], cfg.n_classes))
         # self.weights = None
         # self.mode = mode
@@ -91,7 +92,7 @@ class AudioDataset(Dataset):
         #     wave = self.wave_transforms(wave, sample_rate)
 
         sample = {'wave': wave,
-                  'labels': self.labels[idx],
+                  'labels': self.labels[:, idx],
                   }
         return sample
 

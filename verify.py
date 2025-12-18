@@ -1,0 +1,3 @@
+
+from acodet.humpback_model_dir.pcen_verify import verify_pcen_parity
+verify_pcen_parity()

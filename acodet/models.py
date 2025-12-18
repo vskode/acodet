@@ -7,6 +7,8 @@ import json
 
 import timm
 from types import SimpleNamespace
+from nnAudio.features.mel import MelSpectrogram
+from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
 
 import torch
 import torch.nn as nn
@@ -254,7 +256,7 @@ class KerasAppModel(ModelHelper):
         
 class TorchModel(nn.Module):
     
-    def __init__(self, effnet='b3', num_classes=1, **kwargs):
+    def __init__(self, effnet='b3', num_classes=2, **kwargs):
         super(TorchModel, self).__init__()
         # DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -267,7 +269,7 @@ class TorchModel(nn.Module):
         # self.backbone.to(DEVICE)
         
         cfg = {
-            'n_classes': 1,
+            'n_classes': num_classes,
             'sample_rate': conf.SR,
             'n_fft': conf.STFT_FRAME_LEN,
             'window_size': conf.STFT_FRAME_LEN,
@@ -282,6 +284,15 @@ class TorchModel(nn.Module):
         cfg = SimpleNamespace(**cfg)
         
         self.front_end = MelSpecTorch(cfg)
+        self.pcen = torch_PCEN(
+            num_channels=num_classes,
+            alpha=0.98,
+            smooth_coef=0.025,
+            delta=2.0,
+            root=2.0,
+            floor=1e-6,
+            trainable=True
+        )
         
 
         # if init_backbone:
@@ -317,6 +328,7 @@ class TorchModel(nn.Module):
 
         # (bs, channel, mel, time)
         x = self.front_end.wav2timefreq(x)
+        x = self.pcen(x)
 
         # if self.cfg.minmax_norm:
         #     x = (x - self.cfg.min) / (self.cfg.max - self.cfg.min)
@@ -564,6 +576,13 @@ class MelSpecTorch(nn.Module):
             power=cfg.power,
             normalized=cfg.mel_normalized,
         )
+        # self.mel_spec = MelSpectrogram(
+        #     sr=cfg.sample_rate,
+        #     n_fft=cfg.n_fft,
+        #     n_mels=cfg.n_mels,
+        #     trainable_mel=True,
+        #     trainable_STFT=True
+        # )
 
         self.amplitude_to_db = ta.transforms.AmplitudeToDB(
             top_db=cfg.top_db
@@ -572,3 +591,4 @@ class MelSpecTorch(nn.Module):
             self.mel_spec,
             self.amplitude_to_db
             )
+        
