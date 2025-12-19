@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader, Dataset
 from torch.nn.functional import one_hot
 import torchaudio as ta
 
+from pathlib import Path
+
 # from .utils import Compose, OneOf, NoiseInjection, GaussianNoise, PinkNoise, get_max_amplitude_window_index
 from acodet import global_config as conf
 
@@ -38,7 +40,10 @@ class AudioDataset(Dataset):
         self.starts = df['start'].values * conf.SR
         self.offsets = df['end'].values * conf.SR - self.starts
         self.labels = torch.Tensor(np.zeros([2, len(self.starts)]))
-        self.labels[1, :] = torch.Tensor(df['label'].values)
+        vals = df.label.values
+        idxs = np.arange(len(df))
+        self.labels[0, idxs[vals==0]] = torch.ones(len(vals[vals==0]))
+        self.labels[1, idxs[vals==1]] = torch.ones(len(vals[vals==1]))
         # self.labels = torch.zeros((df.shape[0], cfg.n_classes))
         # self.weights = None
         # self.mode = mode
@@ -50,6 +55,7 @@ class AudioDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, idx):
+        # print('loading', idx)
         wave, _ = ta.load(
             self.filepaths[idx],
             frame_offset=self.starts[idx],
@@ -57,13 +63,13 @@ class AudioDataset(Dataset):
             )
         wave = wave.squeeze()
         if len(wave) < conf.CONTEXT_WIN:
-            wave = librosa.util.fix_length(
-                wave, 
-                size=conf.CONTEXT_WIN,
-                mode='mininum'
-                )
+            wave = librosa.util.fix_length(wave, 
+                                           size=conf.CONTEXT_WIN,
+                                           mode='minimum')
+            wave = torch.Tensor(wave)
         elif len(wave) > conf.CONTEXT_WIN:
             wave = wave[:conf.CONTEXT_WIN]
+        # wave.to('cuda')
             
 
         # start = 0
@@ -121,27 +127,57 @@ class Loader(DataLoader):
         ----------
         cfg: SimpleNameSpace containing all configurations
         """
+        
         super(DataLoader, self).__init__()
-        self.df = pd.read_csv(df_path)
+        
+        combined_annots = Path(df_path) / 'combined_annotations.csv'
+        explicit_noise = Path(df_path) / 'explicit_noise.csv'
+        
+        ca_df = pd.read_csv(combined_annots)
+        en_df = pd.read_csv(explicit_noise)
+        df = pd.concat([ca_df, en_df], ignore_index=True)
+        df = df[df.subset != 'eval']
+        
+        rand_ints = np.random.permutation(len(df))
+        border = int(len(df) * 0.8)
+        
+        train, val = df.iloc[rand_ints[:border]], df.iloc[rand_ints[border:]]
+        train.subset = 'train'
+        val.subset = 'val'
+        train, val = train[:100], val[:20]
+        
+        df = pd.concat([train, val], ignore_index=True)
             
         self.train = AudioDataset(
-            self.df[
-                self.df['subset'] == 'train'
+            df[
+                df['subset'] == 'train'
                 ], 
             mode='train',
             )
 
         self.val = AudioDataset(
-            self.df[
-                self.df['subset'] == 'val'
+            df[
+                df['subset'] == 'val'
                 ], 
             mode='val',
             )
+        
+        
+        eval_df = pd.concat([ca_df, en_df], ignore_index=True)
+        eval_df = eval_df[eval_df.subset == 'eval']
+        
+        
+        eval_df = eval_df[:20]
+        self.test = AudioDataset(
+            eval_df,
+            mode='test',
+            )
+            
 
     def train_loader(self):
         return DataLoader(
             self.train, 
-            batch_size=32,#self.cfg.batch_size, 
+            batch_size=conf.BATCH_SIZE,#self.cfg.batch_size, 
             shuffle=True, 
             pin_memory=True,
             num_workers=1,#self.cfg.num_workers, 
@@ -152,10 +188,23 @@ class Loader(DataLoader):
     def val_loader(self):
         return DataLoader(
             self.val, 
-            batch_size=32,#self.cfg.batch_size, 
+            batch_size=conf.BATCH_SIZE,#self.cfg.batch_size, 
             shuffle=False, 
             pin_memory=True,
             num_workers=1,#self.cfg.num_workers, 
             persistent_workers=True, 
             collate_fn=collate_fn
             )
+        
+    def test_loader(self):
+        return DataLoader(
+            self.test, 
+            batch_size=conf.BATCH_SIZE,#self.cfg.batch_size, 
+            shuffle=False, 
+            pin_memory=True,
+            num_workers=1,#self.cfg.num_workers, 
+            persistent_workers=True, 
+            collate_fn=collate_fn
+            )
+    
+    

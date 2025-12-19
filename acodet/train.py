@@ -236,12 +236,15 @@ def run_training(
             
         save_model_results(checkpoint_dir, result)
     else:
-        from .torch_train import train
+        from .torch_train import train, test
         from .torch_data import Loader
+        # audio_dir = '/mnt/swap/Work/Data/marine/marine mammals/Ilaria_annotated/annotated_audio'
+        annotations = '/home/siriussound/Code/acodet_dir/combined_annotations/Ilaria_large_active_learning_2khz_torch'
         dl = Loader(
-            '/mnt/swap/Work/Data/marine/marine mammals/ilaria_fp/audio/annots.csv'
+            annotations
         )
         model = train(model, dl.train_loader(), dl.val_loader(), nr_epochs=10)
+        test(model, dl.test_loader())
 
     ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 

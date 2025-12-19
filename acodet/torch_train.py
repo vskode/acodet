@@ -67,3 +67,19 @@ def train(model, train_loader, val_loader, nr_epochs, device='cuda'):
 
         # scheduler.step()
     return model
+
+def test(model, test_loader, device='cuda'):
+    model.eval()
+    test_correct = 0
+    test_total = 0
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            # _, preds = torch.max(outputs, 1)
+            probs = torch.sigmoid(outputs)
+            preds = (probs > 0.5).float()
+            test_correct += (preds == labels).sum().item()
+            test_total += labels.size(0)
+    test_acc = test_correct / test_total
+    print(f"Test Acc: {test_acc:.4f}")

@@ -285,7 +285,7 @@ class TorchModel(nn.Module):
         
         self.front_end = MelSpecTorch(cfg)
         self.pcen = torch_PCEN(
-            num_channels=num_classes,
+            num_channels=1,
             alpha=0.98,
             smooth_coef=0.025,
             delta=2.0,
@@ -328,7 +328,8 @@ class TorchModel(nn.Module):
 
         # (bs, channel, mel, time)
         x = self.front_end.wav2timefreq(x)
-        x = self.pcen(x)
+        # x = x.unsqueeze(1)
+        # x = self.pcen(x)
 
         # if self.cfg.minmax_norm:
         #     x = (x - self.cfg.min) / (self.cfg.max - self.cfg.min)
@@ -583,6 +584,15 @@ class MelSpecTorch(nn.Module):
         #     trainable_mel=True,
         #     trainable_STFT=True
         # )
+        
+        # the above melspec doesn't seem to work well with batching
+        # cause this prints false, whereas the ta one prints true
+        # seq=[]
+        # for xx in x:
+        #     seq.append(self.front_end.mel_spec(xx).detach().cpu())
+        # seq = torch.Tensor(np.array(seq))
+        # bat = self.front_end.mel_spec(x).detach().cpu()
+        # torch.allclose(seq, bat, atol=1e-7)
 
         self.amplitude_to_db = ta.transforms.AmplitudeToDB(
             top_db=cfg.top_db
@@ -592,3 +602,4 @@ class MelSpecTorch(nn.Module):
             self.amplitude_to_db
             )
         
+
