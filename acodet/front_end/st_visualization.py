@@ -197,13 +197,22 @@ class Results(utils.Limits):
         self.plots_paths = [
             [d for d in p.iterdir() if d.is_dir()]
             for p in disp_obj.annots_path.rglob("*analysis*")
-        ][0]
-        if not self.plots_paths:
-            st.write(
-                "No analysis files found for this dataset. "
-                "Please run predefined settings 0, or 1 first."
-            )
+        ]
+        if len(self.plots_paths) == 0:
+            if not conf['preset_option'] in [0, 1]:
+                st.write(
+                    "No analysis files found for this dataset. "
+                    "Please run predefined settings 0, or 1 first."
+                )
+            else:
+                st.write(
+                    "No analysis files found for this dataset. "
+                    "This means none of the provided files contained "
+                    "predictions exceeding the threshold."
+                )
             st.stop()
+        else:
+            self.plots_paths = self.plots_paths[0]
         self.disp_obj = disp_obj
         self.tab_number = tab_number
 
