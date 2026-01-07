@@ -10,6 +10,8 @@ from pathlib import Path
 import pandas as pd
 from . import global_config as conf
 
+SUPPORTED_SUFFIXES = ['.wav', '.WAV', '.aif', '.mp3', '.MP3', '.flac']
+
 ############# ANNOTATION helpers ############################################
 
 
@@ -520,7 +522,7 @@ def get_pr_arrays(
 
 
 def get_files(
-    *, location: str = f"{conf.GEN_ANNOTS_DIR}", search_str: str = "*.wav"
+    *, location: str = f"{conf.GEN_ANNOTS_DIR}", search_str = None
 ) -> list:
     """
     Find all files corresponding to given search string within a specified
@@ -541,8 +543,10 @@ def get_files(
         the pattern
     """
     folder = Path(location)
-    # return list(folder.glob(search_str))
-    return [f for f in folder.rglob(search_str)]
+    if search_str is None:
+        return [f for f in folder.rglob('*') if f.suffix in SUPPORTED_SUFFIXES]
+    else:
+        return [f for f in folder.rglob(search_str)]
 
 
 def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
@@ -790,7 +794,7 @@ def gen_annotations(
     """
     parent_dirs = manage_dir_structure(file)
     
-    bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs'
+    bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs' #TODO
     existing_file = Path(bacpipe_path) / (Path(parent_dirs).stem + '/' + file.stem + '_birdnet.json')
     if existing_file.exists():
         with open(existing_file, 'r') as f:
@@ -803,7 +807,7 @@ def gen_annotations(
     save_path_func = lambda x: (
         Path(conf.GEN_ANNOTS_DIR)
         .joinpath(timestamp_foldername)
-        .joinpath(conf.THRESH_LABEL)
+        .joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}')
         .joinpath(x)
         .joinpath(parent_dirs)
     )
@@ -812,7 +816,7 @@ def gen_annotations(
         save_path_func = lambda x: (
             Path(conf.GEN_ANNOTS_DIR)
             .joinpath(timestamp_foldername)
-            .joinpath(conf.THRESH_LABEL)
+            .joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}')
             .joinpath(dataset_dir)
             .joinpath(x)
             .joinpath(parent_dirs.relative_to(dataset_dir))
@@ -840,7 +844,12 @@ def save_multiclass_dfs(file, model, save_path_func, mod_label, predictions):
     df_preds = model.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
     head = df_preds.pop('head')
     filtered_labels = list(df_preds.keys())
-    pred_arr = np.zeros([len(filtered_labels), head['Time bins in this file']])
+    max_time_bins = head['Time bins in this file']
+    for label in filtered_labels:
+        max_time_exceeded = np.where(np.array(df_preds[label]['time_bins_exceeding_threshold']) > max_time_bins)[0]
+        if any(max_time_exceeded):
+            max_time_bins = max(np.array(df_preds[label]['time_bins_exceeding_threshold'])[max_time_exceeded])
+    pred_arr = np.zeros([len(filtered_labels), max_time_bins])
     for row, label in enumerate(filtered_labels):
         pred_arr[row, df_preds[label]['time_bins_exceeding_threshold']] = df_preds[label]['classifier_predictions']
     

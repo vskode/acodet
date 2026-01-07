@@ -124,7 +124,7 @@ class ShowAnnotationPredictions:
                 )
 
     def show_individual_files(
-        self, tab_number=1, thresh_path=conf["thresh_label"]
+        self, tab_number=1, thresh_path=f'{conf["thresh_label"]}{conf["thresh"]}'
     ):
         with getattr(self, f"tab{tab_number}"):
             path = self.annots_path.joinpath(thresh_path)
@@ -154,7 +154,8 @@ class ShowAnnotationPredictions:
                     p = path
                 labels = [d.stem for d in p.iterdir() 
                            if not 'Combined' in d.stem
-                           or 'multiclass' in d.stem]
+                           and not 'multiclass' in d.stem
+                           and not 'analysis' in d.stem]
                 lbl = st.selectbox(
                     label="Choose a class",
                     options=labels,
@@ -229,10 +230,10 @@ class Results(utils.Limits):
                     options=datasets,
                     key=f'dataset_{key}'
                 )
-                classes = [d.stem for d in top_dir.joinpath(dataset).iterdir()
+                classes = [d.parts[-1] for d in top_dir.joinpath(dataset).iterdir()
                           if not 'Combined' in d.stem or not 'multiclass' in d.stem]
             else:
-                classes = [l.stem for l in self.plots_paths if not 'Combined' in l.stem]
+                classes = [l.parts[-1] for l in self.plots_paths if not 'Combined' in l.stem]
                 
             chosen_dataset = st.selectbox(
                 label=f"""Choose a dataset:""",
@@ -240,7 +241,7 @@ class Results(utils.Limits):
                 key=f"dataset_selec_{key}",
             )
             self.chosen_dataset = (
-                self.disp_obj.annots_path.joinpath(conf["thresh_label"])
+                self.disp_obj.annots_path.joinpath(f'{conf["thresh_label"]}{conf["thresh"]}')
                 .joinpath("analysis")
                 .joinpath(chosen_dataset)
             )
@@ -271,8 +272,7 @@ class Results(utils.Limits):
         st.session_state.progbar_update = st.progress(0, text="Updating plot")
         if rerun:
             utils.write_to_session_file(self.thresh_label, self.thresh)
-            if self.sc:
-                utils.write_to_session_file(self.limit_label, self.limit)
+            utils.write_to_session_file(self.limit_label, self.limit)
 
             import run
 

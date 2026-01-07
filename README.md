@@ -185,13 +185,13 @@ All inputs of the GUI have little help icons providing explanations about the re
 
 ### Outputs
 
-During inference the model generated annotations will be saved in `../generated_annotations` under a time-stamp named folder corresponding to when you ran the program. Within that folder, you'll find a folder `thresh_0.5` and a `stats.csv` file and a `multiclass_df.csv` file. Within the `thresh_0.5` folder you'll find folder names corresponding to all species classified with a prediction value > 0.5 in the datset. The directory structure within the folder mimics that of the source audio directories. 
+During inference the model generated annotations will be saved in `../generated_annotations` under a time-stamp named folder corresponding to when you ran the program. Within that folder, you'll find a folder `thresh_0.6 (depends on set threshold)` and a `stats.csv` file and a `multiclass_df.csv` file. Within the `thresh_0.6 (depends on set threshold)` folder you'll find folder names corresponding to all species classified with a prediction value > 0.5 in the datset. The directory structure within the folder mimics that of the source audio directories. 
 
 The `stats.csv` file contains information on every source audio file, the extracted timestamp from the file name, the number of predictions exceeding 0.8 and 0.9 and the time to process the file.
 
 The `multiclass_df.csv` file contains information on every species that was annotated with prediction values > 0.5, the avg and std confidence, the number of occurrences and the most active audio file.
 
-Aside from the species folder names you'll also find the folder names `multiclass`, `All_Combined` and `analysis` in `thresh_0.5`. In `multiclass`, the annotation files contain the high value prediction label along with the respective value for each context window. In `All_Combined` you'll find annotation files with columns for each species exceeding the threshold in that file. In `analysis` you'll again find all the species folder names and within them `.csv` files and visualizations of presence/absence for the hours within the audio source dataset.
+Aside from the species folder names you'll also find the folder names `multiclass`, `All_Combined` and `analysis` in `thresh_0.6 (depends on set threshold)`. In `multiclass`, the annotation files contain the high value prediction label along with the respective value for each context window. In `All_Combined` you'll find annotation files with columns for each species exceeding the threshold in that file. In `analysis` you'll again find all the species folder names and within them `.csv` files and visualizations of presence/absence for the hours within the audio source dataset.
 
 ### GUI Results Presentation
 
@@ -245,7 +245,7 @@ To start the program:
 
 The software will now run thorugh your dataset and gerate annotations for every (readable) soundifle within the dataset. While running, a spreadsheet, called stats.csv is continuously updated showing information on the annotations for every file (do not open while program is still running, because the program wont be able to access it).
 
-The program will create a directory called `generated_annotatoins` in the project directory. It will then create a directory corresponding to the date and time that you started the annotation process. Within that directory you will find a directory `thresh_0.5` corresponding to all annotations with a threshold of 0.5. Furthermore you will find the `stats.csv` spreadsheet.
+The program will create a directory called `generated_annotatoins` in the project directory. It will then create a directory corresponding to the date and time that you started the annotation process. Within that directory you will find a directory `thresh_0.6 (depends on set threshold)` corresponding to all annotations with a threshold of 0.5. Furthermore you will find the `stats.csv` spreadsheet.
 
 If you have chosen option 2 (or 0) you will also find a directory `thresh_0.x` where the x stands for the custom threshold you specified in the **simple_config.yml** file. Within the `thresh` directories you will find the name of your dataset. 
 

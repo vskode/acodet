@@ -100,7 +100,7 @@ class MetaData:
         
         multi_df = pd.DataFrame()
         thresh_exceeding_classes = [
-            d.stem for d in (self.save_dir / 'thresh_0.5').iterdir() 
+            d.stem for d in (self.save_dir / f'{conf.THRESH_LABEL}{conf.THRESH}').iterdir() 
             if not d.stem in ['All_Combined', 'multiclass']
             ]
         label_dict = {}
@@ -111,7 +111,7 @@ class MetaData:
             preds = []
             df_pred = 0
             files = [
-                d for d in (self.save_dir / 'thresh_0.5').rglob(f'*{lab}*.txt')
+                d for d in (self.save_dir / f'{conf.THRESH_LABEL}{conf.THRESH}').rglob(f'*{lab}*.txt')
                 if not 'combined' in d.stem and not 'multiclass' in d.stem
                 ]
             for f in files:
@@ -180,7 +180,7 @@ def run_annotation(train_date=None, **kwargs):
 
     if conf.STREAMLIT:
         import streamlit as st
-        if 'callbacks' in kwargs:
+        if 'callbacks' in kwargs and not 'progbar1' in kwargs:
             st.session_state.progbar1 = st.progress(0, text='Current file')
                 
             st.session_state.progbar2 = st.progress(0, text='Overall progress')
@@ -222,7 +222,7 @@ def run_annotation(train_date=None, **kwargs):
 
 
 def check_for_multiple_time_dirs_error(path):
-    if not path.joinpath(conf.THRESH_LABEL).exists():
+    if not path.joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}').exists():
         subdirs = [l for l in path.iterdir() if l.is_dir()]
         path = path.joinpath(subdirs[-1].stem)
     return path
@@ -237,7 +237,7 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         path = Path(conf.GEN_ANNOTS_DIR).joinpath(path)
         
     files = get_files(location=path, search_str="**/*txt")
-    files = [f for f in files if conf.THRESH_LABEL in str(f.parent)]
+    files = [f for f in files if f'{conf.THRESH_LABEL}{conf.THRESH}' in str(f.parent)]
     path = check_for_multiple_time_dirs_error(path)
     for i, file in enumerate(files):
         try:
@@ -276,8 +276,8 @@ def filter_annots_by_thresh(time_dir=None, **kwargs):
         if len(annot) == 0:
             continue
         save_dir = (
-            path.joinpath(f"thresh_{conf.THRESH}")
-            .joinpath(file.relative_to(path.joinpath(conf.THRESH_LABEL)))
+            path.joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}')
+            .joinpath(file.relative_to(path.joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}')))
             .parent
         )
         save_dir.mkdir(exist_ok=True, parents=True)

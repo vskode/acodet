@@ -185,16 +185,15 @@ class Limits:
             help=help_strings.THRESHOLD,
         )
 
-        if self.sc:
-            self.limit = st.slider(
-                "Limit",
-                1,
-                self.limit_max,
-                conf[self.limit_label],
-                1,
-                key=f"limit_slider_{self.key}",
-                help=help_strings.SC_LIMIT,
-            )
+        self.limit = st.slider(
+            "Limit",
+            1,
+            self.limit_max,
+            conf[self.limit_label],
+            1,
+            key=f"limit_slider_{self.key}",
+            help=help_strings.SC_LIMIT if self.sc else help_strings.LIMIT,
+        )
 
     def show_save_selection_tables_btn(self):
         """Show save selection tables btn."""
@@ -230,13 +229,15 @@ class TFPredictProgressBar(keras.callbacks.Callback):
     def __init__(self, num_of_files, progbar1, progbar2, **kwargs):
         self.num_of_files = num_of_files
         self.pr_bar1 = progbar1
-        self.pr_bar2 = progbar2
+        # self.pr_bar2 = progbar2
+        # self.pr_bar_progress = 0
 
-    def on_predict_end(self, logs=None):
-        self.pr_bar2.progress(
-            st.session_state.progbar1 / self.num_of_files,
-            text="Overall progress",
-        )
+    # def on_predict_end(self, logs=None):
+    #     self.pr_bar_progress += 1
+    #     self.pr_bar2.progress(
+    #         self.pr_bar_progress / self.num_of_files,
+    #         text="Overall progress",
+    #     )
 
     def on_predict_batch_begin(self, batch, logs=None):
         if self.params["steps"] == 1:

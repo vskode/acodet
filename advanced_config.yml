@@ -63,8 +63,8 @@ top_dir_name: 'main'
 # custom string to add to timestamp for directory name 
 # of created annotations
 annots_timestamp_folder: ''
-# default threshold folder name
-thresh_label: 'thresh_0.5'
+# default threshold folder name, the value of the set threshold will be added to this
+thresh_label: 'thresh_'
 # save downsmapled audio files for reprocessing?
 save_downsampled_files: False
 

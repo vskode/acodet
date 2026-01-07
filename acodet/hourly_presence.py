@@ -77,8 +77,8 @@ def h_of_day_str():
 
 def find_thresh05_path_in_dir(time_dir):
     """
-    Get corrects paths leading to thresh_0.5 directory contatining annotations.
-    Correct for incorrect paths, that already contain the thresh_0.5 path.
+    Get corrects paths leading to thresh_0.6 (depends on set threshold) directory contatining annotations.
+    Correct for incorrect paths, that already contain the thresh_0.6 (depends on set threshold) path.
 
     Parameters
     ----------
@@ -88,24 +88,27 @@ def find_thresh05_path_in_dir(time_dir):
     Returns
     -------
     pathlib.Path
-        correct path leading to thresh_0.5 directory
+        correct path leading to thresh_0.6 (depends on set threshold) directory
     """
     root = Path(conf.GEN_ANNOT_SRC)
-    if root.parts[-1] == conf.THRESH_LABEL:
+    if root.parts[-1] == f'{conf.THRESH_LABEL}{conf.THRESH}':
         root = root.parent
     elif root.parts[-1] == "thresh_0.9":
         root = root.parent
 
     if not time_dir:
-        if root.joinpath(conf.THRESH_LABEL).exists():
-            path = root.joinpath(conf.THRESH_LABEL)
+        if root.joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}').exists():
+            path = root.joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}')
         else:
-            path = root
+            if len(list(root.rglob('*analysis*'))) > 0:
+                path = list(root.rglob('*analysis*'))[-1].parent
+            else:
+                path = root
     else:
         path = (
             Path(conf.GEN_ANNOTS_DIR)
             .joinpath(time_dir)
-            .joinpath(conf.THRESH_LABEL)
+            .joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}')
         )
     return path
 
@@ -160,7 +163,10 @@ def compute_hourly_pres(
         directories = [d for d in directories if kwargs['chosen_dataset_stem'] in d.as_posix()]
 
     if 'update_plot' in kwargs and not kwargs['update_plot']:
-        return
+        analysis_dirs = []
+        [analysis_dirs.extend(list(d.rglob('*analysis*'))) for d in directories]
+        if len(analysis_dirs) > 0:
+            return
     
     for ind, fold in enumerate(directories):
         if 'Combined' in fold.stem :
@@ -185,11 +191,11 @@ def compute_hourly_pres(
             print('skipping', fold)
             continue
         if "save_filtered_selection_tables" in kwargs:
-            top_dir_path = path.parent.joinpath(conf.THRESH_LABEL).joinpath(
+            top_dir_path = path.parent.joinpath(f'{conf.THRESH_LABEL}{conf.THRESH}').joinpath(
                 fold.stem
             )
         else:
-            top_dir_path = path.joinpath(fold.stem)
+            top_dir_path = path.joinpath(fold.parts[-1])
 
         annots.df.to_csv(get_path(top_dir_path, conf.HR_PRS_SL))
         annots.df_counts.to_csv(get_path(top_dir_path, conf.HR_CNTS_SL))
@@ -411,7 +417,7 @@ class ProcessLimits:
         """
         for h in range(0, self.end or 1, 3600):
             fil_h_ann = self.annot_all.loc[
-                (h < self.annot_all["Begin Time (s)"])
+                (h <= self.annot_all["Begin Time (s)"])
                 & (self.annot_all["Begin Time (s)"] < h + 3600)
             ]
             date, hour = init_new_dt_if_exceeding_3600_s(h, date, hour)
@@ -489,10 +495,10 @@ class ProcessLimits:
             path to dataset in current annotation timestamp folder
         """
         if self.sc:
-            thresh_label = f"thresh_{self.thresh_sc}_seq_{self.lim_sc}"
+            thresh_label = f"{conf.THRESH_LABEL}{self.thresh_sc}_seq_{self.lim_sc}"
         else:
-            thresh_label = f"thresh_{self.thresh}_sim"
-        conf.THRESH_LABEL = thresh_label
+            thresh_label = f"{conf.THRESH_LABEL}{self.thresh}_sim"
+        
         new_thresh_path = Path(conf.GEN_ANNOT_SRC).joinpath(thresh_label)
         new_thresh_path = new_thresh_path.joinpath(
             self.files[self.file_ind - 1]
@@ -625,7 +631,7 @@ def return_hourly_pres_df(
 
 def get_path(path, metric):
     if not path.stem == "analysis":
-        save_path = path.parent.joinpath("analysis").joinpath(path.stem)
+        save_path = path.parent.joinpath("analysis").joinpath(path.parts[-1])
     else:
         save_path = path
     save_path.mkdir(exist_ok=True, parents=True)

@@ -104,3 +104,12 @@ Play around withit and see how the plot changes.
 The idea behind this is to be able to tune the sensitivity of the model
 to the noise environment within the dataset.
 """
+
+LIMIT = """
+The limit will be used to filter the predictions. The limit is the number of
+vocalizations within an hour that need to exceed the threshold.
+Higher limits mean less false positives but more false negatives. 
+Play around withit and see how the plot changes. 
+The idea behind this is to be able to tune the sensitivity of the model
+to the noise environment within the dataset.
+"""

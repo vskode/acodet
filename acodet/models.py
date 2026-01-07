@@ -265,7 +265,7 @@ class BacpipeModel:
         from bacpipe.embedding_evaluation.classification.train_classifier import LinearClassifier
         from bacpipe.generate_embeddings import Embedder
         from bacpipe import ensure_std_models
-        ensure_std_models('bacpipe/model_checkpoints')
+        ensure_std_models(Path('bacpipe/model_checkpoints'))
         config.models = [conf.MODEL_NAME]
         settings.global_batch_size = conf.BATCH_SIZE
         if conf.DEVICE == 'auto':
@@ -291,6 +291,8 @@ class BacpipeModel:
             self.clfier.load_state_dict(clfier)
             self.clfier.to(self.device)
             self.model.model.classes = list(label2index.keys())
+        else:
+            self.model.model.bool_classifier = True
 
         self.model.classify = self.classify
             
