@@ -372,6 +372,7 @@ class ProcessLimits:
             annotations that passed the sequence limit in the given hour
         """
         annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= self.thresh_sc]
+        filtered_annots = pd.DataFrame()
         for i, row in annot.iterrows():
             bool1 = 0 <= (row["Begin Time (s)"] - annot["Begin Time (s)"])
             bool2 = (
@@ -379,17 +380,20 @@ class ProcessLimits:
             ) < self.n_prec_preds * conf.CONTEXT_WIN / conf.SR
             self.prec_anns = annot.loc[bool1 * bool2]
             if len(self.prec_anns) > self.n_exceed_thresh:
-                self.filtered_annots = pd.concat(
-                    [self.filtered_annots, self.prec_anns]
+                filtered_annots = pd.concat(
+                    [filtered_annots, self.prec_anns]
                 )
                 # this stops the function as soon as the limit is met once
                 if not self.return_counts:
                     return 1
-        if len(self.filtered_annots) > 0:
-            self.filtered_annots = (self.filtered_annots
-                                    .drop_duplicates()
-                                    .sort_values(['Begin Time (s)']))
-        return len(self.filtered_annots)
+        if len(filtered_annots) > 0:
+            filtered_annots = (
+                filtered_annots.drop_duplicates().sort_values(['Begin Time (s)'])
+                )
+        self.filtered_annots = pd.concat([
+            self.filtered_annots, filtered_annots
+        ])
+        return len(filtered_annots)
 
     def get_end_of_last_annotation(self):
         """

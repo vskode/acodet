@@ -645,7 +645,9 @@ def run_inference(
             preds = model.predict(
                 window_data_for_prediction(batch), callbacks=callbacks
             )
-        predictions.extend(preds)
+            predictions.extend(preds)
+            if 'progbar2' in kwargs:
+                kwargs['progbar2'].progress((ind+1)/len(audio_batches), text='Overall progress')
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         predictions = model.classify(file, **kwargs)
             
