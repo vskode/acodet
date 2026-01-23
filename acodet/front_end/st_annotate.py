@@ -155,6 +155,7 @@ class PresetInterfaceSettings:
                 "Model threshold:", "0.6", help=help_strings.THRESHOLD
             )
         )
+        self.config['default_thresh'] = self.config["thresh"]
         self.advanced_settings()
 
     def advanced_settings(self):
@@ -298,7 +299,7 @@ class PresetInterfaceSettings:
             if (
                 Path(self.config["generated_annotation_source"]).stem
                 + Path(self.config["generated_annotation_source"]).suffix
-                == f"thresh_{session_config['default_threshold']}"
+                == f"thresh_{session_config['default_thresh']}"
             ):
                 st.write(
                     """

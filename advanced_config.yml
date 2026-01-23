@@ -38,7 +38,7 @@ train_ratio: 0.7
 test_val_ratio: 0.7
 
 ########################  ANNOTATIONS ########################################
-default_threshold: 0.5
+default_thresh: 0.5
 # minimum frequency of annotation boxes
 annotation_df_fmin: 50
 # maximum frequency of annotation boxes

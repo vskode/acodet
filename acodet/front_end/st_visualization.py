@@ -250,7 +250,8 @@ class Results(utils.Limits):
                 key=f"dataset_selec_{key}",
             )
             self.chosen_dataset = (
-                self.disp_obj.annots_path.joinpath(f'{conf["thresh_label"]}{conf["thresh"]}')
+                self.disp_obj.annots_path.joinpath(f'{st.session_state.thresh_label}{st.session_state.thresh}')
+                # self.disp_obj.annots_path.joinpath(f'{conf["thresh_label"]}{conf["thresh"]}')
                 .joinpath("analysis")
                 .joinpath(chosen_dataset)
             )

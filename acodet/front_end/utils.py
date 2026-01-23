@@ -22,8 +22,8 @@ def open_folder_dialogue(
                 for x in Path(path).iterdir()
                 if x.is_dir()
             ]
-            if f"thresh_{conf['default_threshold']}" in foldernames_list:
-                foldernames_list = [f"thresh_{conf['default_threshold']}"]
+            if f"thresh_{conf['default_thresh']}" in foldernames_list:
+                foldernames_list = [f"thresh_{conf['default_thresh']}"]
         else:
             foldernames_list = [
                 f"{x.stem}{x.suffix}"
