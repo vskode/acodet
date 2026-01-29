@@ -63,7 +63,7 @@ class TorchModel(nn.Module):
             noise_spec = self.front_end.mel_spec(noise)
             noise_pcen = self.pcen(noise_spec)
             x_processed = self.augment(x_processed, noise_pcen)
-            if True:
+            if False:
                 self.augment.plot_augmented(x_processed, y, paths=path, starts=start)
 
         if len(x_processed.shape) == 3:

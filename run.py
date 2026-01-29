@@ -57,10 +57,10 @@ def main(sc=True, **kwargs):
     elif conf.RUN_CONFIG == 2:
         if preset == 1:
             generate_final_annotations(**kwargs)
-            write_tfrec_dataset(**kwargs)
+            # write_tfrec_dataset(**kwargs)
         elif preset == 2:
             generate_final_annotations(active_learning=False, **kwargs)
-            write_tfrec_dataset(active_learning=False, **kwargs)
+            # write_tfrec_dataset(active_learning=False, **kwargs)
         elif preset == 3:
             write_tfrec_dataset(**kwargs)
             

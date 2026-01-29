@@ -85,7 +85,21 @@ class Loader(DataLoader):
         
         ca_df = pd.read_csv(combined_annots)
         en_df = pd.read_csv(explicit_noise)
+        
+        if not 'subset' in ca_df.columns:
+            files = ca_df.filename.unique()
+            eval_files = files[-int(len(files) * 0.2):]
+            ca_df['subset'] = [''] * len(ca_df)
+            ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'eval'
+        
+        if not 'subset' in en_df.columns:
+            files = en_df.filename.unique()
+            eval_files = files[-int(len(files) * 0.2):]
+            en_df['subset'] = [''] * len(en_df)
+            en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'eval'
+            
         df = pd.concat([ca_df, en_df], ignore_index=True)
+        
         df = df[df.subset != 'eval']
         
         rand_ints = np.random.permutation(len(df))

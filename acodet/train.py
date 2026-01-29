@@ -268,16 +268,13 @@ def run_training(
         from .torch_train import train, test
         from .torch_data import Loader
 
-        annotations = '../combined_annotations/Ilaria_large_active_learning_2khz_torch'
+        annotations = conf.ANNOT_DEST
         
         data_loaders = Loader(
             annotations,
         )
         
-        model = train(model, 
-                      data_loaders,
-                      nr_epochs=10
-                      )
+        model = train(model, data_loaders)
         test(model, data_loaders.test_loader())
 
 
