@@ -6,9 +6,17 @@ import torch.optim as optim
 from torchaudio import datasets
 from torch.utils.data import DataLoader
 
+from itertools import cycle
 
-def train(model, train_loader, val_loader, nr_epochs, device='cuda'):
+from tqdm import tqdm
+
+def train(model, data_loaders, nr_epochs, device='cuda'):
     
+    train_loader = data_loaders.train_loader()
+    noise_loader = data_loaders.noise_loader()
+    val_loader = data_loaders.val_loader()
+    
+    noise_iter = cycle(noise_loader)
 
     # Modify input size (note: torchvision EfficientNet supports arbitrary sizes)
     # No special change required; resizing inputs in transforms is enough
@@ -24,13 +32,15 @@ def train(model, train_loader, val_loader, nr_epochs, device='cuda'):
         correct = 0
         total = 0
 
-        for inputs, labels in train_loader:
+        for inputs, labels, path, start in tqdm(train_loader):
             inputs = inputs.to(device)
             labels = labels.float().to(device)
+            noise_batch = next(noise_iter)
+            noise = noise_batch[0].to(device)
 
             optimizer.zero_grad()
 
-            outputs = model(inputs)          # (N, 1), raw logits
+            outputs = model(inputs, labels, noise, path, start, training=True)          # (N, 1), raw logits
             loss = criterion(outputs, labels)
 
             loss.backward()
@@ -54,7 +64,7 @@ def train(model, train_loader, val_loader, nr_epochs, device='cuda'):
         val_correct = 0
         val_total = 0
         with torch.no_grad():
-            for inputs, labels in val_loader:
+            for inputs, labels, _, _ in val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 # _, preds = torch.max(outputs, 1)
@@ -73,7 +83,7 @@ def test(model, test_loader, device='cuda'):
     test_correct = 0
     test_total = 0
     with torch.no_grad():
-        for inputs, labels in test_loader:
+        for inputs, labels, _, _ in test_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             # _, preds = torch.max(outputs, 1)

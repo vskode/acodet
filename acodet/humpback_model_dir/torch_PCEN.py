@@ -83,6 +83,8 @@ class PCEN(nn.Module):
         )
 
     def forward(self, inputs: torch.Tensor):
+        if len(inputs) == 3:
+            inputs = inputs.unsqueeze(1)
         # 1. Constrain parameters (matches TF logic)
         alpha = torch.min(self.alpha, torch.ones_like(self.alpha))
         root = torch.max(self.root, torch.ones_like(self.root))
@@ -99,4 +101,4 @@ class PCEN(nn.Module):
             inputs / (self._floor + ema_smoother).pow(alpha) + self.delta
         ).pow(one_over_root) - self.delta.pow(one_over_root)
         
-        return output
+        return output.squeeze()

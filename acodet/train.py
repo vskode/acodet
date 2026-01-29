@@ -5,6 +5,12 @@ import numpy as np
 import tensorflow as tf
 # import tensorflow_addons as tfa
 
+def set_seed(seed):
+    import torch
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+
 from acodet.funcs import save_model_results, get_train_set_size
 from acodet import models
 from acodet.plot_utils import plot_model_results, create_and_save_figure
@@ -235,38 +241,45 @@ def run_training(
             
             
         save_model_results(checkpoint_dir, result)
+        
+        ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
+
+        plot_model_results(
+            time_start, data=data_description, init_lr=init_lr, final_lr=final_lr
+        )
+        
+        create_and_save_figure(
+            ModelClassName,
+            data_dir,
+            batch_size,
+            time_start,
+            plot_cm=True,
+            data=data_description,
+            keras_mod_name=keras_mod_name,
+        )
+        
+        if load_ckpt_path:
+            st = load_ckpt_path
+        else:
+            st = time_start
+        save_model(st, model)
     else:
+        set_seed(42)
         from .torch_train import train, test
         from .torch_data import Loader
-        # audio_dir = '/mnt/swap/Work/Data/marine/marine mammals/Ilaria_annotated/annotated_audio'
-        annotations = '/home/siriussound/Code/acodet_dir/combined_annotations/Ilaria_large_active_learning_2khz_torch'
-        dl = Loader(
-            annotations
+
+        annotations = '../combined_annotations/Ilaria_large_active_learning_2khz_torch'
+        
+        data_loaders = Loader(
+            annotations,
         )
-        model = train(model, dl.train_loader(), dl.val_loader(), nr_epochs=10)
-        test(model, dl.test_loader())
+        
+        model = train(model, 
+                      data_loaders,
+                      nr_epochs=10
+                      )
+        test(model, data_loaders.test_loader())
 
-    ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
-
-    plot_model_results(
-        time_start, data=data_description, init_lr=init_lr, final_lr=final_lr
-    )
-    
-    create_and_save_figure(
-        ModelClassName,
-        data_dir,
-        batch_size,
-        time_start,
-        plot_cm=True,
-        data=data_description,
-        keras_mod_name=keras_mod_name,
-    )
-    
-    if load_ckpt_path:
-        st = load_ckpt_path
-    else:
-        st = time_start
-    save_model(st, model)
 
 
 def save_model(
