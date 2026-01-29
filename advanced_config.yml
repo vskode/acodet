@@ -73,7 +73,8 @@ save_downsampled_files: False
 # Name of Model class, default is HumpBackNorthAtlantic, possible other classes
 # are GoogleMod for the modified ResNet-50 architecture, or KerasAppModel for 
 # any of the Keras application models (name will get specified under keras_mod_name)
-ModelClassName: 'HumpBackNorthAtlantic' 
+ModelClassName: 'TorchModel' 
+# ModelClassName: 'HumpBackNorthAtlantic' 
 # ModelClassName: 'KerasAppModel' 
 # batch size for training and evaluating purposes
 batch_size: 32
