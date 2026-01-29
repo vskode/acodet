@@ -26,7 +26,7 @@
 #     - 1 generate annotations
 #     - 2 generate new training data from reviewed annotations
 #     - 3 train (and evaluate)
-run_config: 1
+run_config: 3
 
 # depending on the main task, chose your predefined settings:
 # for generation of annotations, chose:
@@ -45,14 +45,14 @@ run_config: 1
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 0
+predefined_settings: 1
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for generation of new annotations (option run_config: 1)
-sound_files_source: 'path to your sound files'
+sound_files_source: '/mnt/swap/Work/Data/marine/marine mammals/Ilaria_annotated/audio'
 
 # source path for automatically generated annotations
 # relevant for generation of hourly or daily presence, or recomputing
