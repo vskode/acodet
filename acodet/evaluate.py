@@ -64,6 +64,10 @@ def evaluate(train_date=False, **kwargs):
         class_labels = model.model.model.classes
         humpback_label_idx = np.where(np.array(class_labels)=='Megaptera novaeangliae')[0][0]
         predictions = predictions[:, humpback_label_idx]
-
+    elif conf.MODEL_NAME == 'google_whale':
+        class_labels = model.model.model.classes
+        humpback_label_idx = np.where(np.array(class_labels)=='Humpback')[0][0]
+        predictions = predictions[:, humpback_label_idx]
+        
 
     ### now you have predictions and labels vectors that can be compared
