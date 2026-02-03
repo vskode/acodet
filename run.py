@@ -20,7 +20,7 @@ def main(sc=True, **kwargs):
     from acodet.train import run_training, save_model
     from acodet.tfrec import write_tfrec_dataset
     from acodet.hourly_presence import compute_hourly_pres, calc_val_diff
-    from acodet.evaluate import create_overview_plot
+    from acodet.evaluate import evaluate
     from acodet.combine_annotations import generate_final_annotations
     from acodet.models import init_model
     import acodet.global_config as conf
@@ -69,9 +69,9 @@ def main(sc=True, **kwargs):
         if preset == 1:
             run_training(**kwargs)
         elif preset == 2:
-            create_overview_plot(**kwargs)
+            evaluate(**kwargs)
         elif preset == 3:
-            create_overview_plot(["2025-04-14_11-37"], **kwargs)
+            evaluate(["2025-04-14_11-37"], **kwargs)
         elif preset == 4:
             save_model("FlatHBNA", init_model(), **kwargs)
 

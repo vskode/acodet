@@ -11,7 +11,7 @@ from .torch_augment import TorchAugment
 
 class TorchModel(nn.Module):
     
-    def __init__(self, effnet='b3', num_classes=2, **kwargs):
+    def __init__(self, effnet='b3', num_classes=1, **kwargs):
         super(TorchModel, self).__init__()
         # DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

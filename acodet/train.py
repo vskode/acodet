@@ -275,8 +275,9 @@ def run_training(
         )
         
         model = train(model, data_loaders)
-        test(model, data_loaders.test_loader())
-
+        
+        import torch
+        torch.save(model.state_dict, Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'))
 
 
 def save_model(

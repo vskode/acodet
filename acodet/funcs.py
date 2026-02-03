@@ -620,9 +620,9 @@ def create_Raven_annotation_df(preds: np.ndarray) -> pd.DataFrame:
 
 def run_inference(
     file, 
-    channel,
     model: tf.keras.Sequential,
     callbacks: None = None,
+    channel=0,
     **kwargs,
 ) -> pd.DataFrame:
     predictions = []
@@ -798,7 +798,7 @@ def gen_annotations(
     else:
         channel = get_channel(get_top_dir(parent_dirs))
         
-        predictions = run_inference(file, channel, model, **kwargs)
+        predictions = run_inference(file, model, channel, **kwargs)
        
     save_path_func = lambda x: (
         Path(conf.GEN_ANNOTS_DIR)
@@ -837,7 +837,11 @@ def gen_annotations(
 
 
 def save_multiclass_dfs(file, model, save_path_func, mod_label, predictions):
-    df_preds = model.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
+    df_preds = model.model.make_classification_dict(
+        predictions, 
+        model.model.model.classes, 
+        conf.DEFAULT_THRESH
+        )
     head = df_preds.pop('head')
     filtered_labels = list(df_preds.keys())
     pred_arr = np.zeros([len(filtered_labels), head['Time bins in this file']])
@@ -898,8 +902,9 @@ def save_combined_and_multiclass_dfs(predictions,
     all_combined_df = create_Raven_annotation_df(max_preds)
     all_combined_df.pop(conf.ANNOTATION_COLUMN)
     
-    for label_idx, label in enumerate(labels): 
-        all_combined_df[label] = predictions[label_idx, all_combined_df.index.values-1]
+    results_df = pd.DataFrame(predictions).iloc[all_combined_df.index.values[:-1], range(len(labels))]
+    results_df.columns = labels
+    all_combined_df = pd.concat([all_combined_df, results_df], axis=1)
         
     save_paths['All_Combined'].mkdir(exist_ok=True, parents=True)
     all_combined_df.to_csv(

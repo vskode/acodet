@@ -5,7 +5,7 @@ import zipfile
 import sys
 import json
 
-import timm
+# import timm
 from types import SimpleNamespace
 # from nnAudio.features.mel import MelSpectrogram
 from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
@@ -265,9 +265,9 @@ class BacpipeModel:
         from bacpipe import config, settings
         from bacpipe.embedding_evaluation.classification.train_classifier import LinearClassifier
         from bacpipe.generate_embeddings import Embedder
-        from bacpipe import ensure_std_models
-        ensure_std_models('bacpipe/model_checkpoints')
+        from bacpipe import ensure_models_exist
         config.models = [conf.MODEL_NAME]
+        ensure_models_exist(Path('bacpipe/model_checkpoints'), config.models)
         settings.global_batch_size = conf.BATCH_SIZE
         if conf.DEVICE == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -277,7 +277,7 @@ class BacpipeModel:
             settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
             
         settings.device = device
-        self.device = 'cpu'
+        # self.device = 'cpu'
         self.model = Embedder(model_name=conf.MODEL_NAME, **vars(settings))
         
         conf.SR = self.model.model.sr
@@ -299,9 +299,12 @@ class BacpipeModel:
         if 'progbar1' in kwargs:
             callback = (lambda frac: (kwargs['progbar1']
                                       .progress(frac, text='Current File')))
-            
-        import torch
-        frames = self.model.prepare_audio(file)
+        else:
+            callback = None
+        if isinstance(file, str) or isinstance(file, Path):
+            frames = self.model.prepare_audio(file)
+        else:
+            frames = file
         batched_frames = self.model.model.init_dataloader(frames)
         embeds = self.model.model.batch_inference(batched_frames, callback=callback)
         
@@ -346,7 +349,7 @@ def init_model(
         mod_obj.load_model()
     elif training_path:
         mod_obj.load_ckpt(training_path)
-    if not input_specs:
+    if not input_specs and hasattr(mod_obj, 'change_input_to_array'):
         mod_obj.change_input_to_array()
     return mod_obj#.model
 

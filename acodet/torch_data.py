@@ -17,12 +17,6 @@ def collate_fn(batch):
     paths = [x['path'] for x in batch]
     
     return waves, labels, paths, starts
-    # return {
-    #     'wave': waves,
-    #     'labels': labels,
-    #     'path': paths,
-    #     'start': starts
-    # }
 
 
 class AudioDataset(Dataset):
@@ -40,20 +34,22 @@ class AudioDataset(Dataset):
         self.starts = df['start'].values * conf.SR
         self.offsets = df['end'].values * conf.SR - self.starts
         self.labels = torch.Tensor(np.zeros([2, len(self.starts)]))
-        vals = df.label.values
-        idxs = np.arange(len(df))
-        self.labels[0, idxs[vals==0]] = torch.ones(len(vals[vals==0]))
-        self.labels[1, idxs[vals==1]] = torch.ones(len(vals[vals==1]))
+        self.labels = torch.tensor(df.label.values)
+        # idxs = np.arange(len(df))
+        # self.labels[0, idxs[vals==0]] = torch.ones(len(vals[vals==0]))
+        # self.labels[1, idxs[vals==1]] = torch.ones(len(vals[vals==1]))
 
     def __len__(self):
         return len(self.filepaths)
 
     def __getitem__(self, idx):
-        wave, _ = ta.load(
+        wave, sr = ta.load(
             self.filepaths[idx],
             frame_offset=self.starts[idx],
             num_frames=self.offsets[idx]
             )
+        if not sr == conf.SR:
+            wave = ta.functional.resample(wave, sr, conf.SR)
         wave = wave.squeeze()
         if len(wave) < conf.CONTEXT_WIN:
             wave = librosa.util.fix_length(wave, 
@@ -65,7 +61,7 @@ class AudioDataset(Dataset):
     
         sample = {
             'wave': wave,
-            'labels': self.labels[:, idx],
+            'labels': self.labels[idx],
             'path': self.filepaths[idx],
             'start': float(self.starts[idx] / conf.SR) 
         }

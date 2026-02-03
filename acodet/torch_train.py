@@ -77,7 +77,7 @@ def train(model, data_loaders, device='cuda'):
             if isinstance(outputs, dict):
                 outputs = outputs['logits']
                 
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs.squeeze(), labels)
 
             loss.backward()
             optimizer.step()
