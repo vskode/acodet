@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# A script to load the environment needed to run (optionally installing for
+# the first time if not already done).
+
+# Exit immediately if any command has a non-zero return code.
+set -e
+set -o pipefail
+
+# Activate the virtualenv, installing it for the first time if necessary.
+if [ ! -d ".venv" ]; then
+    uv venv --python=3.11
+    source .venv/bin/activate
+    uv pip install -r pyproject.toml
+    uv pip install -e ../bacpipe
+else
+    source .venv/bin/activate
+fi
+
+# Install/load ffmpeg if not already present.
+if ! command -v ffmpeg &>/dev/null; then
+    if command -v module &>/dev/null; then
+        module load gcc ffmpeg
+        # Ensure ffmpeg libraries can be found.
+        export LD_LIBRARY_PATH=$(realpath $(command -v ffmpeg | sed 's/.\{7\}$//')/../lib):$LD_LIBRARY_PATH
+    elif command -v brew &>/dev/null; then
+        brew install ffmpeg
+    elif command -v apt-get &>/dev/null && sudo -v &>/dev/null; then
+        sudo apt-get update && sudo apt-get install -y ffmpeg
+    elif command -v dnf &>/dev/null && sudo -v &>/dev/null; then
+        sudo dnf install -y ffmpeg
+    elif command -v pacman &>/dev/null && sudo -v &>/dev/null; then
+        sudo pacman -S --noconfirm ffmpeg
+    else
+        echo "Please install ffmpeg and try again."
+        exit 1
+    fi
+fi
+
