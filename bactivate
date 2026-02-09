@@ -1,11 +1,8 @@
 #!/bin/bash
-
+#
 # A script to load the environment needed to run (optionally installing for
 # the first time if not already done).
 
-# Exit immediately if any command has a non-zero return code.
-set -e
-set -o pipefail
 
 # Activate the virtualenv, installing it for the first time if necessary.
 if [ ! -d ".venv" ]; then
