@@ -8,11 +8,11 @@ import json
 # import timm
 from types import SimpleNamespace
 # from nnAudio.features.mel import MelSpectrogram
-from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
+# from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
 
-import torch
-import torch.nn as nn
-import torchaudio as ta
+# import torch
+# import torch.nn as nn
+# import torchaudio as ta
 
 import numpy as np
 
@@ -22,7 +22,7 @@ from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
 
-from .torchmodels import TorchModel
+# from .torchmodels import TorchModel
 
 
 class ModelHelper:
@@ -100,10 +100,31 @@ class HumpBackNorthAtlantic(ModelHelper):
                     with zipfile.ZipFile(model_path, "r") as model_zip:
                         model_zip.extractall(conf.MODEL_DIR)
             
-        self.model = tf.keras.models.load_model(
-            Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
-            custom_objects={"Addons>FBetaScore": FBetaScore},
-        )
+        if '2.15' in tf.__version__:
+            self.model = tf.keras.models.load_model(
+                Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
+                custom_objects={"Addons>FBetaScore": FBetaScore},
+            )
+        elif '2.20' in tf.__version__:
+            # Make sure PCEN, Block, ResidualPath, and MainPath are defined/imported above this line!
+            import keras
+            from tf220 import PCEN, Block, ResidualPath, MainPath
+
+            self.model = keras.models.load_model(
+                # 'test.keras',
+                # 'migrated_model.keras',
+                'f2_finally.keras',
+                custom_objects={
+                    "PCEN": PCEN,
+                    "Block": Block,
+                    "ResidualPath": ResidualPath,
+                    "MainPath": MainPath
+                }
+            )
+            from transfer_weights import inject_weights_hardcoded
+            inject_weights_hardcoded(self.model, 'ground_truth_weights.npz')
+
+        print("Success! .keras model loaded.")
     
     def download_model(self):
         import gdown
