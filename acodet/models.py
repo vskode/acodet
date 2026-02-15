@@ -5,14 +5,15 @@ import zipfile
 import sys
 import json
 
-# import timm
+import timm
 from types import SimpleNamespace
 # from nnAudio.features.mel import MelSpectrogram
-# from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
+from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
 
-# import torch
-# import torch.nn as nn
-# import torchaudio as ta
+import torch
+import torch.nn as nn
+import torchaudio as ta
+from .torchmodels import TorchModel
 
 import numpy as np
 
@@ -106,8 +107,8 @@ class HumpBackNorthAtlantic(ModelHelper):
                 custom_objects={"Addons>FBetaScore": FBetaScore},
             )
         elif int(tf.__version__.split('.')[1]) > 15:
-            from transfer_weights import inject_weights
-            from tf220 import PCEN, Block, ResidualPath, MainPath
+            from acodet.transfer_weights import inject_weights
+            from acodet.tf220 import PCEN, Block, ResidualPath, MainPath
             self.model = tf.keras.models.load_model(
                 Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME+'.keras'),
                 custom_objects={
