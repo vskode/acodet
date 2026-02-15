@@ -105,15 +105,11 @@ class HumpBackNorthAtlantic(ModelHelper):
                 Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
                 custom_objects={"Addons>FBetaScore": FBetaScore},
             )
-        elif '2.20' in tf.__version__:
-            # Make sure PCEN, Block, ResidualPath, and MainPath are defined/imported above this line!
-            import keras
+        elif int(tf.__version__.split('.')[1]) > 15:
+            from transfer_weights import inject_weights
             from tf220 import PCEN, Block, ResidualPath, MainPath
-
-            self.model = keras.models.load_model(
-                # 'test.keras',
-                # 'migrated_model.keras',
-                'f2_finally.keras',
+            self.model = tf.keras.models.load_model(
+                Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME+'.keras'),
                 custom_objects={
                     "PCEN": PCEN,
                     "Block": Block,
@@ -121,10 +117,11 @@ class HumpBackNorthAtlantic(ModelHelper):
                     "MainPath": MainPath
                 }
             )
-            from transfer_weights import inject_weights_hardcoded
-            inject_weights_hardcoded(self.model, 'ground_truth_weights.npz')
+            inject_weights(
+                self.model, 
+                Path(conf.MODEL_DIR) / 'original_model_weights.npz'
+                )
 
-        print("Success! .keras model loaded.")
     
     def download_model(self):
         import gdown

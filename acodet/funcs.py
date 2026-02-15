@@ -621,12 +621,12 @@ def create_Raven_annotation_df(preds: np.ndarray) -> pd.DataFrame:
 def run_inference(
     file, 
     model: tf.keras.Sequential,
-    callbacks: None = None,
     channel=0,
+    callbacks: None = None,
     **kwargs,
 ) -> pd.DataFrame:
     predictions = []
-    if 'predict' in dir(model):
+    if hasattr(model, 'model') and 'predict' in dir(model.model):
         audio = load_audio(file, channel)
         if audio is None:
             raise ImportError(
@@ -638,8 +638,10 @@ def run_inference(
         for ind, batch in enumerate(audio_batches):
             if callbacks is not None and ind == 0:
                 callbacks = callbacks(**kwargs)
-            preds = model.predict(
-                window_data_for_prediction(batch), callbacks=callbacks
+            preds = model.model(
+                window_data_for_prediction(batch), 
+                training=False, 
+                callbacks=callbacks
             )
         predictions.extend(preds)
     elif conf.MODELCLASSNAME == 'BacpipeModel':
