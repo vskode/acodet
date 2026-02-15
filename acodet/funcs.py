@@ -626,7 +626,7 @@ def run_inference(
     **kwargs,
 ) -> pd.DataFrame:
     predictions = []
-    if hasattr(model, 'model') and 'predict' in dir(model.model):
+    if 'predict' in dir(model):
         audio = load_audio(file, channel)
         if audio is None:
             raise ImportError(
@@ -638,7 +638,7 @@ def run_inference(
         for ind, batch in enumerate(audio_batches):
             if callbacks is not None and ind == 0:
                 callbacks = callbacks(**kwargs)
-            preds = model.model(
+            preds = model(
                 window_data_for_prediction(batch), 
                 training=False, 
                 callbacks=callbacks

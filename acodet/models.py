@@ -369,7 +369,10 @@ def init_model(
         mod_obj.load_ckpt(training_path)
     if not input_specs and hasattr(mod_obj, 'change_input_to_array'):
         mod_obj.change_input_to_array()
-    return mod_obj#.model
+    if conf.MODELCLASSNAME == 'HumpBackNorthAtlantic':
+        return mod_obj.model
+    else:
+        return mod_obj
 
 
 def get_labels_and_preds(
@@ -436,15 +439,24 @@ class FBetaScore(tf.keras.metrics.Metric):
         self.beta = beta
         self.threshold = threshold
 
-        # Must match variable names used in TFA version
+        # Initialize variables
         self.true_positives = self.add_weight(name="true_positives", shape=(num_classes,), initializer="zeros")
         self.false_positives = self.add_weight(name="false_positives", shape=(num_classes,), initializer="zeros")
         self.false_negatives = self.add_weight(name="false_negatives", shape=(num_classes,), initializer="zeros")
 
     def update_state(self, y_true, y_pred, sample_weight=None):
-        y_pred = tf.cast(y_pred > self.threshold, self.dtype)
+        # 1. Cast inputs to the correct type
+        y_pred = tf.cast(y_pred, self.dtype)
         y_true = tf.cast(y_true, self.dtype)
 
+        # 2. CRITICAL FIX: Ensure shapes match to prevent broadcasting explosion
+        # If y_true is (Batch,) and y_pred is (Batch, 1), this reshapes y_true to (Batch, 1)
+        y_true = tf.reshape(y_true, tf.shape(y_pred))
+
+        # 3. Apply Threshold
+        y_pred = tf.cast(y_pred > self.threshold, self.dtype)
+
+        # 4. Calculate stats (Now shapes are aligned, no outer product happens)
         tp = tf.reduce_sum(y_true * y_pred, axis=0)
         fp = tf.reduce_sum((1 - y_true) * y_pred, axis=0)
         fn = tf.reduce_sum(y_true * (1 - y_pred), axis=0)
@@ -455,6 +467,8 @@ class FBetaScore(tf.keras.metrics.Metric):
 
     def result(self):
         beta_sq = self.beta ** 2
+        
+        # Add epsilon to denominators to prevent division by zero
         precision = self.true_positives / (self.true_positives + self.false_positives + 1e-7)
         recall = self.true_positives / (self.true_positives + self.false_negatives + 1e-7)
 
@@ -465,10 +479,11 @@ class FBetaScore(tf.keras.metrics.Metric):
             v.assign(tf.zeros_like(v))
 
     def get_config(self):
-        return {
+        config = super().get_config()
+        config.update({
             "num_classes": self.num_classes,
             "average": self.average,
             "beta": self.beta,
             "threshold": self.threshold,
-        }
-
+        })
+        return config

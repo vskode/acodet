@@ -16,6 +16,7 @@ from acodet import models
 from acodet.plot_utils import plot_model_results, create_and_save_figure
 from acodet.tfrec import run_data_pipeline, prepare
 from acodet.augmentation import run_augment_pipeline
+from acodet.models import FBetaScore
 from acodet import global_config as conf
 
 # AUTOTUNE = tf.data.AUTOTUNE
@@ -41,7 +42,6 @@ def run_training(
     f_score_beta=conf.F_SCORE_BETA,
     f_score_thresh=conf.F_SCORE_THRESH,
     unfreeze=conf.UNFREEZE,
-    torch_model=True
 ):
     info_text = f"""Model run INFO:
 
@@ -68,7 +68,11 @@ def run_training(
     unfreeze       = {unfreeze}
     preproc blocks  = {pre_blocks}
     """
-
+    if conf.MODELCLASSNAME == 'TorchModel':
+        torch_model = True 
+    else:
+        torch_model = False
+        
     #############################################################################
     #############################  RUN  #########################################
     #############################################################################
@@ -90,6 +94,7 @@ def run_training(
     )
     
     if not torch_model:
+        
         n_train, n_noise = get_train_set_size(data_dir)
         n_train_set = n_train * (
             1 + time_augs + mixup_augs + spec_aug * 2
@@ -178,26 +183,35 @@ def run_training(
         #     return lr(step - 2000)  # Then use CosineDecay
 
         # final_lr_schedule = tf.keras.optimizers.schedules.LearningRateSchedule(warmup_schedule)
-
+        if int(tf.__version__.split('.')[1]) == 15:
+            optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
+            checkpoint_path = (
+                f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.ckpt"
+            )
+        else:
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+            checkpoint_path = (
+                f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.weights.h5"
+            )
         model.compile(
-            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=lr),
+            optimizer=optimizer,
             loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
             metrics=[
                 tf.keras.metrics.BinaryAccuracy(),
                 tf.keras.metrics.Precision(),
                 tf.keras.metrics.Recall(),
-                # tfa.metrics.FBetaScore(
-                #     num_classes=1,
-                #     beta=f_score_beta,
-                #     threshold=f_score_thresh,
-                #     name="fbeta",
-                # ),
-                # tfa.metrics.FBetaScore(
-                #     num_classes=1,
-                #     beta=1.0,
-                #     threshold=f_score_thresh,
-                #     name="fbeta1",
-                # ),
+                FBetaScore(
+                    num_classes=1,
+                    beta=f_score_beta,
+                    threshold=f_score_thresh,
+                    name="fbeta",
+                ),
+                FBetaScore(
+                    num_classes=1,
+                    beta=1.0,
+                    threshold=f_score_thresh,
+                    name="fbeta1",
+                ),
             ],
         )
 
@@ -205,10 +219,9 @@ def run_training(
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
 
-        checkpoint_path = (
-            f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.ckpt"
-        )
-        checkpoint_dir = os.path.dirname(checkpoint_path)
+
+        checkpoint_dir = Path(checkpoint_path).parent
+        checkpoint_dir.mkdir(exist_ok=True, parents=True)
         
         earlystopping_callback = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
@@ -262,6 +275,8 @@ def run_training(
             st = load_ckpt_path
         else:
             st = time_start
+        if int(tf.__version__.split('.')[1]) > 15:
+            st += '.h5'
         save_model(st, model)
     else:
         set_seed(42)
@@ -295,18 +310,18 @@ def save_model(
             tf.keras.metrics.BinaryAccuracy(),
             tf.keras.metrics.Precision(),
             tf.keras.metrics.Recall(),
-            # tfa.metrics.FBetaScore(
-            #     num_classes=1,
-            #     beta=f_score_beta,
-            #     threshold=f_score_thresh,
-            #     name="fbeta",
-            # ),
-            # tfa.metrics.FBetaScore(
-            #     num_classes=1,
-            #     beta=1.0,
-            #     threshold=f_score_thresh,
-            #     name="fbeta1",
-            # ),
+            FBetaScore(
+                num_classes=1,
+                beta=f_score_beta,
+                threshold=f_score_thresh,
+                name="fbeta",
+            ),
+            FBetaScore(
+                num_classes=1,
+                beta=1.0,
+                threshold=f_score_thresh,
+                name="fbeta1",
+            ),
         ],
     )
     model.save(f"acodet/src/models/{string}")
