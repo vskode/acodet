@@ -11,6 +11,7 @@ from acodet.funcs import get_files, run_inference
 from acodet.annotate import MetaData
 from acodet import models
 from acodet import global_config as conf
+from acodet import tfrec
 
 from .torch_data import Loader
 
@@ -71,3 +72,18 @@ def evaluate(train_date=False, **kwargs):
         
 
     ### now you have predictions and labels vectors that can be compared
+    
+def get_tensorflow_preds():
+    tfrec_path = conf.TFREC_DESTINATION
+    model_name = conf.MODEL_NAME
+    
+    val_data = tfrec.run_data_pipeline(tfrec_path, "test", return_spec=False)
+    
+    model = models.init_model(
+        load_from_ckpt=True,
+        model_name=model_name,
+        training_path=conf.LOAD_CKPT_PATH
+    )
+    preds = model.predict(x=models.prep_ds_4_preds(val_data))
+    labels = models.get_val_labels(val_data, len(preds))
+    

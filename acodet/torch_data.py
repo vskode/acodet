@@ -8,6 +8,8 @@ import torchaudio as ta
 from pathlib import Path
 from acodet import global_config as conf
 
+np.random.seed(42)
+
 def collate_fn(batch):
     waves = torch.stack([x['wave'] for x in batch])
     labels = torch.stack([x['labels'] for x in batch])

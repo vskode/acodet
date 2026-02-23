@@ -16,12 +16,6 @@ def main(sc=True, **kwargs):
         depending on the preset option, the function returns either the time
         when the annotation was started or None
     """
-    from acodet.annotate import run_annotation, filter_annots_by_thresh
-    from acodet.train import run_training, save_model
-    from acodet.tfrec import write_tfrec_dataset
-    from acodet.hourly_presence import compute_hourly_pres, calc_val_diff
-    from acodet.evaluate import evaluate
-    from acodet.combine_annotations import generate_final_annotations
     from acodet.models import init_model
     import acodet.global_config as conf
 
@@ -36,6 +30,8 @@ def main(sc=True, **kwargs):
         preset = conf.PRESET
 
     if conf.RUN_CONFIG == 1:
+        from acodet.hourly_presence import compute_hourly_pres, calc_val_diff
+        from acodet.annotate import run_annotation, filter_annots_by_thresh
         if preset == 1:
             timestamp_foldername = run_annotation(**kwargs)
             return timestamp_foldername
@@ -55,6 +51,8 @@ def main(sc=True, **kwargs):
             return timestamp_foldername
 
     elif conf.RUN_CONFIG == 2:
+        from acodet.tfrec import write_tfrec_dataset
+        from acodet.combine_annotations import generate_final_annotations
         if preset == 1:
             generate_final_annotations(**kwargs)
             # write_tfrec_dataset(**kwargs)
@@ -63,9 +61,11 @@ def main(sc=True, **kwargs):
             # write_tfrec_dataset(active_learning=False, **kwargs)
         elif preset == 3:
             write_tfrec_dataset(**kwargs)
-            
+        
 
     elif conf.RUN_CONFIG == 3:
+        from acodet.evaluate import evaluate
+        from acodet.train import run_training, save_model
         if preset == 1:
             run_training(**kwargs)
         elif preset == 2:

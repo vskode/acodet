@@ -10,6 +10,11 @@ from pathlib import Path
 import json
 from . import global_config as conf
 from tqdm import tqdm
+import torchaudio as ta
+import librosa
+import torch
+
+np.random.seed(42)
 
 ########################################################
 #################  WRITING   ###########################
@@ -160,78 +165,113 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
     Args:
         files (list): list of file paths to the audio files
     """
-    files = np.unique(annots.filename)
+    df = annots[annots.subset != 'eval']
+        
+    rand_ints = np.random.permutation(len(df))
+    border = int(len(df) * 0.8)
+    
+    train, val = df.iloc[rand_ints[:border]], df.iloc[rand_ints[border:]]
+    train.subset = 'train'
+    val.subset = 'val'
+    train, val = train, val
+    
+    df = pd.concat([train, val], ignore_index=True)
 
-    if len(files) == 0:
-        return
+    # if len(files) == 0:
+    #     return
 
-    random.shuffle(files)
-
-    split_mode = "within_file"
     specs = ["size", "noise", "calls"]
-    folders = ["train", "test", "val"]
-    train_file_index = int(len(files) * conf.TRAIN_RATIO)
-    test_file_index = int(
-        len(files) * (1 - conf.TRAIN_RATIO) * conf.TEST_VAL_RATIO
-    )
+    folders = ["train", "val", "test"]
+    # train_file_index = int(len(files) * conf.TRAIN_RATIO)
+    # test_file_index = int(
+    #     len(files) * (1 - conf.TRAIN_RATIO) * conf.TEST_VAL_RATIO
+    # )
 
     dataset = {k: {k1: 0 for k1 in folders} for k in specs}
-    data_meta_dict = dict({"data_split": split_mode})
+    data_meta_dict = dict({"data_split": 'within_file_with_holdout'})
     files_dict = {}
     tfrec_num = 0
-    for i, file in enumerate(files):
+    
+    waves = []
+    
+    for idx, row in df.iterrows():
         print(
-            "writing tf records files, progress:" f"{i/len(files)*100:.0f} %",
+            "writing tf records files, progress:" f"{idx/len(df)*100:.0f} %",
             end='\r'
         )
 
-        if i < train_file_index:
-            folder = folders[0]
-        elif i < train_file_index + test_file_index:
-            folder = folders[1]
-        else:
-            folder = folders[2]
+        # if i < train_file_index:
+        #     folder = folders[0]
+        # elif i < train_file_index + test_file_index:
+        #     folder = folders[1]
+        # else:
+        #     folder = folders[2]
 
-        call_tup, noise_tup = read_raw_file(
-            file, annots, inbetween_noise=inbetween_noise, **kwargs
+        # call_tup, noise_tup = read_raw_file(
+        #     file, row, **kwargs
+        # )
+        
+        
+        wave, sr = ta.load(
+            row.filename,
+            frame_offset=row.start,
+            num_frames=conf.CONTEXT_WIN*conf.SR
+            )
+        if not sr == conf.SR:
+            wave = ta.functional.resample(wave, sr, conf.SR)
+        wave = wave.squeeze()
+        if len(wave) < conf.CONTEXT_WIN:
+            wave = librosa.util.fix_length(wave, 
+                                           size=conf.CONTEXT_WIN,
+                                           mode='minimum')
+            wave = torch.from_numpy(wave)
+        elif len(wave) > conf.CONTEXT_WIN:
+            wave = wave[:conf.CONTEXT_WIN]
+            
+        waves.append((wave, row.label, row.filename, row.start))
+
+        # calls = randomize_arrays(call_tup, file)
+        # noise = randomize_arrays(noise_tup, file)
+        # samples = [*calls, *noise]
+        # random.shuffle(samples)
+        # data = dict()
+
+        # end_tr, end_te = map(
+        #     lambda x: int(x * len(samples)),
+        #     (
+        #         conf.TRAIN_RATIO,
+        #         (1 - conf.TRAIN_RATIO) * conf.TEST_VAL_RATIO
+        #         + conf.TRAIN_RATIO,
+        #     ),
+        # )
+
+        # data["train"] = samples[:end_tr]
+        # data["test"] = samples[end_tr:end_te]
+        # data["val"] = samples[end_tr:-1]
+        if (
+            idx == len(df)-1 
+            or len(waves) < conf.TFRECS_LIM 
+            or row.subset != df[idx+1].subset
+            ):
+            continue
+
+        # for folder, samples in data.items():
+        #     split_by_max_length = [
+        #         samples[j * conf.TFRECS_LIM : (j + 1) * conf.TFRECS_LIM]
+        #         for j in range(len(samples) // conf.TFRECS_LIM + 1)
+        #     ]
+        #     for samps in split_by_max_length:
+        tfrec_num += 1
+        writer = get_tfrecords_writer(
+            tfrec_num, row.subset, save_dir, **kwargs
+        )
+        files_dict, dataset = update_dict(
+            waves, files_dict, dataset, row.subset, tfrec_num
         )
 
-        calls = randomize_arrays(call_tup, file)
-        noise = randomize_arrays(noise_tup, file)
-        samples = [*calls, *noise]
-        random.shuffle(samples)
-        data = dict()
-
-        end_tr, end_te = map(
-            lambda x: int(x * len(samples)),
-            (
-                conf.TRAIN_RATIO,
-                (1 - conf.TRAIN_RATIO) * conf.TEST_VAL_RATIO
-                + conf.TRAIN_RATIO,
-            ),
-        )
-
-        data["train"] = samples[:end_tr]
-        data["test"] = samples[end_tr:end_te]
-        data["val"] = samples[end_tr:-1]
-
-        for folder, samples in data.items():
-            split_by_max_length = [
-                samples[j * conf.TFRECS_LIM : (j + 1) * conf.TFRECS_LIM]
-                for j in range(len(samples) // conf.TFRECS_LIM + 1)
-            ]
-            for samps in split_by_max_length:
-                tfrec_num += 1
-                writer = get_tfrecords_writer(
-                    tfrec_num, folder, save_dir, **kwargs
-                )
-                files_dict, dataset = update_dict(
-                    samps, files_dict, dataset, folder, tfrec_num
-                )
-
-                for audio, label, file, time in samps:
-                    examples = create_example(audio, label, file, time)
-                    writer.write(examples.SerializeToString())
+        for audio, label, file, time in waves:
+            examples = create_example(audio, label, file, time)
+            writer.write(examples.SerializeToString())
 
     # TODO automatisch die noise sachen miterstellen
     data_meta_dict.update({"dataset": dataset})
@@ -316,27 +356,30 @@ def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
         inbetween_noise = False
     else:
         inbetween_noise = True
+        
+    df_all = pd.DataFrame()
 
     for file in tqdm(annotation_files,
                      'Reading annotation files',
                      position=0,
                      leave=False):
-        annots = pd.read_csv(file)
-        if "explicit_noise" in file.stem:
-            all_noise = True
-        else:
-            all_noise = False
+        df_all = pd.concat([df_all, pd.read_csv(file)])
+        
+    if "explicit_noise" in file.stem:
+        all_noise = True
+    else:
+        all_noise = False
 
-        save_dir = Path(conf.TFREC_DESTINATION).joinpath(
-            get_src_dir_structure(file, annot_dir)
-        )
+    save_dir = Path(conf.TFREC_DESTINATION).joinpath(
+        get_src_dir_structure(file, annot_dir)
+    )
 
-        write_tfrecords(
-            annots,
-            save_dir,
-            all_noise=all_noise,
-            inbetween_noise=inbetween_noise,
-        )
+    write_tfrecords(
+        df_all,
+        save_dir,
+        # all_noise=all_noise,
+        inbetween_noise=inbetween_noise,
+    )
 
 
 ########################################################

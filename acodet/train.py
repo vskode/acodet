@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 # import tensorflow_addons as tfa
 
+
 def set_seed(seed):
     import torch
     torch.manual_seed(seed)
@@ -14,7 +15,7 @@ def set_seed(seed):
 from acodet.funcs import save_model_results, get_train_set_size
 from acodet import models
 from acodet.plot_utils import plot_model_results, create_and_save_figure
-from acodet.tfrec import run_data_pipeline, prepare
+from acodet.tfrec import run_data_pipeline, prepare, make_spec_tensor
 from acodet.augmentation import run_augment_pipeline
 from acodet.models import FBetaScore
 from acodet import global_config as conf
@@ -76,9 +77,9 @@ def run_training(
     #############################################################################
     #############################  RUN  #########################################
     #############################################################################
-    data_dir = list(Path(data_dir).iterdir())
-    if 'dataset_meta_train' in [d.stem for d in data_dir]:
-        data_dir = [data_dir[0].parent]
+    # data_dir = list(Path(data_dir).iterdir())
+    # if 'dataset_meta_train' in [d.stem for d in data_dir]:
+    #     data_dir = [data_dir[0].parent]
 
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
     time_start = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
@@ -95,8 +96,11 @@ def run_training(
     
     if not torch_model:
         
-        n_train, n_noise = get_train_set_size(data_dir)
-        n_train_set = n_train * (
+        from .tf_dataloader import TFLoader
+        
+        tfl_obj = TFLoader(conf.ANNOT_DEST)
+        # n_train, n_noise = get_train_set_size(data_dir)
+        n_train_set = tfl_obj.n_train * (
             1 + time_augs + mixup_augs + spec_aug * 2
         )  # // batch_size
         print(
@@ -107,25 +111,28 @@ def run_training(
         )
 
         seed = np.random.randint(100)
-        info_text += f'\ntrain_set_size = {n_train}'
-        info_text += f'\nnoise_set_size = {n_noise}'
+        info_text += f'\ntrain_set_size = {tfl_obj.n_train}'
+        # info_text += f'\nnoise_set_size = {n_noise}'
         open(f"../trainings/{time_start}/training_info.txt", "w").write(info_text)
 
         ###################### DATA PREPROC PIPELINE ################################
 
-        train_data = run_data_pipeline(
-            data_dir, data_dir="train"
-        )
-        test_data = run_data_pipeline(data_dir, data_dir="test")
-        noise_data = run_data_pipeline(
-            data_dir, data_dir="noise"
-        )
+        # train_data = run_data_pipeline(
+        #     data_dir, data_dir="train"
+        # )
+        # test_data = run_data_pipeline(data_dir, data_dir="test")
+        # noise_data = run_data_pipeline(
+        #     data_dir, data_dir="noise"
+        # )
+        train_data = make_spec_tensor(tfl_obj.train_loader())
+        noise_data = make_spec_tensor(tfl_obj.noise_loader())
+        val_data = make_spec_tensor(tfl_obj.val_loader())
 
         train_data = run_augment_pipeline(
             train_data,
             noise_data,
-            n_noise,
-            n_train,
+            tfl_obj.n_noise,
+            tfl_obj.n_train,
             time_augs,
             mixup_augs,
             seed,
@@ -135,7 +142,7 @@ def run_training(
             random=False,
         )
         train_data = prepare(
-            train_data, batch_size, shuffle=True, shuffle_buffer=n_train_set * 3
+            train_data, batch_size, shuffle=True, shuffle_buffer=1000, AUTOTUNE=tf.data.AUTOTUNE#n_train_set * 3
         )
         if (
             steps_per_epoch
@@ -145,7 +152,7 @@ def run_training(
                 epochs * steps_per_epoch // (n_train_set // batch_size) + 1
             )
 
-        test_data = prepare(test_data, batch_size, shuffle=True, seed=42, shuffle_buffer=10000)
+        val_data = prepare(val_data, batch_size, shuffle=True, seed=42, shuffle_buffer=1000, AUTOTUNE=tf.data.AUTOTUNE)
 
         #############################################################################
         ######################### TRAINING ##########################################
@@ -247,7 +254,7 @@ def run_training(
             train_data,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
-            validation_data=test_data,
+            validation_data=val_data,
             callbacks=[earlystopping_callback, modelsaving_callback],
         )
         result = hist.history      
