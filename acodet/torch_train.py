@@ -13,7 +13,7 @@ from tqdm import tqdm
 from acodet import global_config as conf
 
 
-def train(model, data_loaders, device='cuda'):
+def train(model, data_loaders, device='cpu'):
     
     train_loader = data_loaders.train_loader()
     val_loader = data_loaders.val_loader()

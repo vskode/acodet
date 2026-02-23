@@ -3,7 +3,7 @@ import re
 import zipfile
 import datetime as dt
 import json
-import tensorflow as tf
+# import tensorflow as tf
 import numpy as np
 import librosa as lb
 from pathlib import Path
@@ -447,7 +447,7 @@ def save_model_results(ckpt_dir: str, result: dict):
 
 
 def get_val_labels(
-    val_data: tf.data.Dataset, num_of_samples: int
+    val_data, num_of_samples: int
 ) -> np.ndarray:
     """
     Return all validation set labels. The dataset is batched with the dataset
@@ -473,7 +473,7 @@ def get_val_labels(
 
 
 def print_evaluation(
-    val_data: tf.data.Dataset, model: tf.keras.Sequential, batch_size: int
+    val_data, model, batch_size: int
 ):
     """
     Print evaluation results.
@@ -511,6 +511,7 @@ def get_pr_arrays(
     np.ndarray
         resulting values
     """
+    import tensorflow as tf
     r = getattr(tf.keras.metrics, metric)(**kwargs)
     r.update_state(labels, preds.reshape(len(preds)))
     return r.result().numpy()
@@ -545,7 +546,7 @@ def get_files(
     return [f for f in folder.rglob(search_str)]
 
 
-def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
+def window_data_for_prediction(audio: np.ndarray):
     """
     Compute predictions based on spectrograms. First the number of context
     windows that fit into the audio array are calculated. The result is an
@@ -564,6 +565,7 @@ def window_data_for_prediction(audio: np.ndarray) -> tf.Tensor:
     tf.Tensor
         2D audio tensor with shape [context window length, number of windows]
     """
+    import tensorflow as tf
     num = np.ceil(len(audio) / conf.CONTEXT_WIN)
     # zero pad in case the end is reached
     audio = [*audio, *np.zeros([int(num * conf.CONTEXT_WIN - len(audio))])]
@@ -620,7 +622,7 @@ def create_Raven_annotation_df(preds: np.ndarray) -> pd.DataFrame:
 
 def run_inference(
     file, 
-    model: tf.keras.Sequential,
+    model,
     channel=0,
     callbacks: None = None,
     **kwargs,
@@ -651,7 +653,7 @@ def run_inference(
 
 def create_annotation_df(
     audio_batches: np.ndarray,
-    model: tf.keras.Sequential,
+    model,
     callbacks: None = None,
     **kwargs,
 ) -> pd.DataFrame:
@@ -683,6 +685,7 @@ def create_annotation_df(
                 window_data_for_prediction(audio), callbacks=callbacks
             )
         elif conf.MODELCLASSNAME == 'BacpipeModel':
+            import tensorflow as tf
             frames = model.model.window_audio(np.array([audio]))
             _, all_preds = model.model(frames, return_class_results=True)
             if len(all_preds.squeeze().shape) > 1:
@@ -766,7 +769,7 @@ def get_top_dir(parent_dirs):
 
 def gen_annotations(
     file,
-    model: tf.keras.Model,
+    model,
     mod_label: str,
     timestamp_foldername: str,
     **kwargs,
@@ -880,6 +883,7 @@ def save_combined_and_multiclass_dfs(predictions,
                                      labels, 
                                      save_path_func, 
                                      file, mod_label):
+    import tensorflow as tf
     max_preds = tf.reduce_max(predictions, axis=0).numpy()
     cls_idxes = np.argmax(predictions, axis=0)
     _, tmp_idxes = np.where(predictions > conf.DEFAULT_THRESH)

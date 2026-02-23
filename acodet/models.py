@@ -1,4 +1,4 @@
-import tensorflow as tf
+# import tensorflow as tf
 # from tensorflow_addons import metrics
 from pathlib import Path
 import zipfile
@@ -19,9 +19,9 @@ import numpy as np
 
 from acodet.funcs import get_val_labels
 from . import global_config as conf
-from .humpback_model_dir import humpback_model
-from .humpback_model_dir import front_end
-from .humpback_model_dir import leaf_pcen
+# from .humpback_model_dir import humpback_model
+# from .humpback_model_dir import front_end
+# from .humpback_model_dir import leaf_pcen
 
 # from .torchmodels import TorchModel
 
@@ -63,6 +63,8 @@ class ModelHelper:
         Returns:
             tf.keras.Sequential: model with new arrays as inputs
         """
+        import tensorflow as tf
+        from .humpback_model_dir import front_end
         model_list = self.model.layers
         model_list.insert(0, tf.keras.layers.Input([conf.CONTEXT_WIN]))
         model_list.insert(
@@ -91,6 +93,8 @@ class HumpBackNorthAtlantic(ModelHelper):
         pass
 
     def load_model(self, **kwargs):
+        from .humpback_model_dir.leaf_pcen import FBetaScore
+        import tensorflow as tf
         if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
             self.download_model()
             # for model_path in Path(conf.MODEL_DIR).iterdir():
@@ -159,6 +163,7 @@ class GoogleMod(ModelHelper):  # TODO change name
             load_g_ckpt (bool, optional): Initialize model weights with Google
             pretrained weights. Defaults to True.
         """
+        from .humpback_model_dir import humpback_model
         self.model = humpback_model.Model()
         if load_g_ckpt:
             self.model = self.model.load_from_tf_hub()
@@ -183,6 +188,7 @@ class GoogleMod(ModelHelper):  # TODO change name
             assumed to be audio arrays of 39124 samples length.
             Defaults to 'spectrograms'.
         """
+        import tensorflow as tf
         # create list which will contain all the layers
         model_list = []
         if input_tensors == "spectrograms":
@@ -238,6 +244,8 @@ class KerasAppModel(ModelHelper):
     """
 
     def __init__(self, keras_mod_name=conf.KERAS_MOD_NAME, **params) -> None:
+        import tensorflow as tf
+        from .humpback_model_dir import leaf_pcen
         keras_model = getattr(tf.keras.applications, keras_mod_name)(
             include_top=False,
             weights=None,
@@ -341,7 +349,7 @@ def init_model(
     training_path: str = conf.LOAD_CKPT_PATH,
     input_specs=False,
     **kwargs,
-) -> tf.keras.Sequential:
+    ):
     """
     Initiate model instance, load weights. As the model is trained on
     spectrogram tensors but will now be used for inference on audio files
@@ -377,7 +385,7 @@ def init_model(
 
 
 def get_labels_and_preds(
-    model_name: str, training_path: str, val_data: tf.data.Dataset, **kwArgs
+    model_name: str, training_path: str, val_data, **kwArgs
 ) -> tuple:
     """
     Retrieve labels and predictions of validation set and given model
@@ -432,59 +440,3 @@ def prep_ds_4_preds(dataset):
     else:
         return dataset.batch(batch_size=32)
 
-class FBetaScore(tf.keras.metrics.Metric):
-    def __init__(self, num_classes=1, average=None, beta=0.5, threshold=0.5, name="fbeta", dtype=tf.float32, **kwargs):
-        super().__init__(name=name, dtype=dtype, **kwargs)
-        self.num_classes = num_classes
-        self.average = average
-        self.beta = beta
-        self.threshold = threshold
-
-        # Initialize variables
-        self.true_positives = self.add_weight(name="true_positives", shape=(num_classes,), initializer="zeros")
-        self.false_positives = self.add_weight(name="false_positives", shape=(num_classes,), initializer="zeros")
-        self.false_negatives = self.add_weight(name="false_negatives", shape=(num_classes,), initializer="zeros")
-
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        # 1. Cast inputs to the correct type
-        y_pred = tf.cast(y_pred, self.dtype)
-        y_true = tf.cast(y_true, self.dtype)
-
-        # 2. CRITICAL FIX: Ensure shapes match to prevent broadcasting explosion
-        # If y_true is (Batch,) and y_pred is (Batch, 1), this reshapes y_true to (Batch, 1)
-        y_true = tf.reshape(y_true, tf.shape(y_pred))
-
-        # 3. Apply Threshold
-        y_pred = tf.cast(y_pred > self.threshold, self.dtype)
-
-        # 4. Calculate stats (Now shapes are aligned, no outer product happens)
-        tp = tf.reduce_sum(y_true * y_pred, axis=0)
-        fp = tf.reduce_sum((1 - y_true) * y_pred, axis=0)
-        fn = tf.reduce_sum(y_true * (1 - y_pred), axis=0)
-
-        self.true_positives.assign_add(tp)
-        self.false_positives.assign_add(fp)
-        self.false_negatives.assign_add(fn)
-
-    def result(self):
-        beta_sq = self.beta ** 2
-        
-        # Add epsilon to denominators to prevent division by zero
-        precision = self.true_positives / (self.true_positives + self.false_positives + 1e-7)
-        recall = self.true_positives / (self.true_positives + self.false_negatives + 1e-7)
-
-        return (1 + beta_sq) * precision * recall / (beta_sq * precision + recall + 1e-7)
-
-    def reset_state(self):
-        for v in self.variables:
-            v.assign(tf.zeros_like(v))
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({
-            "num_classes": self.num_classes,
-            "average": self.average,
-            "beta": self.beta,
-            "threshold": self.threshold,
-        })
-        return config

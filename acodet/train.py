@@ -2,7 +2,6 @@ import os
 from datetime import datetime as dt
 from pathlib import Path
 import numpy as np
-import tensorflow as tf
 # import tensorflow_addons as tfa
 
 
@@ -11,13 +10,6 @@ def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-
-from acodet.funcs import save_model_results, get_train_set_size
-from acodet import models
-from acodet.plot_utils import plot_model_results, create_and_save_figure
-from acodet.tfrec import run_data_pipeline, prepare, make_spec_tensor
-from acodet.augmentation import run_augment_pipeline
-from acodet.models import FBetaScore
 from acodet import global_config as conf
 
 # AUTOTUNE = tf.data.AUTOTUNE
@@ -69,6 +61,7 @@ def run_training(
     unfreeze       = {unfreeze}
     preproc blocks  = {pre_blocks}
     """
+    from acodet import models
     if conf.MODELCLASSNAME == 'TorchModel':
         torch_model = True 
     else:
@@ -95,6 +88,14 @@ def run_training(
     )
     
     if not torch_model:
+        
+
+        from acodet.funcs import save_model_results, get_train_set_size
+        from acodet.plot_utils import plot_model_results, create_and_save_figure
+        from acodet.tfrec import run_data_pipeline, prepare, make_spec_tensor
+        from acodet.augmentation import run_augment_pipeline
+        from acodet.humpback_model_dir.leaf_pcen import FBetaScore
+        import tensorflow as tf
         
         from .tf_dataloader import TFLoader
         
@@ -310,6 +311,9 @@ def save_model(
     f_score_beta=0.5,
     f_score_thresh=0.5,
 ):
+    
+    import tensorflow as tf
+    from acodet.humpback_model_dir.leaf_pcen import FBetaScore
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
         loss=tf.keras.losses.BinaryCrossentropy(),

@@ -101,3 +101,62 @@ class PCEN(tf.keras.layers.Layer):
             inputs / (self._floor + ema_smoother) ** alpha + self.delta
         ) ** one_over_root - self.delta**one_over_root
         return output
+
+class FBetaScore(tf.keras.metrics.Metric):
+    def __init__(self, num_classes=1, average=None, beta=0.5, threshold=0.5, name="fbeta", dtype=tf.float32, **kwargs):
+        super().__init__(name=name, dtype=dtype, **kwargs)
+        self.num_classes = num_classes
+        self.average = average
+        self.beta = beta
+        self.threshold = threshold
+
+        # Initialize variables
+        self.true_positives = self.add_weight(name="true_positives", shape=(num_classes,), initializer="zeros")
+        self.false_positives = self.add_weight(name="false_positives", shape=(num_classes,), initializer="zeros")
+        self.false_negatives = self.add_weight(name="false_negatives", shape=(num_classes,), initializer="zeros")
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        import tensorflow as tf
+        # 1. Cast inputs to the correct type
+        y_pred = tf.cast(y_pred, self.dtype)
+        y_true = tf.cast(y_true, self.dtype)
+
+        # 2. CRITICAL FIX: Ensure shapes match to prevent broadcasting explosion
+        # If y_true is (Batch,) and y_pred is (Batch, 1), this reshapes y_true to (Batch, 1)
+        y_true = tf.reshape(y_true, tf.shape(y_pred))
+
+        # 3. Apply Threshold
+        y_pred = tf.cast(y_pred > self.threshold, self.dtype)
+
+        # 4. Calculate stats (Now shapes are aligned, no outer product happens)
+        tp = tf.reduce_sum(y_true * y_pred, axis=0)
+        fp = tf.reduce_sum((1 - y_true) * y_pred, axis=0)
+        fn = tf.reduce_sum(y_true * (1 - y_pred), axis=0)
+
+        self.true_positives.assign_add(tp)
+        self.false_positives.assign_add(fp)
+        self.false_negatives.assign_add(fn)
+
+    def result(self):
+        beta_sq = self.beta ** 2
+        
+        # Add epsilon to denominators to prevent division by zero
+        precision = self.true_positives / (self.true_positives + self.false_positives + 1e-7)
+        recall = self.true_positives / (self.true_positives + self.false_negatives + 1e-7)
+
+        return (1 + beta_sq) * precision * recall / (beta_sq * precision + recall + 1e-7)
+
+    def reset_state(self):
+        import tensorflow as tf
+        for v in self.variables:
+            v.assign(tf.zeros_like(v))
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "num_classes": self.num_classes,
+            "average": self.average,
+            "beta": self.beta,
+            "threshold": self.threshold,
+        })
+        return config

@@ -2,16 +2,11 @@ import os
 from datetime import datetime as dt
 from pathlib import Path
 import numpy as np
-import tensorflow as tf
+
 import torch
 import torchaudio as ta
-import librosa as lb
-
-from acodet.funcs import get_files, run_inference
-from acodet.annotate import MetaData
 from acodet import models
 from acodet import global_config as conf
-from acodet import tfrec
 
 from .torch_data import Loader
 
@@ -74,6 +69,12 @@ def evaluate(train_date=False, **kwargs):
     ### now you have predictions and labels vectors that can be compared
     
 def get_tensorflow_preds():
+    import tensorflow as tf
+    import librosa as lb
+
+    from acodet.funcs import get_files, run_inference
+    from acodet.annotate import MetaData
+    from acodet import tfrec
     tfrec_path = conf.TFREC_DESTINATION
     model_name = conf.MODEL_NAME
     
