@@ -33,8 +33,8 @@ class AudioDataset(Dataset):
         self.df = df
 
         self.filepaths = df["filename"].values
-        self.starts = df['start'].values * conf.SR
-        self.offsets = df['end'].values * conf.SR - self.starts
+        self.starts = (df['start'].values * conf.SR).astype(int)
+        self.offsets = (df['end'].values * conf.SR).astype(int) - self.starts
         self.labels = torch.Tensor(np.zeros([2, len(self.starts)]))
         self.labels = torch.tensor(df.label.values)
         # idxs = np.arange(len(df))
