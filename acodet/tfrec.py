@@ -11,6 +11,7 @@ import json
 from . import global_config as conf
 from tqdm import tqdm
 import torchaudio as ta
+ta.set_audio_backend("soundfile")  # Avoid torchcodec
 import librosa
 import torch
 

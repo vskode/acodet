@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import torchaudio as ta
+ta.set_audio_backend("soundfile")  # Avoid torchcodec
 import librosa
 import torch
 import acodet.global_config as conf
