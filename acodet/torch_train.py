@@ -1,4 +1,3 @@
-
 import torch
 from torch import nn
 import torch.optim as optim
@@ -90,7 +89,7 @@ def train(model, data_loaders, device=None):
             
             with torch.no_grad():
                 probs = torch.sigmoid(outputs)
-                preds = (probs > 0.5).float()
+                preds = (probs > 0.5).float().flatten()
                 correct += (preds == labels).sum().item()
                 total += labels.size(0)
             
@@ -125,7 +124,7 @@ def train(model, data_loaders, device=None):
                 outputs = model(inputs)
                 
                 probs = torch.sigmoid(outputs)
-                preds = (probs > 0.5).float()
+                preds = (probs > 0.5).float().flatten()
                 val_correct += (preds == labels).sum().item()
                 val_total += labels.size(0)
                 
