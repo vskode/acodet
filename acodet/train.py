@@ -266,6 +266,15 @@ def run_training(
         )
 
         model.save_weights(checkpoint_path)
+
+        if load_ckpt_path:
+            st = load_ckpt_path
+        else:
+            st = time_start
+        if int(tf.__version__.split('.')[1]) > 15:
+            st += '.h5'
+        save_model(st, model)
+
         hist = model.fit(
             train_data,
             epochs=epochs,
@@ -275,8 +284,6 @@ def run_training(
             callbacks=[earlystopping_callback, modelsaving_callback],
         )
         result = hist.history      
-            
-            
         save_model_results(checkpoint_dir, result)
         
         ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
@@ -295,13 +302,6 @@ def run_training(
         #     keras_mod_name=keras_mod_name,
         # )
         
-        if load_ckpt_path:
-            st = load_ckpt_path
-        else:
-            st = time_start
-        if int(tf.__version__.split('.')[1]) > 15:
-            st += '.h5'
-        save_model(st, model)
     else:
         set_seed(42)
         from .torch_train import train, test
