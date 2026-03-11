@@ -104,11 +104,15 @@ def run_training(
         n_train_set = tfl_obj.n_train * (
             1 + time_augs + mixup_augs + spec_aug * 2
         )  # // batch_size
+        
+        shuffle_buffer_size = conf.STEPS_PER_EPOCH * conf.BATCH_SIZE
+        
         print(
-            "Train set size = {}. Epoch should correspond to this amount of steps.".format(
-                n_train_set
-            ),
-            "\n",
+            f"\nTrain set size = {n_train_set}. "
+            f"\nShuffle buffer size = {shuffle_buffer_size} meaning how much data is loaded "
+            "to ensure a thorough shuffle. adjust if this causes memory issues. "
+            f"\nYou are running training for {conf.EPOCHS} with {conf.STEPS_PER_EPOCH} steps per epoch. "
+            "\n\n\n",
         )
 
         seed = np.random.randint(100)
@@ -143,7 +147,11 @@ def run_training(
             random=False,
         )
         train_data = prepare(
-            train_data, batch_size, shuffle=True, shuffle_buffer=1000, AUTOTUNE=tf.data.AUTOTUNE#n_train_set * 3
+            train_data, 
+            batch_size, 
+            shuffle=True, 
+            shuffle_buffer=shuffle_buffer_size, 
+            AUTOTUNE=tf.data.AUTOTUNE
         )
         if (
             steps_per_epoch
@@ -153,7 +161,14 @@ def run_training(
                 epochs * steps_per_epoch // (n_train_set // batch_size) + 1
             )
 
-        val_data = prepare(val_data, batch_size, shuffle=True, seed=42, shuffle_buffer=1000, AUTOTUNE=tf.data.AUTOTUNE)
+        val_data = prepare(
+            val_data, 
+            batch_size, 
+            shuffle=True, 
+            seed=42, 
+            shuffle_buffer=shuffle_buffer_size, 
+            AUTOTUNE=tf.data.AUTOTUNE
+            )
 
         #############################################################################
         ######################### TRAINING ##########################################
@@ -256,6 +271,7 @@ def run_training(
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             validation_data=val_data,
+            validation_steps=steps_per_epoch // 5,  
             callbacks=[earlystopping_callback, modelsaving_callback],
         )
         result = hist.history      
@@ -269,15 +285,15 @@ def run_training(
             time_start, data=data_description, init_lr=init_lr, final_lr=final_lr
         )
         
-        create_and_save_figure(
-            ModelClassName,
-            data_dir,
-            batch_size,
-            time_start,
-            plot_cm=True,
-            data=data_description,
-            keras_mod_name=keras_mod_name,
-        )
+        # create_and_save_figure(
+        #     ModelClassName,
+        #     data_dir,
+        #     batch_size,
+        #     time_start,
+        #     plot_cm=True,
+        #     data=data_description,
+        #     keras_mod_name=keras_mod_name,
+        # )
         
         if load_ckpt_path:
             st = load_ckpt_path
@@ -297,7 +313,7 @@ def run_training(
             annotations,
         )
         
-        model = train(model, data_loaders)
+        model = train(model, data_loaders, device=conf.DEVICE)
         
         import torch
         torch.save(model.state_dict, Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'))

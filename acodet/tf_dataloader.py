@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import torchaudio as ta
-import librosa
+ta.set_audio_backend("soundfile")  # Avoid torchcodec
+import librosa as lb
 import torch
 import acodet.global_config as conf
 
@@ -12,39 +13,31 @@ class TFAudioDataset:
         """TensorFlow equivalent of your PyTorch AudioDataset"""
         self.df = df.reset_index(drop=True)  # Important for iteration
         self.mode = mode
+        self.nr_loaded = 0
         
     def audio_generator(self):
-        """Generator that yields audio samples"""
         for idx, row in self.df.iterrows():
-            # Load audio segment
-            start_frame = int(row['start'] * conf.SR)
-            end_frame = int(row['end'] * conf.SR)
-            num_frames = end_frame - start_frame
-            
-            wave, sr = ta.load(
-                row['filename'],
-                frame_offset=start_frame,
-                num_frames=num_frames
+            wave, sr = lb.load(
+                path=row['filename'],
+                sr=conf.SR,
+                offset=row['start'], 
+                duration=row['end'] - row['start']
             )
             
-            # Resample if needed
-            if sr != conf.SR:
-                wave = ta.functional.resample(wave, sr, conf.SR)
+            # Always chunk into frames, this way longer segments get 
+            # separated into chunks
+            num_frames = max(1, int(np.ceil(len(wave) / conf.CONTEXT_WIN)))
+            wave = lb.util.fix_length(
+                wave,
+                size=num_frames * conf.CONTEXT_WIN,
+                mode='wrap'
+            )
             
-            wave = wave.squeeze().numpy()
+            frames = wave.reshape(num_frames, conf.CONTEXT_WIN)
             
-            # Padding/truncation
-            if len(wave) < conf.CONTEXT_WIN:
-                wave = librosa.util.fix_length(
-                    wave, 
-                    size=conf.CONTEXT_WIN, 
-                    mode='minimum'
-                )
-            elif len(wave) > conf.CONTEXT_WIN:
-                wave = wave[:conf.CONTEXT_WIN]
-            
-            yield wave.astype(np.float32), np.int32(row['label'])
-    
+            for frame in frames:
+                yield frame.astype(np.float32), np.int32(row['label'])
+        
     def get_dataset(self):
         """Create tf.data.Dataset from generator"""
         dataset = tf.data.Dataset.from_generator(
@@ -95,7 +88,7 @@ class TFLoader:
         
         # Eval set
         eval_df = pd.concat([ca_df, en_df], ignore_index=True)
-        eval_df = eval_df[eval_df.subset == 'eval'][:20]
+        eval_df = eval_df[eval_df.subset == 'eval']
         
         # Create datasets
         self.train = TFAudioDataset(train_df, mode='train')

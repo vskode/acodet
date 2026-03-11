@@ -109,9 +109,14 @@ def train(model, data_loaders, device='cpu'):
         val_correct = 0
         val_total = 0
         
-        # Optional: Add pbar for validation if it takes a long time
         with torch.no_grad():
-            for batch in val_loader:
+            for v_idx, batch in enumerate(val_loader):
+                # A. Check Step Limit
+                if (
+                    conf.STEPS_PER_EPOCH is not None 
+                    and v_idx >= (conf.STEPS_PER_EPOCH / 5)
+                    ):
+                    break
                 inputs = batch[0].to(device)
                 labels = batch[1].to(device)
                 

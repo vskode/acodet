@@ -1,10 +1,8 @@
 import numpy as np
 import pandas as pd
 import torch
-import librosa
 from torch.utils.data import DataLoader, Dataset
-import torchaudio as ta
-
+import librosa as lb
 from pathlib import Path
 from acodet import global_config as conf
 
@@ -23,51 +21,65 @@ def collate_fn(batch):
 
 class AudioDataset(Dataset):
     def __init__(self, df, mode: str = 'train'):
-        """
-        Custom pytorch Dataset class, which loads a single sample and applies padding if needed.
+        self.mode = mode
 
-        Parameters
-        ----------
-        df: Pandas dataframe, containing the path to the .wav files as well as the label.
-        """
-        self.df = df
+        rows = []
+        for _, row in df.iterrows():
+            clip_duration = row['end'] - row['start']
+            frame_duration = conf.CONTEXT_WIN / conf.SR
+            
+            # skip clips that are too short to be meaningful
+            if clip_duration < 0.5:  # adjust threshold to your needs
+                continue
+            
+            num_frames = max(1, int(np.ceil(clip_duration / frame_duration)))
+            
+            for i in range(num_frames):
+                frame_start = row['start'] + i * frame_duration
+                # clamp so we don't seek past the actual annotation end
+                frame_start = min(frame_start, row['end'] - frame_duration)
+                rows.append({
+                    'filename': row['filename'],
+                    'label': row['label'],
+                    'start': max(0, frame_start),  # also guard against negative offsets
+                    'duration': frame_duration
+                })
 
-        self.filepaths = df["filename"].values
-        self.starts = (df['start'].values * conf.SR).astype(int)
-        self.offsets = (df['end'].values * conf.SR).astype(int) - self.starts
-        self.labels = torch.Tensor(np.zeros([2, len(self.starts)]))
-        self.labels = torch.tensor(df.label.values)
-        # idxs = np.arange(len(df))
-        # self.labels[0, idxs[vals==0]] = torch.ones(len(vals[vals==0]))
-        # self.labels[1, idxs[vals==1]] = torch.ones(len(vals[vals==1]))
+        expanded_df = pd.DataFrame(rows)
+
+        self.filepaths = expanded_df['filename'].values
+        self.starts = expanded_df['start'].values
+        self.durations = expanded_df['duration'].values
+        self.labels = torch.tensor(expanded_df['label'].values)
 
     def __len__(self):
         return len(self.filepaths)
 
     def __getitem__(self, idx):
-        wave, sr = ta.load(
-            self.filepaths[idx],
-            frame_offset=self.starts[idx],
-            num_frames=self.offsets[idx]
-            )
-        if not sr == conf.SR:
-            wave = ta.functional.resample(wave, sr, conf.SR)
-        wave = wave.squeeze()
+        wave, sr = lb.load(
+            path=self.filepaths[idx],
+            sr=conf.SR,
+            offset=self.starts[idx],
+            duration=self.durations[idx]
+        )
+        wave = torch.tensor(wave).squeeze()
+
+        # Only the last frame of a long clip may be short
         if len(wave) < conf.CONTEXT_WIN:
-            wave = librosa.util.fix_length(wave, 
-                                           size=conf.CONTEXT_WIN,
-                                           mode='minimum')
-            wave = torch.from_numpy(wave)
-        elif len(wave) > conf.CONTEXT_WIN:
-            wave = wave[:conf.CONTEXT_WIN]
-    
-        sample = {
+            wave = torch.tensor(
+                lb.util.fix_length(
+                    wave.numpy(), 
+                    size=conf.CONTEXT_WIN, 
+                    mode='wrap'
+                    )
+            )
+
+        return {
             'wave': wave,
             'labels': self.labels[idx],
             'path': self.filepaths[idx],
-            'start': float(self.starts[idx] / conf.SR) 
+            'start': self.starts[idx]
         }
-        return sample
 
 class Loader(DataLoader):
     def __init__(self, df_path):
@@ -129,7 +141,7 @@ class Loader(DataLoader):
         eval_df = eval_df[eval_df.subset == 'eval']
         
         
-        eval_df = eval_df[:20]
+        # eval_df = eval_df[:20]
         self.test = AudioDataset(
             eval_df,
             mode='test',
@@ -145,7 +157,9 @@ class Loader(DataLoader):
             noise_dataset,
             batch_size=conf.BATCH_SIZE,
             shuffle=True,
-            num_workers=1,
+            num_workers=2,
+            prefetch_factor=2,
+            persistent_workers=True, 
             pin_memory=True,
             drop_last=True, # Ensure we don't get tiny batches
             collate_fn=collate_fn
@@ -157,7 +171,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=True, 
             pin_memory=True,
-            num_workers=1,
+            num_workers=2,
+            prefetch_factor=2,
             persistent_workers=True, 
             collate_fn=collate_fn
             )
@@ -168,7 +183,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=1,
+            num_workers=2,
+            prefetch_factor=2,
             persistent_workers=True, 
             collate_fn=collate_fn
             )
@@ -179,7 +195,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=1,
+            num_workers=2,
+            prefetch_factor=2,
             persistent_workers=True, 
             collate_fn=collate_fn
             )

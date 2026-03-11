@@ -461,6 +461,13 @@ def spec():
         ]
     )
 
+_spec_model = None
+
+def get_spec():
+    global _spec_model
+    if _spec_model is None:
+        _spec_model = spec()
+    return _spec_model
 
 def prepare(
     ds,
@@ -476,8 +483,14 @@ def prepare(
     ds = ds.batch(batch_size)
     return ds.prefetch(buffer_size=AUTOTUNE)
 
-
-def make_spec_tensor(ds, AUTOTUNE=None):
-    ds = ds.batch(1)
-    ds = ds.map(lambda x, *y: (spec()(x), *y), num_parallel_calls=AUTOTUNE)
+def make_spec_tensor(ds, AUTOTUNE=None, batch_size=32):
+    spec_model = get_spec()
+    ds = ds.batch(batch_size)
+    ds = ds.map(lambda x, *y: (spec_model(x, training=False), *y),
+                num_parallel_calls=AUTOTUNE)
     return ds.unbatch()
+
+# def make_spec_tensor(ds, AUTOTUNE=None):
+#     ds = ds.batch(1)
+#     ds = ds.map(lambda x, *y: (spec()(x), *y), num_parallel_calls=AUTOTUNE)
+#     return ds.unbatch()
