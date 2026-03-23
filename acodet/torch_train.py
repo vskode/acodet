@@ -15,6 +15,15 @@ from acodet import global_config as conf
 def train(model, data_loaders, device=None):
     if not device:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if device == 'cuda':
+        try:
+            if torch.cuda.is_available():
+                device = 'cuda'
+            else:
+                device = 'cpu'
+        except:
+            device = 'cpu'
+            
     
     train_loader = data_loaders.train_loader()
     val_loader = data_loaders.val_loader()

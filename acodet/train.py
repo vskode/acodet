@@ -62,7 +62,7 @@ def run_training(
     preproc blocks  = {pre_blocks}
     """
     from acodet import models
-    if conf.MODELCLASSNAME == 'TorchModel':
+    if conf.MODELCLASSNAME in ['TorchModel', 'BacpipeModel']:
         torch_model = True 
     else:
         torch_model = False
@@ -302,7 +302,7 @@ def run_training(
         #     keras_mod_name=keras_mod_name,
         # )
         
-    else:
+    elif conf.MODELCLASSNAME == 'TorchModel':
         set_seed(42)
         from .torch_train import train, test
         from .torch_data import Loader
@@ -317,6 +317,25 @@ def run_training(
         
         import torch
         torch.save(model.state_dict, Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'))
+        
+    elif conf.MODELCLASSNAME == 'BacpipeModel':
+        set_seed(42)
+        from .torch_train import train, test
+        from .torch_data import Loader
+
+        annotations = conf.ANNOT_DEST
+        
+        data_loaders = Loader(
+            annotations,
+        )
+        
+        model = train(model, data_loaders, device=conf.DEVICE)
+        
+        import torch
+        torch.save(
+            model.lin_classifier.state_dict, 
+            Path(conf.MODEL_DIR).joinpath(f'{conf.MODEL_NAME}_bacpipemodel_lin_clfier.pt')
+            )
 
 
 def save_model(

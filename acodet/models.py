@@ -286,16 +286,18 @@ class KerasAppModel(ModelHelper):
 
 
 
-class BacpipeModel:
-    def __init__(self, **kwargs):
+class BacpipeModel(nn.Module):
+    def __init__(self, num_classes=1, **kwargs):
+        super(BacpipeModel, self).__init__()
+        
         import torch
         from bacpipe import config, settings
-        from bacpipe.embedding_evaluation.classification.train_classifier import LinearClassifier
-        from bacpipe.generate_embeddings import Embedder
+        from bacpipe import Embedder
+        import bacpipe
         from bacpipe import ensure_models_exist
         config.models = [conf.MODEL_NAME]
         ensure_models_exist(Path('bacpipe/model_checkpoints'), config.models)
-        settings.global_batch_size = conf.BATCH_SIZE
+        settings.global_batch_size = conf.BATCH_SIZE / 2
         if conf.DEVICE == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         else:
@@ -303,24 +305,31 @@ class BacpipeModel:
         if conf.BOOL_BACPIPE_CHCKPTS:
             settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
             
-        settings.device = device
-        # self.device = 'cpu'
-        self.model = Embedder(model_name=conf.MODEL_NAME, **vars(settings))
+        settings.device = device 
         
-        conf.SR = self.model.model.sr
-        conf.CONTEXT_WIN = self.model.model.segment_length
+        self.embedder = Embedder(
+            model_name=conf.MODEL_NAME, 
+            **vars(settings)
+            )
+        
+        conf.SR = self.embedder.model.sr
+        conf.CONTEXT_WIN = self.embedder.model.segment_length
+        from bacpipe.embedding_evaluation.probing.train_probe import LinearClassifier
         
         if conf.BOOL_LIN_CLFIER:
-            
-            clfier = torch.load(Path(conf.LIN_CLFIER_DIR) / 'linear_classifier.pt')
-            with open(Path(conf.LIN_CLFIER_DIR) / 'label2index.json', 'r') as f:
-                label2index = json.load(f)
-            self.clfier = LinearClassifier(clfier['clfier.weight'].shape[-1], len(label2index))
-            self.clfier.load_state_dict(clfier)
-            self.clfier.to(self.device)
-            self.model.model.classes = list(label2index.keys())
 
-        self.model.classify = self.classify
+            
+            self.lin_classifier = LinearClassifier(in_dim=bacpipe.EMBEDDING_DIMENSIONS[conf.MODEL_NAME], out_dim=1)
+            
+            if conf.MODEL_NAME in bacpipe.TF_MODELS:
+                # we need to do this so that the tensorflow model can use
+                # the gpu. it will not leave any vram available for torch.
+                # therefore we are putting the classifier on the cpu.
+                self.lin_classifier.to('cpu')
+            else:
+                self.lin_classifier.to(device)
+            
+        self.embedder.classify = self.classify
             
     def classify(self, file, **kwargs):
         if 'progbar1' in kwargs:
@@ -329,19 +338,32 @@ class BacpipeModel:
         else:
             callback = None
         if isinstance(file, str) or isinstance(file, Path):
-            frames = self.model.prepare_audio(file)
+            frames = self.embedder.prepare_audio(file)
         else:
             frames = file
-        batched_frames = self.model.model.init_dataloader(frames)
-        embeds = self.model.model.batch_inference(batched_frames, callback=callback)
+        batched_frames = self.embedder.model.init_dataloader(frames)
+        embeds = self.embedder.model.batch_inference(batched_frames, callback=callback)
         
         if conf.BOOL_LIN_CLFIER:
-            logits = self.clfier(embeds.to(self.device))
+            logits = self.lin_classifier(embeds.to(self.device))
             predictions = torch.nn.functional.softmax(logits, dim=0)
         else:
-            predictions = self.model.model.classifier_outputs[-embeds.shape[0]:]
+            predictions = self.embedder.model.classifier_outputs[-embeds.shape[0]:]
             
         return predictions.detach().numpy()
+    
+    def forward(self, x, y=None, noise=None, path=None, start=None, training=False):
+        with torch.no_grad():
+            x = self.embedder.model.preprocess(x)
+            embeds = self.embedder.model(x)
+        
+        if conf.BOOL_LIN_CLFIER:
+            logits = self.lin_classifier(torch.tensor(embeds))
+            return logits
+        else:
+            predictions = self.embedder.model.classifier_outputs[-embeds.shape[0]:]
+            return predictions
+
         
 
 def init_model(
