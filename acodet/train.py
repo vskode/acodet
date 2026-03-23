@@ -316,7 +316,7 @@ def run_training(
         model = train(model, data_loaders, device=conf.DEVICE)
         
         import torch
-        torch.save(model.state_dict, Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'))
+        torch.save(model.state_dict(), Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'))
         
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         set_seed(42)
