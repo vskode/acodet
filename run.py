@@ -69,7 +69,7 @@ def main(sc=True, **kwargs):
         if preset == 1:
             run_training(**kwargs)
         elif preset == 2:
-            evaluate(**kwargs)
+            evaluate(train_date=conf.LOAD_CKPT_PATH, **kwargs)
         elif preset == 3:
             evaluate(["2025-04-14_11-37"], **kwargs)
         elif preset == 4:
