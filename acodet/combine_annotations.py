@@ -139,7 +139,6 @@ def differentiate_label_flags(df, flag=None):
     elif flag == "noise":
         if not conf.ANNOTATION_COLUMN in df.columns:
             df.loc[:, conf.ANNOTATION_COLUMN] = 'n'
-    
     if type(df[conf.ANNOTATION_COLUMN][0]) == str:
         df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c", 
                 "label"] = 1
@@ -210,6 +209,10 @@ def finalize_annotation(file, freq_time_crit=False, **kwargs):
         ann = pd.read_csv(file, sep="\t")
     except pd.errors.EmptyDataError as e:
         print(f"Empty file {file}: {e}")
+        return pd.DataFrame(), pd.DataFrame()
+
+    if ann.empty:
+        print(f"Empty dataframe from file {file}")
         return pd.DataFrame(), pd.DataFrame()
 
     ann["filename"] = get_corresponding_sound_file(file)
