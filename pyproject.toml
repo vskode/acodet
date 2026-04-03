@@ -25,14 +25,14 @@ dependencies = [
     "sounddevice",
     "streamlit",
     "tensorflow; sys_platform != 'linux' and sys_platform != 'darwin'",
-    "tensorflow[and-cuda]; sys_platform == 'linux'",  # GPU is only supported on Linux.
+    "tensorflow[and-cuda]<2.21; sys_platform == 'linux'",  # GPU is only supported on Linux.
     "tensorflow<=2.19.1; sys_platform == 'darwin'",  # Apple has a custom TF plugin, but is broken in TF 2.20.
     "tensorflow-metal; sys_platform == 'darwin'",
     "tensorflow-hub",
     "tensorflow-io",
     "timm",
-    "torch",
-    "torchaudio",
+    "torch<2.11",
+    "torchaudio<2.11",
     "torchcodec",
     "torchvision",
     "transformers",
