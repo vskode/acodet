@@ -30,7 +30,7 @@ class TFAudioDataset:
             wave = lb.util.fix_length(
                 wave,
                 size=num_frames * conf.CONTEXT_WIN,
-                mode='wrap'
+                mode='constant'
             )
             
             frames = wave.reshape(num_frames, conf.CONTEXT_WIN)
