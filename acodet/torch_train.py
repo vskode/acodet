@@ -87,6 +87,8 @@ def train(model, data_loaders, device=None):
             if isinstance(outputs, dict):
                 outputs = outputs['logits']
                 
+            if hasattr(model, 'probe_device'):
+                labels = labels.to(model.probe_device)
             loss = criterion(outputs.squeeze(), labels)
 
             loss.backward()
@@ -130,6 +132,9 @@ def train(model, data_loaders, device=None):
                 inputs = batch[0].to(device)
                 labels = batch[1].to(device)
                 
+                if hasattr(model, 'probe_device'):
+                    labels = labels.to(model.probe_device)
+                
                 outputs = model(inputs)
                 
                 probs = torch.sigmoid(outputs)
@@ -154,6 +159,9 @@ def test(model, test_loader, device='cuda'):
     with torch.no_grad():
         for inputs, labels, _, _ in test_loader:
             inputs, labels = inputs.to(device), labels.to(device)
+            
+            if hasattr(model, 'probe_device'):
+                labels = labels.to(model.probe_device)
             outputs = model(inputs)
             # _, preds = torch.max(outputs, 1)
             probs = torch.sigmoid(outputs)

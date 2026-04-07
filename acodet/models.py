@@ -326,37 +326,17 @@ class BacpipeModel(nn.Module):
                 # the gpu. it will not leave any vram available for torch.
                 # therefore we are putting the classifier on the cpu.
                 self.lin_classifier.to('cpu')
+                self.probe_device = 'cpu'
             else:
                 self.lin_classifier.to(device)
-            
-        self.embedder.classify = self.classify
-            
-    def classify(self, file, **kwargs):
-        if 'progbar1' in kwargs:
-            callback = (lambda frac: (kwargs['progbar1']
-                                      .progress(frac, text='Current File')))
-        else:
-            callback = None
-        if isinstance(file, str) or isinstance(file, Path):
-            frames = self.embedder.prepare_audio(file)
-        else:
-            frames = file
-        batched_frames = self.embedder.model.init_dataloader(frames)
-        embeds = self.embedder.model.batch_inference(batched_frames, callback=callback)
-        
-        if conf.BOOL_LIN_CLFIER:
-            logits = self.lin_classifier(embeds.to(self.device))
-            predictions = torch.nn.functional.softmax(logits, dim=0)
-        else:
-            predictions = self.embedder.model.classifier_outputs[-embeds.shape[0]:]
-            
-        return predictions.detach().numpy()
+                self.probe_device = device
     
     def forward(self, x, y=None, noise=None, path=None, start=None, training=False):
         with torch.no_grad():
             x = self.embedder.model.preprocess(x)
             embeds = self.embedder.model(x)
         
+        self.lin_classifier.to(self.probe_device)
         if conf.BOOL_LIN_CLFIER:
             logits = self.lin_classifier(torch.tensor(embeds))
             return logits
