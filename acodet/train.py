@@ -89,6 +89,14 @@ def run_training(
     model_sub_dir = Path(conf.MODEL_DIR).joinpath(model_id)
     model_sub_dir.mkdir(exist_ok=True, parents=True)
 
+    # save the global config constants to model directory for later reference
+    global_config_constants = dir(conf)
+    cleaned_constants = [i for i in global_config_constants if i.isupper()]  # filter for just uppercase constants
+    with open(model_sub_dir.joinpath('global_config.txt'), 'w') as file:
+        for constant in cleaned_constants:
+            file.write(constant + ',' + str(getattr(conf, constant)) + '\n')
+
+    # initialize the model
     model = models.init_model(
         model_instance=ModelClassName,
         checkpoint_dir=f"../trainings/{load_ckpt_path}/unfreeze_False",
