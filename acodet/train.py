@@ -80,6 +80,15 @@ def run_training(
         time_start = load_ckpt_path
     Path(f"../trainings/{time_start}").mkdir(exist_ok=True, parents=True)
     
+    # make a directory within the conf.MODEL_DIR to save the final model in
+    if conf.MODELCLASSNAME == 'BacpipeModel':
+        model_id = conf.MODEL_NAME.lower() + '_' + time_start
+    else:
+        model_id = conf.MODELCLASSNAME.lower() + '_' + time_start
+
+    model_sub_dir = Path(conf.MODEL_DIR).joinpath(model_id)
+    model_sub_dir.mkdir(exist_ok=True, parents=True)
+
     model = models.init_model(
         model_instance=ModelClassName,
         checkpoint_dir=f"../trainings/{load_ckpt_path}/unfreeze_False",
@@ -267,13 +276,10 @@ def run_training(
 
         model.save_weights(checkpoint_path)
 
-        if load_ckpt_path:
-            st = load_ckpt_path
-        else:
-            st = time_start
+        model_file_name = model_id
         if int(tf.__version__.split('.')[1]) > 15:
-            st += '.h5'
-        save_model(st, model)
+            model_file_name += '.h5'
+        save_model(model_file_name, model_sub_dir, model)
 
         hist = model.fit(
             train_data,
@@ -316,7 +322,8 @@ def run_training(
         model = train(model, data_loaders, device=conf.DEVICE)
         
         import torch
-        torch.save(model.state_dict(), Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'))
+        model_file_name = model_id + '.pt'
+        torch.save(model.state_dict(), model_sub_dir.joinpath(model_file_name))
         
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         set_seed(42)
@@ -332,14 +339,16 @@ def run_training(
         model = train(model, data_loaders, device=conf.DEVICE)
         
         import torch
+        model_file_name = model_id + '_bacpipe_lin_clfier.pt'
         torch.save(
             model.lin_classifier.state_dict, 
-            Path(conf.MODEL_DIR).joinpath(f'{conf.MODEL_NAME}_bacpipemodel_lin_clfier.pt')
+            model_sub_dir.joinpath(model_file_name)
             )
 
 
 def save_model(
-    string,
+    model_file_name,
+    model_sub_dir,
     model,
     lr=5e-4,
     weight_clip=None,
@@ -370,7 +379,7 @@ def save_model(
             ),
         ],
     )
-    model.save(f"acodet/src/models/{string}")
+    model.save(model_sub_dir.joinpath(model_file_name))
 
 
 ##############################################################################
