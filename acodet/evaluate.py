@@ -1,6 +1,7 @@
 import os
 from datetime import datetime as dt
 from pathlib import Path
+import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as metrics
@@ -13,10 +14,15 @@ from acodet import global_config as conf
 from .torch_data import Loader
 
 def evaluate(train_date=False, **kwargs):
+    logging.basicConfig(level='INFO', format='%(asctime)s %(levelname)s %(message)s')
+    logger = logging.getLogger(__name__)
     
-    if not conf.MODELCLASSNAME in ('TorchModel', 'HumpBackNorthAtlantic'):
-        print(f"Evaluation step not yet implemented for {conf.MODELCLASSNAME}. Aborting.")
-        return
+    if not conf.MODELCLASSNAME in ('TorchModel', 'HumpBackNorthAtlantic', 'BacpipeModel'):
+        logger.error(f"Evaluation step not yet implemented for {conf.MODELCLASSNAME}. Aborting.")
+        return 1
+
+    if conf.DEVICE != 'cpu':
+        logger.warning(f"This script runs on CPU. Current device {conf.DEVICE} may not be used.")
 
     # don't import tensorflow if it's not needed
     if not conf.MODELCLASSNAME in ('TorchModel', 'BacpipeModel'):
@@ -25,10 +31,12 @@ def evaluate(train_date=False, **kwargs):
     timestamp_foldername = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
     timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
 
+    logger.info(f"Initializing model {conf.MODELCLASSNAME}")
+
     if conf.MODELCLASSNAME == 'TorchModel':
         # if using TorchModel, load from the appropriate path
         model = models.init_model()
-        checkpoint = torch.load(Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'))
+        checkpoint = torch.load(Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'), map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint)
         figure_dir = "../trainings/torchmodel_v1/figures/"
     elif not train_date:
@@ -38,12 +46,16 @@ def evaluate(train_date=False, **kwargs):
     else:
         # load specified training
         if not Path(f"../trainings/{train_date}/").exists():
-            print("Advanced config setting `load_ckpt_path` not found")
+            logger.error("Advanced config setting `load_ckpt_path` not found")
+            return 1
+        logger.info("initializing model")
         model = models.init_model(
             checkpoint_dir=f"../trainings/{train_date}/unfreeze_no-TF",
         )
 
         figure_dir = f"../trainings/{train_date}/figures/"
+
+    logger.info(f"Loading test data from {conf.ANNOT_DEST}")
 
     # load test data from advanced config ANNOTATION_DESTINATION
     data_loader = Loader(conf.ANNOT_DEST)
@@ -53,7 +65,7 @@ def evaluate(train_date=False, **kwargs):
 
     for idx, tuple in enumerate(test_data):
         audio, new_labels, paths, timestamps = tuple
-        
+
         if conf.MODELCLASSNAME == 'BacpipeModel':
             re_audio = ta.functional.resample(
                 audio, 
@@ -68,15 +80,16 @@ def evaluate(train_date=False, **kwargs):
             new_predictions = torch.tensor(model.predict(
                     tf.convert_to_tensor(audio)
                 ).squeeze())
+
         if idx == 0:
             predictions = new_predictions
             class_labels = new_labels
         else:
-            predictions = torch.vstack([
+            predictions = torch.hstack([
                 predictions, 
                 new_predictions
                 ])
-            class_labels = torch.vstack([class_labels, new_labels])
+            class_labels = torch.hstack([class_labels, new_labels])
             
     if conf.MODEL_NAME == 'perch_v2':
         class_labels = model.model.model.classes
@@ -87,6 +100,8 @@ def evaluate(train_date=False, **kwargs):
         humpback_label_idx = np.where(np.array(class_labels)=='Humpback')[0][0]
         predictions = predictions[:, humpback_label_idx]
 
+    logger.info("All predictions collected; flattening")
+
     class_labels = class_labels.flatten()
     predictions = predictions.flatten()
 
@@ -96,6 +111,7 @@ def evaluate(train_date=False, **kwargs):
     ####################################
     ### Precision, recall, and f1 score 
     ####################################
+    logger.info("Calculating precision, recall, and f1 scores")
 
     # calculate precision and recall
     precision, recall, thresholds = metrics.precision_recall_curve(class_labels, predictions)
@@ -124,6 +140,7 @@ def evaluate(train_date=False, **kwargs):
     ###################################
     # Confusion matrix
     ###################################
+    logger.info("Creating confusion matrix")
 
     # a confusion matrix needs binary classification
     # so use the different thresholds calculated above 
@@ -149,6 +166,7 @@ def evaluate(train_date=False, **kwargs):
     ###################################
     # ROC Curve
     ###################################
+    logger.info("Creating ROC curve")
 
     # calculate roc curve
     false_positive_rate, true_positive_rate, thresholds = metrics.roc_curve(class_labels, predictions)
