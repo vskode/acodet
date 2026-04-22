@@ -84,28 +84,61 @@ class HumpBackNorthAtlantic(ModelHelper):
         if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
             self.download_model()
             # for model_path in Path(conf.MODEL_DIR).iterdir():
-            for model_path in list(Path(conf.MODEL_DIR).glob(conf.MODEL_NAME+'*')):
+            for model_path in list((Path(conf.MODEL_DIR)/ conf.MODEL_NAME ).glob(conf.MODEL_NAME+'*')):
                 if not model_path.suffix == ".zip":
                     continue
                 else:
                     with zipfile.ZipFile(model_path, "r") as model_zip:
-                        model_zip.extractall(conf.MODEL_DIR)
-            
-        self.model = tf.keras.models.load_model(
-            Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
-            custom_objects={"Addons>FBetaScore": FBetaScore},
-        )
+                        model_zip.extractall(Path(conf.MODEL_DIR)/ conf.MODEL_NAME)
+        
+        if '2.15' in tf.__version__: # NO longer supported
+            print(
+                "Please download the model manually from here: "
+                "https://huggingface.co/datasets/vskode/bacpipe_models/resolve/main/hbdet/hbdet.tar.xz?download=true"
+            )
+            self.model = tf.keras.models.load_model(
+                Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
+                custom_objects={"Addons>FBetaScore": FBetaScore},
+            )
+        elif int(tf.__version__.split('.')[1]) > 15:
+            from acodet.transfer_weights import inject_weights
+            from acodet.tf220 import PCEN, Block, ResidualPath, MainPath
+            self.model = tf.keras.models.load_model(
+                Path(conf.MODEL_DIR) / conf.MODEL_NAME / (conf.MODEL_NAME+'.keras'),
+                custom_objects={
+                    "PCEN": PCEN,
+                    "Block": Block,
+                    "ResidualPath": ResidualPath,
+                    "MainPath": MainPath
+                }
+            )
+            inject_weights(
+                self.model, 
+                Path(conf.MODEL_DIR) / conf.MODEL_NAME / 'original_model_weights.npz'
+                )
+
+                
     
     def download_model(self):
-        import gdown
-        g_drive_link = (
-            'https://drive.google.com/uc?id=1qAqAy_REaIqgVM1O5qsNQIBNB8Hb0spz'
-            )
+        # import gdown
+        # g_drive_link = (
+        #     'https://drive.google.com/uc?id=1wYiv9SHnP9JkLnPOBcchWNHRh5CCQ82B'
+        #     # 'https://drive.google.com/uc?id=1qAqAy_REaIqgVM1O5qsNQIBNB8Hb0spz'
+        #     )
         Path(conf.MODEL_DIR).mkdir(parents=True, exist_ok=True)
-        output = Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME + '.zip')  # Change this to your preferred filename
-        gdown.download(g_drive_link, str(output), quiet=False)
-
-        print(f"File downloaded as {output}")
+        # output = Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME + '.zip')  # Change this to your preferred filename
+        # gdown.download(g_drive_link, str(output), quiet=False)
+        from huggingface_hub import hf_hub_download
+        hf_hub_download(
+                    repo_id='vskode/bacpipe_models',
+                    filename='hbdet/hbdet.zip',
+                    local_dir=Path(conf.MODEL_DIR),
+                    repo_type="dataset",
+                )
+        # import shutil
+        # shutil.move(Path(conf.MODEL_DIR) / 'hbdet/hbdet.zip', Path(conf.MODEL_DIR) / 'hbdet.zip')
+        # (Path(conf.MODEL_DIR) / 'hbdet').rmdir()
+        print(f"File downloaded as hbdet/hbdet.zip")
 
 
 class GoogleMod(ModelHelper):  # TODO change name

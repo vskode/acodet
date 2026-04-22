@@ -796,15 +796,15 @@ def gen_annotations(
     """
     parent_dirs = manage_dir_structure(file)
     
-    bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs' #TODO
-    existing_file = Path(bacpipe_path) / (Path(parent_dirs).stem + '/' + file.stem + '_birdnet.json')
-    if existing_file.exists():
-        with open(existing_file, 'r') as f:
-            predictions = json.load(f)
-    else:
-        channel = get_channel(get_top_dir(parent_dirs))
+    # bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs' #TODO
+    # existing_file = Path(bacpipe_path) / (Path(parent_dirs).stem + '/' + file.stem + '_birdnet.json')
+    # if existing_file.exists():
+    #     with open(existing_file, 'r') as f:
+    #         predictions = json.load(f)
+    # else:
+    channel = get_channel(get_top_dir(parent_dirs))
         
-        predictions = run_inference(file, channel, model, **kwargs)
+    predictions = run_inference(file, channel, model, **kwargs)
        
     save_path_func = lambda x: (
         Path(conf.GEN_ANNOTS_DIR)

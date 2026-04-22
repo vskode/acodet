@@ -3,6 +3,7 @@ utils/__*
 *__pycache__*
 acodet/_*
 _*
+acodet/src/archive
 bacpipe*
 # Ignore vscode settings
 .vscode/*
