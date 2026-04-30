@@ -16,6 +16,8 @@ from .torch_data import Loader
 def evaluate(train_date=False, **kwargs):
     logging.basicConfig(level='INFO', format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger(__name__)
+
+    model_file = conf.EVAL_MODEL_FILE
     
     if not conf.MODELCLASSNAME in ('TorchModel', 'HumpBackNorthAtlantic', 'BacpipeModel'):
         logger.error(f"Evaluation step not yet implemented for {conf.MODELCLASSNAME}. Aborting.")
@@ -36,9 +38,15 @@ def evaluate(train_date=False, **kwargs):
     if conf.MODELCLASSNAME == 'TorchModel':
         # if using TorchModel, load from the appropriate path
         model = models.init_model()
-        checkpoint = torch.load(Path(conf.MODEL_DIR).joinpath('torchmodel_v1.pt'), map_location=torch.device('cpu'))
+        model_path = Path(model_file)
+        if not Path.exists(model_path):
+            logger.error(f"Model file {model_file} not found. Please check path.")
+            return 1
+        checkpoint = torch.load(model_file, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint)
-        figure_dir = "../trainings/torchmodel_v1/figures/"
+        figure_dir = model_path.parent.joinpath('evaluation/')
+        figure_dir.mkdir(exist_ok=True)
+        print(figure_dir)
     elif not train_date:
         # allow user to evaluate a model that they have not trained yet
         model = models.init_model(timestamp_foldername=timestamp_foldername)

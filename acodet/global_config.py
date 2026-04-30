@@ -131,6 +131,9 @@ F_SCORE_BETA = session["f_score_beta"]
 F_SCORE_THRESH = session["f_score_thresh"]
 UNFREEZE = session["unfreeze"]
 
+################### EVALUATION CONFIG ########################################
+
+EVAL_MODEL_FILE = session["eval_model_file"]
 
 ##################### HOURLY PRESENCE DIR AND FILE NAMES #####################
 

@@ -114,6 +114,11 @@ unfreeze: False
 # select True if you are using a multiclass model
 multiclass: False
 
+######################## Evaluation ##########################################
+# currently only valid for TorchModel
+# for other models, use load_ckpt_path option above
+eval_model_file: None
+
 ########################  Streamlit  #########################################
 # select True if you want to run the streamlit app
 streamlit: False
