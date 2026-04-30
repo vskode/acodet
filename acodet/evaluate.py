@@ -140,6 +140,8 @@ def evaluate(train_date=False, **kwargs):
     ax.set_title('Precision-Recall Curve')
     ax.set_ylabel('Precision')
     ax.set_xlabel('Recall')
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.05)
 
     # save plot
     fig_filepath = Path(figure_dir).joinpath('precision_recall_curve.png')
@@ -184,8 +186,8 @@ def evaluate(train_date=False, **kwargs):
     fig, ax = plt.subplots()
     ax.plot(false_positive_rate, true_positive_rate, color='tab:blue', label='ROC curve (area = %0.2f)' % roc_auc)
     ax.plot([0, 1], [0, 1], 'k--') # plot straight x/y ("no skill") line for comparison
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.05)
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
     ax.set_title("ROC Curve")
