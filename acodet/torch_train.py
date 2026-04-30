@@ -84,7 +84,15 @@ def train(model, data_loaders, device=None):
             optimizer.zero_grad()
 
             # D. Forward Pass (Ensure model accepts these args)
-            outputs = model(inputs, labels, noise=noise, path=path, start=start, training=True)
+            outputs = model(
+                inputs, 
+                labels, 
+                noise=noise, 
+                path=path, 
+                start=start, 
+                training=True,
+                plot=False
+                )
             
             # If outputs is a dictionary (some models), extract logits
             if isinstance(outputs, dict):
@@ -92,6 +100,10 @@ def train(model, data_loaders, device=None):
                 
             if hasattr(model, 'probe_device'):
                 labels = labels.to(model.probe_device)
+                
+            if not outputs.shape[0] == labels.shape[0]:
+                nr_of_repeats = outputs.shape[0] / labels.shape[0]
+                labels = labels.repeat(int(nr_of_repeats))
             loss = criterion(outputs.squeeze(), labels)
 
             loss.backward()
@@ -180,8 +192,22 @@ def train(model, data_loaders, device=None):
             val_f1 = 0.0
         
         # Print summary (tqdm might clear the line, so we print after)
-        print(f"Epoch {epoch+1} Train Summary - Accuracy {train_acc:.4f} | Precision {train_prec:.4f} | Recall {train_recall:.4f} | F1 {train_f1:.4f} | Loss {train_loss:.4f} | Support ({train_support['0']},{train_support['1']})")
-        print(f"Epoch {epoch+1} Validation Summary - Accuracy {val_acc:.4f} | Precision {val_prec:.4f} | Recall {val_recall:.4f} | F1 {val_f1:.4f} | Loss: {val_loss:.4f} | Support ({val_support['0']},{val_support['1']})")
+        print(
+            f"Epoch {epoch+1} Train Summary - Accuracy {train_acc:.4f} | "
+            f"Precision {train_prec:.4f} | "
+            f"Recall {train_recall:.4f} | "
+            f"F1 {train_f1:.4f} | "
+            f"Loss {train_loss:.4f} | "
+            f"Support ({train_support['0']},{train_support['1']})"
+            )
+        print(
+            f"Epoch {epoch+1} Validation Summary - Accuracy {val_acc:.4f} | "
+            f"Precision {val_prec:.4f} | "
+            f"Recall {val_recall:.4f} | "
+            f"F1 {val_f1:.4f} | "
+            f"Loss: {val_loss:.4f} "
+            f"| Support ({val_support['0']},{val_support['1']})"
+            )
 
         # 6. Step the Scheduler
         scheduler.step()

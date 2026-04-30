@@ -92,37 +92,50 @@ class TorchAugment(nn.Module):
         # 3. Mixup
         self.noiseaug = NoiseAugment(alpha=0.4, p=0.5)
         
-    def forward(self, x, noise=None):
+    def forward(self, x, noise=None, y=0, plot=False):
         # x shape comes in as: (Batch, Channels, Freq, Time)
         # Augmentations expect: (Batch, Freq, Time)
         if x.dim() == 4:
             x = x.squeeze(1)
 
         if self.do_timeshift:
-            x = self.timeshift(x)
+            x_ts = self.timeshift(x)
+            if plot and 1 in y:
+                self.plot_augmented(x_ts, augmented='timeshift')
         
         if self.do_specaug:
-            x = self.specaug(x)
+            x_sa = self.specaug(x)
+            if plot and 1 in y:
+                self.plot_augmented(x_sa, augmented='specaug')
             
         if self.do_noiseaug:
-            x = self.noiseaug(x, noise)
+            x_na = self.noiseaug(x, noise)
+            if plot and 1 in y:
+                self.plot_augmented(x_na, augmented='noise')
         
+        x = torch.vstack([x, x_sa, x_na, x_ts])
         # Restore Channel dimension for CNN: (Batch, 1, Freq, Time)
         return x.unsqueeze(1)
         
-    def plot_augmented(self, x, y=None, paths=None, starts=None):
+    def plot_augmented(self, x, y=None, paths=None, starts=None, augmented=False):
         import matplotlib.pyplot as plt
+        from pathlib import Path
         fig, axes = plt.subplots(figsize=[12, 12], ncols=4, nrows=4)
         axes = axes.reshape(16)
         for idx, ax in enumerate(axes):
             ax.imshow(x[idx].detach().cpu().squeeze(), origin='lower')
-            if y is not None and paths is not None and starts is not None:
-                from pathlib import Path
-                ax.set_title(
-                    f'{Path(paths[idx]).stem} @ {starts[idx]:.0f}, {np.argmax(y[idx].detach().cpu())}'
-                    )
+            if y is not None:
+                if paths is not None and starts is not None:
+                    ax.set_title(
+                        f'{Path(paths[idx]).stem} @ {starts[idx]:.0f}, '
+                        f'{y[idx].detach().cpu()}'
+                        )
+                else:
+                    ax.set_title(
+                        f'{y[idx].detach().cpu()}'
+                        )
         fig.tight_layout()
-        fig.suptitle('Sample of augmented spectrograms')
-        fig.savefig('augmentated spectrograms.png')
+        fig.suptitle(f'Sample of augmented spectrograms {augmented=}')
+        fig.savefig(f'augmentated spectrograms {augmented}.png')
         plt.close(fig)
         

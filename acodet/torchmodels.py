@@ -4,6 +4,7 @@ from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
 
 import torch.nn as nn
 import torchaudio as ta
+import torch
 
 
 from . import global_config as conf
@@ -28,7 +29,7 @@ class TorchModel(nn.Module):
             'n_fft': conf.STFT_FRAME_LEN,
             'window_size': conf.STFT_FRAME_LEN,
             'hop_length': conf.FFT_HOP,
-            'fmin': 0,
+            'fmin': 50,
             'fmax': conf.SR / 2,
             'n_mels': 64,
             'power': 2,
@@ -51,25 +52,39 @@ class TorchModel(nn.Module):
         self.augment = TorchAugment(64, conf.N_TIME_BINS)
 
 
-    def forward(self, x, y=None, noise=None, path=None, start=None, training=False):
+    def forward(
+        self, x, y=None, noise=None, 
+        path=None, start=None, training=False,
+        plot=False
+        ):
         # (bs, channel, time)        
         x = x[:, None, :]
 
         x_spec = self.front_end.mel_spec(x)
-        
-        x_processed = self.pcen(x_spec)
 
         if training:
             noise_spec = self.front_end.mel_spec(noise)
-            noise_pcen = self.pcen(noise_spec)
-            x_processed = self.augment(x_processed, noise_pcen)
-            if False:
-                self.augment.plot_augmented(x_processed, y, paths=path, starts=start)
+            if plot and 1 in y:
+                self.augment.plot_augmented(x_spec, y, paths=path, starts=start)
+            x_spec = self.augment(x_spec, noise_spec, y, plot=plot)
+            if plot and 1 in y:
+                self.augment.plot_augmented(x_spec, y, paths=path, starts=start, augmented=True)
 
+        x_processed = self.pcen(x_spec)
+        if plot and 1 in y:
+            self.augment.plot_augmented(x_spec, y, paths=path, starts=start, augmented='with_pcen')
+        
+        logits = []
         if len(x_processed.shape) == 3:
             x_processed = x_processed.unsqueeze(1)
-        # Forward pass through the CNN backbone
-        logits = self.backbone(x_processed)
+            
+        for idx in range(0, x_processed.shape[0] // conf.BATCH_SIZE):
+            # Forward pass through the CNN backbone
+            logits.append(self.backbone(x_processed[
+                idx*conf.BATCH_SIZE : (idx+1)*conf.BATCH_SIZE
+                ]))
+        
+        logits = torch.vstack(logits)
         
         return logits
     
