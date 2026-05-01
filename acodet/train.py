@@ -14,6 +14,37 @@ from acodet import global_config as conf
 
 # AUTOTUNE = tf.data.AUTOTUNE
 
+def print_train_sizes():
+    # get training set size
+    import pandas as pd
+    combined_annots = Path(conf.ANNOT_DEST) / 'combined_annotations.csv'
+    explicit_noise = Path(conf.ANNOT_DEST) / 'explicit_noise.csv'
+    
+    ca_df = pd.read_csv(combined_annots)
+    en_df = pd.read_csv(explicit_noise)
+
+    df = pd.concat([ca_df, en_df], ignore_index=True)
+    print(f'\nNumber of annotations: {int(len(df)*0.8)}') # the 0.8 is from the train/val split
+    total_train_set_size = int(len(df)*0.8) * (
+            1 + int(conf.TIME_AUGS) + int(conf.SPEC_AUG) + int(conf.MIXUP_AUGS)
+            )
+    print(
+        '\nYou are training using the augmentations: '
+        f'{conf.TIME_AUGS=}, {conf.SPEC_AUG=}, {conf.MIXUP_AUGS=}.'
+        '\nThis increases your training set to a total of: '
+        f'{total_train_set_size}')
+    total_train_steps_size = conf.BATCH_SIZE * conf.STEPS_PER_EPOCH * conf.EPOCHS
+    print(
+        '\nYour training settings are: '
+        f'{conf.BATCH_SIZE=}, {conf.STEPS_PER_EPOCH=}, {conf.EPOCHS=}.'
+        '\nThis leads to a total number of steps: ' 
+        f'{total_train_steps_size}.'
+        )
+    print(
+        '\nYour training set will be iterated through for a total of '
+        f'{total_train_steps_size / total_train_set_size:.3f} times. \n'
+          )
+    
 
 def run_training(
     ModelClassName=conf.MODELCLASSNAME,
@@ -96,6 +127,8 @@ def run_training(
         for constant in cleaned_constants:
             file.write(constant + ',' + str(getattr(conf, constant)) + '\n')
 
+    print_train_sizes()
+
     # initialize the model
     model = models.init_model(
         model_instance=ModelClassName,
@@ -111,7 +144,7 @@ def run_training(
         from acodet.plot_utils import plot_model_results, create_and_save_figure
         from acodet.tfrec import run_data_pipeline, prepare, make_spec_tensor
         from acodet.augmentation import run_augment_pipeline
-        from acodet.humpback_model_dir.leaf_pcen import FBetaScore
+        from acodet.humpback_model_dir.leaf_pcen import FBetaScore, TPositives
         import tensorflow as tf
         
         from .tf_dataloader import TFLoader
@@ -252,6 +285,7 @@ def run_training(
                     threshold=f_score_thresh,
                     name="fbeta1",
                 ),
+                TPositives(name='tpos')
             ],
         )
 

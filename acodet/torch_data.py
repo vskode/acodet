@@ -6,6 +6,7 @@ import librosa as lb
 from pathlib import Path
 from acodet import global_config as conf
 import torchaudio as ta
+from multiprocessing import cpu_count
 
 np.random.seed(42)
 
@@ -75,19 +76,6 @@ class AudioDataset(Dataset):
                     raise
                 time.sleep(random.uniform(0.1, 0.5))
         
-        # sr = lb.get_samplerate(self.filepaths[idx])
-        # wave, sr = ta.load(
-        #     self.filepaths[idx], 
-        #     frame_offset=self.starts[idx] * sr, 
-        #     num_frames=self.durations[idx] * sr
-        #     )
-        # wave = wave.mean(dim=0)  # convert to mono if needed
-
-        # if sr != conf.SR:
-        #     wave = ta.functional.resample(
-        #         wave, orig_freq=sr, new_freq=conf.SR
-            # )
-        
         # wave, sr = lb.load(
         #     path=self.filepaths[idx],
         #     sr=conf.SR,
@@ -131,13 +119,13 @@ class Loader(DataLoader):
         if not 'subset' in ca_df.columns:
             files = ca_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
-            ca_df['subset'] = [''] * len(ca_df)
+            ca_df.loc[:, 'subset'] = [''] * len(ca_df)
             ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'eval'
         
         if not 'subset' in en_df.columns:
             files = en_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
-            en_df['subset'] = [''] * len(en_df)
+            en_df.loc[:, 'subset'] = [''] * len(en_df)
             en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'eval'
             
         df = pd.concat([ca_df, en_df], ignore_index=True)
@@ -148,8 +136,8 @@ class Loader(DataLoader):
         border = int(len(df) * 0.8)
         
         train, val = df.iloc[rand_ints[:border]], df.iloc[rand_ints[border:]]
-        train.subset = 'train'
-        val.subset = 'val'
+        train.loc[:, 'subset'] = 'train'
+        val.loc[:, 'subset'] = 'val'
         train, val = train, val
         
         df = pd.concat([train, val], ignore_index=True)
@@ -189,8 +177,8 @@ class Loader(DataLoader):
             noise_dataset,
             batch_size=conf.BATCH_SIZE,
             shuffle=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             pin_memory=True,
             drop_last=True, # Ensure we don't get tiny batches
@@ -203,8 +191,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=True, 
             pin_memory=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
             )
@@ -215,8 +203,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
             )
@@ -227,8 +215,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
             )
