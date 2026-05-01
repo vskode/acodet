@@ -58,18 +58,35 @@ class AudioDataset(Dataset):
 
     def __getitem__(self, idx):
         
-        sr = lb.get_samplerate(self.filepaths[idx])
-        wave, sr = ta.load(
-            self.filepaths[idx], 
-            frame_offset=self.starts[idx] * sr, 
-            num_frames=self.durations[idx] * sr
-            )
-        wave = wave.mean(dim=0)  # convert to mono if needed
+        import time, random
 
-        if sr != conf.SR:
-            wave = ta.functional.resample(
-                wave, orig_freq=sr, new_freq=conf.SR
-            )
+        for attempt in range(3):
+            try:
+                wave, sr = lb.load(
+                    path=self.filepaths[idx],
+                    sr=conf.SR,
+                    offset=self.starts[idx],
+                    duration=self.durations[idx]
+                )
+                wave = torch.tensor(wave).squeeze()
+                break
+            except Exception:
+                if attempt == 2:
+                    raise
+                time.sleep(random.uniform(0.1, 0.5))
+        
+        # sr = lb.get_samplerate(self.filepaths[idx])
+        # wave, sr = ta.load(
+        #     self.filepaths[idx], 
+        #     frame_offset=self.starts[idx] * sr, 
+        #     num_frames=self.durations[idx] * sr
+        #     )
+        # wave = wave.mean(dim=0)  # convert to mono if needed
+
+        # if sr != conf.SR:
+        #     wave = ta.functional.resample(
+        #         wave, orig_freq=sr, new_freq=conf.SR
+            # )
         
         # wave, sr = lb.load(
         #     path=self.filepaths[idx],
