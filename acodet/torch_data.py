@@ -177,7 +177,7 @@ class Loader(DataLoader):
             noise_dataset,
             batch_size=conf.BATCH_SIZE,
             shuffle=True,
-            num_workers=cpu_count(),
+            num_workers=16,#cpu_count(),
             prefetch_factor=4,
             persistent_workers=True, 
             pin_memory=True,
@@ -191,7 +191,7 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=True, 
             pin_memory=True,
-            num_workers=cpu_count(),
+            num_workers=16,#cpu_count(),
             prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
@@ -203,7 +203,7 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=cpu_count(),
+            num_workers=16,#cpu_count(),
             prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
@@ -215,7 +215,7 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=cpu_count(),
+            num_workers=16,#cpu_count(),
             prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
