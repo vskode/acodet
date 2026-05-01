@@ -57,17 +57,19 @@ class AudioDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, idx):
+        
+        sr = lb.get_samplerate(self.filepaths[idx])
         wave, sr = ta.load(
             self.filepaths[idx], 
-            frame_offset=self.starts[idx] * 48_000, 
-            num_frames=self.durations[idx] * 48_000
+            frame_offset=self.starts[idx] * sr, 
+            num_frames=self.durations[idx] * sr
             )
-        wave = wave.mean(dim=0).numpy()  # convert to mono if needed
+        wave = wave.mean(dim=0)  # convert to mono if needed
 
-        if sr != self.sample_rate:
+        if sr != conf.SR:
             wave = ta.functional.resample(
-                torch.tensor(wave), orig_freq=sr, new_freq=conf.SR
-            ).numpy()
+                wave, orig_freq=sr, new_freq=conf.SR
+            )
         
         # wave, sr = lb.load(
         #     path=self.filepaths[idx],
