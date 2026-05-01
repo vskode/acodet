@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 import librosa as lb
 from pathlib import Path
 from acodet import global_config as conf
+import torchaudio as ta
 
 np.random.seed(42)
 
@@ -56,13 +57,25 @@ class AudioDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, idx):
-        wave, sr = lb.load(
-            path=self.filepaths[idx],
-            sr=conf.SR,
-            offset=self.starts[idx],
-            duration=self.durations[idx]
-        )
-        wave = torch.tensor(wave).squeeze()
+        wave, sr = ta.load(
+            self.filepaths[idx], 
+            frame_offset=self.starts[idx] * 48_000, 
+            num_frames=self.durations[idx] * 48_000
+            )
+        wave = wave.mean(dim=0).numpy()  # convert to mono if needed
+
+        if sr != self.sample_rate:
+            wave = ta.functional.resample(
+                torch.tensor(wave), orig_freq=sr, new_freq=conf.SR
+            ).numpy()
+        
+        # wave, sr = lb.load(
+        #     path=self.filepaths[idx],
+        #     sr=conf.SR,
+        #     offset=self.starts[idx],
+        #     duration=self.durations[idx]
+        # )
+        # wave = torch.tensor(wave).squeeze()
 
         # Only the last frame of a long clip may be short
         if len(wave) < conf.CONTEXT_WIN:
