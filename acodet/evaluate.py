@@ -127,12 +127,25 @@ def evaluate(train_date=False, **kwargs):
 
     # iterate through thresholds
     # and write precision, recall, and f1 score to a text file
+    f1_scores = []
+
     with open(fig_filepath, 'w') as file:
         file.write("precision,recall,threshold,f1_score\n")
         for i, t in enumerate(thresholds):
             f1_score = 2 * (precision[i] * recall[i]) / (precision[i] + recall[i])
+            f1_scores.append(f1_score)
             line = f"{precision[i]},{recall[i]},{t},{f1_score}\n"
             file.write(line)
+
+    # create threshold vs f1 score plot
+    fig, ax = plt.subplots()
+    ax.plot(thresholds, f1_scores)
+    ax.set_title('F1 Score by threshold')
+    ax.set_ylim(0.0, 1.05)
+    ax.set_ylabel('F1 Score')
+    ax.set_xlabel('Threshold')
+    fig_filepath = Path(figure_dir).joinpath('f1_threshold_curve.png')
+    fig.savefig(fig_filepath)
 
     # create precision-recall curve plot
     fig, ax = plt.subplots()
