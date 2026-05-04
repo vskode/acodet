@@ -5,6 +5,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as metrics
+from tqdm import tqdm
 
 import torch
 import torchaudio as ta
@@ -42,11 +43,48 @@ def evaluate(train_date=False, **kwargs):
         if not Path.exists(model_path):
             logger.error(f"Model file {model_file} not found. Please check path.")
             return 1
-        checkpoint = torch.load(model_file, map_location=torch.device('cpu'))
+        checkpoint = torch.load(model_file, map_location=torch.device(conf.DEVICE))
         model.load_state_dict(checkpoint)
         figure_dir = model_path.parent.joinpath('evaluation/')
         figure_dir.mkdir(exist_ok=True)
+        model = model.eval()
         print(figure_dir)
+    elif conf.MODELCLASSNAME == 'BacpipeModel':
+        model = models.init_model()
+        model_path = Path(model_file)
+        conf.SR = model.embedder.model.sr
+        
+        # this is the case for using their own classifiers
+        if not conf.BOOL_LIN_CLFIER and conf.MODEL_NAME in ['perch_v2', 'google_whale']:
+            model.to(conf.DEVICE)
+        
+        # this is using the linear classifiers we trained
+        else:
+            
+            if not Path.exists(model_path):
+                logger.error(f"Model file {model_file} not found. Please check path.")
+                return 1
+            try:
+                checkpoint = torch.load(model_file, map_location=torch.device(conf.DEVICE))
+            except:
+                checkpoint = torch.load(model_file, weights_only=False, map_location=torch.device(conf.DEVICE))
+            try:
+                model.lin_classifier.load_state_dict(checkpoint)
+            except TypeError:
+                model.lin_classifier.load_state_dict(checkpoint())
+            model.to(conf.DEVICE)
+            lin_classifier = model.lin_classifier
+            backbone = model.embedder.model
+            model = lambda x: lin_classifier(backbone(backbone.preprocess(x)))
+        
+        # preprocessed_frames = model.model.model.preprocess(audio)
+        # new_predictions = torch.tensor(model.classify(preprocessed_frames, **kwargs))
+        
+        
+        figure_dir = model_path.parent.joinpath('evaluation/')
+        figure_dir.mkdir(exist_ok=True)
+        print(figure_dir)
+        
     elif not train_date:
         # allow user to evaluate a model that they have not trained yet
         model = models.init_model(timestamp_foldername=timestamp_foldername)
@@ -71,41 +109,58 @@ def evaluate(train_date=False, **kwargs):
 
     # create two vectors: one for true labels, and one for predicted labels
 
-    for idx, tuple in enumerate(test_data):
+    predictions = []
+    class_labels = []
+    for idx, tuple in tqdm(enumerate(test_data), 'running inference on test data', total=len(data_loader.test)):
         audio, new_labels, paths, timestamps = tuple
 
         if conf.MODELCLASSNAME == 'BacpipeModel':
-            re_audio = ta.functional.resample(
-                audio, 
-                conf.SR, 
-                model.model.model.sr
-                )
-            preprocessed_frames = model.model.model.preprocess(re_audio)
-            new_predictions = torch.tensor(model.classify(preprocessed_frames, **kwargs))
+            
+            # this is the case for using their own classifiers
+            if not conf.BOOL_LIN_CLFIER and conf.MODEL_NAME in ['perch_v2', 'google_whale']:
+                import tensorflow as tf
+                audio = tf.convert_to_tensor(audio, dtype=tf.float32)
+                embedings = model.embedder.model(audio).squeeze()
+                new_predictions = model.embedder.model.classifier_predictions(embedings)
+                if conf.MODEL_NAME == 'google_whale':
+                    new_predictions = tf.sigmoid(new_predictions)
+                    
+            else:    
+                audio = torch.tensor(audio)
+                with torch.inference_mode():
+                    new_predictions = torch.sigmoid(model(audio.to(conf.DEVICE))).squeeze()
         elif conf.MODELCLASSNAME == 'TorchModel':
-            new_predictions = model(audio).detach().cpu().squeeze()
+            with torch.inference_mode():
+                new_predictions = torch.sigmoid(model(audio)).squeeze()#.detach().cpu().squeeze()
         else:
             new_predictions = torch.tensor(model.predict(
                     tf.convert_to_tensor(audio)
                 ).squeeze())
-
-        if idx == 0:
-            predictions = new_predictions
-            class_labels = new_labels
-        else:
-            predictions = torch.hstack([
-                predictions, 
-                new_predictions
-                ])
-            class_labels = torch.hstack([class_labels, new_labels])
+        predictions.extend(new_predictions)
+        class_labels.extend(new_labels)
+        
+        # Uncomment this if you just want to try running it for a little data to 
+        # make sure the code runs.
+        if idx > 10:
+            break
+    
+    if not isinstance(predictions[0], torch.Tensor):
+        predictions = torch.tensor(np.array(predictions))
+        class_labels = np.array(class_labels)
+    else:
+        predictions = torch.hstack(predictions).to('cpu')
+        class_labels = torch.hstack(class_labels).to('cpu')
             
+    # I commented these two out cause at the moment, we are using the model's only as 
+    # feature extractors, we would need to add another option 
+    
     if conf.MODEL_NAME == 'perch_v2':
-        class_labels = model.model.model.classes
-        humpback_label_idx = np.where(np.array(class_labels)=='Megaptera novaeangliae')[0][0]
+        model_labels = np.array(model.embedder.model.classes)
+        humpback_label_idx = np.where(model_labels=='Megaptera novaeangliae')[0][0]
         predictions = predictions[:, humpback_label_idx]
     elif conf.MODEL_NAME == 'google_whale':
-        class_labels = model.model.model.classes
-        humpback_label_idx = np.where(np.array(class_labels)=='Humpback')[0][0]
+        model_labels = np.array(model.embedder.model.classes)
+        humpback_label_idx = np.where(model_labels=='Humpback')[0][0]
         predictions = predictions[:, humpback_label_idx]
 
     logger.info("All predictions collected; flattening")
@@ -133,13 +188,17 @@ def evaluate(train_date=False, **kwargs):
             f1_score = 2 * (precision[i] * recall[i]) / (precision[i] + recall[i])
             line = f"{precision[i]},{recall[i]},{t},{f1_score}\n"
             file.write(line)
+    auc_pr = metrics.auc(recall, precision)
 
     # create precision-recall curve plot
     fig, ax = plt.subplots()
-    ax.plot(recall, precision, color='tab:blue')
+    ax.plot(recall, precision, color='tab:blue', label='PR curve (area = %0.2f)' % auc_pr)
     ax.set_title('Precision-Recall Curve')
     ax.set_ylabel('Precision')
     ax.set_xlabel('Recall')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    plt.legend()
 
     # save plot
     fig_filepath = Path(figure_dir).joinpath('precision_recall_curve.png')
@@ -154,7 +213,7 @@ def evaluate(train_date=False, **kwargs):
     # so use the different thresholds calculated above 
     # to mask the continuous values into class predictions
 
-    for threshold in thresholds:
+    for threshold in tqdm(np.arange(0, 1, 0.01), 'creating confusion matrices'):
         # if the predicted value is greater than the threshold,
         # give it a value of 1.0, otherwise it's 0.0
         threshold_labels = (predictions > threshold).to(torch.float)

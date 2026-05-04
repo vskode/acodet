@@ -383,7 +383,7 @@ def run_training(
         import torch
         model_file_name = model_id + '_bacpipe_lin_clfier.pt'
         torch.save(
-            model.lin_classifier.state_dict, 
+            model.lin_classifier.state_dict(), 
             model_sub_dir.joinpath(model_file_name)
             )
 

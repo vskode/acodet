@@ -160,6 +160,8 @@ class Loader(DataLoader):
         eval_df = pd.concat([ca_df, en_df], ignore_index=True)
         eval_df = eval_df[eval_df.subset == 'eval']
         
+        rand_ints = np.random.permutation(len(eval_df))
+        eval_df = eval_df.iloc[rand_ints]
         
         # eval_df = eval_df[:20]
         self.test = AudioDataset(
