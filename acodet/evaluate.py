@@ -166,25 +166,27 @@ def evaluate(train_date=False, **kwargs):
     logger.info("Creating confusion matrix")
 
     # a confusion matrix needs binary classification
-    # so use the different thresholds calculated above 
+    # so use the best f1 score calculated above
     # to mask the continuous values into class predictions
 
-    for threshold in thresholds:
-        # if the predicted value is greater than the threshold,
-        # give it a value of 1.0, otherwise it's 0.0
-        threshold_labels = (predictions > threshold).to(torch.float)
+    best_f1_index = np.argmax(f1_scores)
+    best_threshold = thresholds[best_f1_index]
 
-        # calculate confusion matrix
-        confusion_matrix = metrics.confusion_matrix(class_labels, threshold_labels)
+    # if the predicted value is greater than the threshold,
+    # give it a value of 1.0, otherwise it's 0.0
+    threshold_labels = (predictions > best_threshold).to(torch.float)
 
-        # create interpretable display
-        cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix)
+    # calculate confusion matrix
+    confusion_matrix = metrics.confusion_matrix(class_labels, threshold_labels)
 
-        # save plot
-        threshold_pretty = (threshold * 100).astype('int')
-        fig_filepath = Path(figure_dir).joinpath(f'confusion_matrix_threshold_{threshold_pretty}.png')
-        cm_display.plot().figure_.savefig(fig_filepath)
-        plt.close()
+    # create interpretable display
+    cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix)
+
+    # save plot
+    threshold_pretty = (best_threshold * 100).astype('int')
+    fig_filepath = Path(figure_dir).joinpath(f'confusion_matrix_threshold_{threshold_pretty}.png')
+    cm_display.plot().figure_.savefig(fig_filepath)
+    plt.close()
 
     ###################################
     # ROC Curve
