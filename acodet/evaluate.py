@@ -182,13 +182,26 @@ def evaluate(train_date=False, **kwargs):
 
     # iterate through thresholds
     # and write precision, recall, and f1 score to a text file
+    f1_scores = []
+
     with open(fig_filepath, 'w') as file:
         file.write("precision,recall,threshold,f1_score\n")
         for i, t in enumerate(thresholds):
             f1_score = 2 * (precision[i] * recall[i]) / (precision[i] + recall[i])
+            f1_scores.append(f1_score)
             line = f"{precision[i]},{recall[i]},{t},{f1_score}\n"
             file.write(line)
     auc_pr = metrics.auc(recall, precision)
+
+    # create threshold vs f1 score plot
+    fig, ax = plt.subplots()
+    ax.plot(thresholds, f1_scores)
+    ax.set_title('F1 Score by threshold')
+    ax.set_ylim(0.0, 1.05)
+    ax.set_ylabel('F1 Score')
+    ax.set_xlabel('Threshold')
+    fig_filepath = Path(figure_dir).joinpath('f1_threshold_curve.png')
+    fig.savefig(fig_filepath)
 
     # create precision-recall curve plot
     fig, ax = plt.subplots()
@@ -210,25 +223,27 @@ def evaluate(train_date=False, **kwargs):
     logger.info("Creating confusion matrix")
 
     # a confusion matrix needs binary classification
-    # so use the different thresholds calculated above 
+    # so use the best f1 score calculated above
     # to mask the continuous values into class predictions
 
-    for threshold in tqdm(np.arange(0, 1, 0.01), 'creating confusion matrices'):
-        # if the predicted value is greater than the threshold,
-        # give it a value of 1.0, otherwise it's 0.0
-        threshold_labels = (predictions > threshold).to(torch.float)
+    best_f1_index = np.argmax(f1_scores)
+    best_threshold = thresholds[best_f1_index]
 
-        # calculate confusion matrix
-        confusion_matrix = metrics.confusion_matrix(class_labels, threshold_labels)
+    # if the predicted value is greater than the threshold,
+    # give it a value of 1.0, otherwise it's 0.0
+    threshold_labels = (predictions > best_threshold).to(torch.float)
 
-        # create interpretable display
-        cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix)
+    # calculate confusion matrix
+    confusion_matrix = metrics.confusion_matrix(class_labels, threshold_labels)
 
-        # save plot
-        threshold_pretty = (threshold * 100).astype('int')
-        fig_filepath = Path(figure_dir).joinpath(f'confusion_matrix_threshold_{threshold_pretty}.png')
-        cm_display.plot().figure_.savefig(fig_filepath)
-        plt.close()
+    # create interpretable display
+    cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix)
+
+    # save plot
+    threshold_pretty = (best_threshold * 100).astype('int')
+    fig_filepath = Path(figure_dir).joinpath(f'confusion_matrix_threshold_{threshold_pretty}.png')
+    cm_display.plot().figure_.savefig(fig_filepath)
+    plt.close()
 
     ###################################
     # ROC Curve
@@ -243,8 +258,8 @@ def evaluate(train_date=False, **kwargs):
     fig, ax = plt.subplots()
     ax.plot(false_positive_rate, true_positive_rate, color='tab:blue', label='ROC curve (area = %0.2f)' % roc_auc)
     ax.plot([0, 1], [0, 1], 'k--') # plot straight x/y ("no skill") line for comparison
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.05)
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
     ax.set_title("ROC Curve")
