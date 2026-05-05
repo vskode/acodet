@@ -298,11 +298,31 @@ def generate_final_annotations(
             print(f"Completed file {ind}/{len(files)}.", end="\r")
             ind += 1
 
-        # TODO include date in path by default
+        ####### use validation_files.csv to assign what's val and what's train
         save_dir = Path(conf.ANNOT_DEST).joinpath(folder)
         save_dir.mkdir(exist_ok=True, parents=True)
         df_t.to_csv(save_dir.joinpath("combined_annotations.csv"))
         df_n.to_csv(save_dir.joinpath("explicit_noise.csv"))
+        
+        # this is to ensure that we are using the same validation set
+        if True:
+            try:
+                df_t = pd.read_csv(save_dir.joinpath("combined_annotations.csv"))
+                df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
+                df_t['subset'] = 'train'
+                df_n['subset'] = 'train'
+                df_val = pd.read_csv(conf.REV_ANNOT_SRC + '/validation_files.csv')
+                stems_t = np.array([Path(f).stem for f in df_t['filename']])
+                stems_n = np.array([Path(f).stem for f in df_n['filename']])
+                for file in df_val['validation_files'].values:
+                    bool_stems_t = stems_t == str(file)
+                    bool_stems_n = stems_n == str(file)
+                    df_t.loc[bool_stems_t, 'subset'] = 'val'
+                    df_n.loc[bool_stems_n, 'subset'] = 'val'
+                df_t.to_csv(save_dir.joinpath("combined_annotations.csv"))
+                df_n.to_csv(save_dir.joinpath("explicit_noise.csv"))
+            except:
+                pass
     # save_ket_annot_only_existing_paths(df)
 
 
