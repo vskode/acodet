@@ -164,10 +164,11 @@ class Loader(DataLoader):
         eval_df = eval_df.iloc[rand_ints]
         
         # eval_df = eval_df[:20]
-        self.test = AudioDataset(
-            eval_df,
-            mode='test',
-            )
+        if len(eval_df) > 0:
+            self.test = AudioDataset(
+                eval_df,
+                mode='test',
+                )
         
     def noise_loader(self):
         # Filter strictly for Explicit Noise
