@@ -331,7 +331,7 @@ class BacpipeModel(nn.Module):
                 self.lin_classifier.to(device)
                 self.probe_device = device
     
-    def forward(self, x, y=None, noise=None, path=None, start=None, training=False):
+    def forward(self, x, y=None, noise=None, path=None, start=None, training=False, **kwargs):
         with torch.no_grad():
             x = self.embedder.model.preprocess(x)
             embeds = self.embedder.model(x)

@@ -5,6 +5,8 @@ from torch.utils.data import DataLoader, Dataset
 import librosa as lb
 from pathlib import Path
 from acodet import global_config as conf
+import torchaudio as ta
+from multiprocessing import cpu_count
 
 np.random.seed(42)
 
@@ -56,13 +58,31 @@ class AudioDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, idx):
-        wave, sr = lb.load(
-            path=self.filepaths[idx],
-            sr=conf.SR,
-            offset=self.starts[idx],
-            duration=self.durations[idx]
-        )
-        wave = torch.tensor(wave).squeeze()
+        
+        import time, random
+
+        for attempt in range(3):
+            try:
+                wave, sr = lb.load(
+                    path=self.filepaths[idx],
+                    sr=conf.SR,
+                    offset=self.starts[idx],
+                    duration=self.durations[idx]
+                )
+                wave = torch.tensor(wave).squeeze()
+                break
+            except Exception:
+                if attempt == 2:
+                    raise
+                time.sleep(random.uniform(0.1, 0.5))
+        
+        # wave, sr = lb.load(
+        #     path=self.filepaths[idx],
+        #     sr=conf.SR,
+        #     offset=self.starts[idx],
+        #     duration=self.durations[idx]
+        # )
+        # wave = torch.tensor(wave).squeeze()
 
         # Only the last frame of a long clip may be short
         if len(wave) < conf.CONTEXT_WIN:
@@ -99,13 +119,13 @@ class Loader(DataLoader):
         if not 'subset' in ca_df.columns:
             files = ca_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
-            ca_df['subset'] = [''] * len(ca_df)
+            ca_df.loc[:, 'subset'] = [''] * len(ca_df)
             ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'eval'
         
         if not 'subset' in en_df.columns:
             files = en_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
-            en_df['subset'] = [''] * len(en_df)
+            en_df.loc[:, 'subset'] = [''] * len(en_df)
             en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'eval'
             
         df = pd.concat([ca_df, en_df], ignore_index=True)
@@ -116,8 +136,8 @@ class Loader(DataLoader):
         border = int(len(df) * 0.8)
         
         train, val = df.iloc[rand_ints[:border]], df.iloc[rand_ints[border:]]
-        train.subset = 'train'
-        val.subset = 'val'
+        train.loc[:, 'subset'] = 'train'
+        val.loc[:, 'subset'] = 'val'
         train, val = train, val
         
         df = pd.concat([train, val], ignore_index=True)
@@ -140,6 +160,8 @@ class Loader(DataLoader):
         eval_df = pd.concat([ca_df, en_df], ignore_index=True)
         eval_df = eval_df[eval_df.subset == 'eval']
         
+        rand_ints = np.random.permutation(len(eval_df))
+        eval_df = eval_df.iloc[rand_ints]
         
         # eval_df = eval_df[:20]
         self.test = AudioDataset(
@@ -157,8 +179,8 @@ class Loader(DataLoader):
             noise_dataset,
             batch_size=conf.BATCH_SIZE,
             shuffle=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=16,#cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             pin_memory=True,
             drop_last=True, # Ensure we don't get tiny batches
@@ -171,8 +193,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=True, 
             pin_memory=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=16,#cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
             )
@@ -183,8 +205,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=16,#cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
             )
@@ -195,8 +217,8 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=2,
-            prefetch_factor=2,
+            num_workers=16,#cpu_count(),
+            prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
             )

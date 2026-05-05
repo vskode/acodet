@@ -131,13 +131,19 @@ def train(model, data_loaders, device=None):
                 'lr': f'{current_lr:.1e}'
             })
 
+        if train_FP == 0:
+            train_FP = 0.001
+        if train_FN == 0:
+            train_FN = 0.001
         # End of Epoch Metrics
         train_loss = running_loss / train_total
         train_acc = train_correct / train_total
         train_prec = train_TP / (train_TP + train_FP)
         train_recall = train_TP / (train_TP + train_FN)
-        train_f1 = 2.0 * train_prec * train_recall / (train_prec + train_recall)
-        
+        try:
+            train_f1 = 2.0 * train_prec * train_recall / (train_prec + train_recall)
+        except ZeroDivisionError:
+            train_f1 = -1
         # 5. Validation Loop
         model.eval()
         val_correct = 0
@@ -160,6 +166,7 @@ def train(model, data_loaders, device=None):
                 labels = batch[1].to(device)
                 
                 if hasattr(model, 'probe_device'):
+                    labels = torch.tensor(labels.clone().detach(), dtype=torch.float32)
                     labels = labels.to(model.probe_device)
 
                 outputs = model(inputs)
