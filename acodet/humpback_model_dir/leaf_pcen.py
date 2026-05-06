@@ -160,3 +160,32 @@ class FBetaScore(tf.keras.metrics.Metric):
             "threshold": self.threshold,
         })
         return config
+    
+
+class TPositives(tf.keras.metrics.Metric):
+    def __init__(self, name="tpos", dtype=tf.float32, **kwargs):
+        super().__init__(name=name, dtype=dtype, **kwargs)
+        self.num_classes = 1
+
+        self.true_positives = self.add_weight(name="true_positives", shape=(1,), initializer="zeros")
+
+    def update_state(self, y_true, y_pred):
+        import tensorflow as tf
+        tp = tf.reduce_sum(y_true * y_pred, axis=0)
+
+        self.true_positives.assign_add(tp)
+    
+    def result(self):
+        return self.true_positives
+    
+    def reset_state(self):
+        import tensorflow as tf
+        for v in self.variables:
+            v.assign(tf.zeros_like(v))
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "num_classes": self.num_classes,
+        })
+        return config

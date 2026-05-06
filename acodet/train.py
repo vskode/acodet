@@ -203,18 +203,18 @@ def run_training(
             shuffle_buffer=shuffle_buffer_size, 
             AUTOTUNE=tf.data.AUTOTUNE
         )
-        if (
-            steps_per_epoch
-            and n_train_set // batch_size < epochs * steps_per_epoch
-        ):
-            train_data = train_data.repeat(
-                epochs * steps_per_epoch // (n_train_set // batch_size) + 1
-            )
+        # if (
+        #     steps_per_epoch
+        #     and n_train_set // batch_size < epochs * steps_per_epoch
+        # ):
+        #     train_data = train_data.repeat(
+        #         epochs * steps_per_epoch // (n_train_set // batch_size) + 1
+        #     )
 
         val_data = prepare(
             val_data, 
             batch_size, 
-            shuffle=True, 
+            shuffle=False, 
             seed=42, 
             shuffle_buffer=shuffle_buffer_size, 
             AUTOTUNE=tf.data.AUTOTUNE
@@ -285,7 +285,7 @@ def run_training(
                     threshold=f_score_thresh,
                     name="fbeta1",
                 ),
-                TPositives(name='tpos')
+                # TPositives(name='tpos')
             ],
         )
 
@@ -320,19 +320,19 @@ def run_training(
 
         model_file_name = model_id
         if int(tf.__version__.split('.')[1]) > 15:
-            model_file_name += '.h5'
-        save_model(model_file_name, model_sub_dir, model)
+            model_file_name += '.keras'
 
         hist = model.fit(
             train_data,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             validation_data=val_data,
-            validation_steps=steps_per_epoch // 5,  
+            validation_steps=steps_per_epoch,  
             callbacks=[earlystopping_callback, modelsaving_callback],
         )
         result = hist.history      
         save_model_results(checkpoint_dir, result)
+        save_model(model_file_name, model_sub_dir, model)
         
         ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 

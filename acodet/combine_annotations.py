@@ -319,8 +319,8 @@ def generate_final_annotations(
                     bool_stems_n = stems_n == str(file)
                     df_t.loc[bool_stems_t, 'subset'] = 'val'
                     df_n.loc[bool_stems_n, 'subset'] = 'val'
-                df_t.to_csv(save_dir.joinpath("combined_annotations.csv"))
-                df_n.to_csv(save_dir.joinpath("explicit_noise.csv"))
+                df_t.to_csv(save_dir.joinpath("combined_annotations.csv"), index=False)
+                df_n.to_csv(save_dir.joinpath("explicit_noise.csv"), index=False)
             except:
                 pass
     # save_ket_annot_only_existing_paths(df)
