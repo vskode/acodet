@@ -469,25 +469,48 @@ def get_spec():
         _spec_model = spec()
     return _spec_model
 
-def prepare(
-    ds,
-    batch_size,
-    shuffle=False,
-    shuffle_buffer=750,
-    seed=None,
-    augmented_data=None,
-    AUTOTUNE=None,
-):
+# def prepare(
+#     ds,
+#     batch_size,
+#     shuffle=False,
+#     shuffle_buffer=750,
+#     seed=None,
+#     augmented_data=None,
+#     AUTOTUNE=None,
+# ):
+#     if shuffle:
+#         ds = ds.shuffle(shuffle_buffer, seed=seed)
+#     ds = ds.batch(batch_size)
+#     return ds.prefetch(buffer_size=AUTOTUNE)
+
+def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, seed=None, AUTOTUNE=None):
     if shuffle:
         ds = ds.shuffle(shuffle_buffer, seed=seed)
+    
+    # This is the "magic" line for generators:
+    # It tells TF to run the generator in multiple background threads
+    ds = ds.map(lambda x, y: (x, y), num_parallel_calls=AUTOTUNE)
+    
     ds = ds.batch(batch_size)
     return ds.prefetch(buffer_size=AUTOTUNE)
 
+# def make_spec_tensor(ds, AUTOTUNE=None, batch_size=32):
+#     spec_model = get_spec()
+#     ds = ds.batch(batch_size)
+#     ds = ds.map(lambda x, *y: (spec_model(x, training=False), *y),
+#                 num_parallel_calls=AUTOTUNE)
+#     return ds.unbatch()
 def make_spec_tensor(ds, AUTOTUNE=None, batch_size=32):
     spec_model = get_spec()
     ds = ds.batch(batch_size)
-    ds = ds.map(lambda x, *y: (spec_model(x, training=False), *y),
-                num_parallel_calls=AUTOTUNE)
+    
+    def apply_spec(x, *y):
+        # Force the shape to (Batch Size, 7755)
+        # -1 allows the last batch to be smaller than batch_size
+        x = tf.reshape(x, [-1, 7755]) 
+        return (spec_model(x, training=False), *y)
+
+    ds = ds.map(apply_spec, num_parallel_calls=AUTOTUNE)
     return ds.unbatch()
 
 # def make_spec_tensor(ds, AUTOTUNE=None):

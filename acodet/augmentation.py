@@ -63,15 +63,34 @@ def m_test(ds1, ds2, alpha=0.4):
     # tf.print('performing mixup')
     return (call * train_alpha + noise * noise_alpha, lab)
 
-
+# def random_masking(spec, label):
+    # spec shape is likely [Freq, Time, 1] or [Time, Freq]
+    # Let's assume [Time, Freq]
+    
 def time_mask(x, y, spec_param=10):
-    # tf.print('performing time_mask')
-    return (tfio.audio.time_mask(x, param=spec_param), y)
-
+    if tf.random.uniform([]) < 0.5:
+        width = tf.random.uniform([], minval=0, maxval=spec_param, dtype=tf.int32)
+        pos = tf.random.uniform([], minval=0, maxval=128-width, dtype=tf.int32)
+        mask = tf.concat([tf.ones([pos, 64]), tf.zeros([width, 64]), tf.ones([128-pos-width, 64])], axis=0)
+        x = x * tf.cast(mask, x.dtype)
+    return x, y # Always return outside the if
 
 def freq_mask(x, y, spec_param=10):
-    # tf.print('performing freq_mask')
-    return (tfio.audio.freq_mask(x, param=spec_param), y)
+    if tf.random.uniform([]) < 0.5:
+        width = tf.random.uniform([], minval=0, maxval=spec_param, dtype=tf.int32)
+        pos = tf.random.uniform([], minval=0, maxval=64-width, dtype=tf.int32)
+        mask = tf.concat([tf.ones([128, pos]), tf.zeros([128, width]), tf.ones([128, 64-pos-width])], axis=1)
+        x = x * tf.cast(mask, x.dtype)
+    return x, y
+
+# def time_mask(x, y, spec_param=10):
+#     # tf.print('performing time_mask')
+#     return (tfio.audio.time_mask(x, param=spec_param), y)
+
+
+# def freq_mask(x, y, spec_param=10):
+#     # tf.print('performing freq_mask')
+#     return (tfio.audio.freq_mask(x, param=spec_param), y)
 
 
 ##############################################################################

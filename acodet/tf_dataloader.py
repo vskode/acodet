@@ -8,46 +8,125 @@ import librosa as lb
 import torch
 import acodet.global_config as conf
 
+def load_and_preprocess(filename, start, end, label):
+    # 1. Read file bytes
+    file_contents = tf.io.read_file(filename)
+    # 2. Decode (Assuming WAV files)
+    audio, sample_rate = tf.audio.decode_wav(file_contents)
+    
+    # 3. Slice the audio (TensorFlow slicing is fast)
+    # start/end are in seconds, convert to samples
+    start_samp = tf.cast(start * conf.SR, tf.int32)
+    end_samp = tf.cast(end * conf.SR, tf.int32)
+    audio_slice = audio[start_samp:end_samp, :]
+    
+    return audio_slice, label
+# class TFAudioDataset:
+#     def __init__(self, df, mode='train'):
+#         """TensorFlow equivalent of your PyTorch AudioDataset"""
+#         self.df = df.reset_index(drop=True)  # Important for iteration
+#         self.mode = mode
+#         self.nr_loaded = 0
+        
+#     def audio_generator(self):
+#         for idx, row in self.df.iterrows():
+#             wave, sr = lb.load(
+#                 path=row['filename'],
+#                 sr=conf.SR,
+#                 offset=row['start'], 
+#                 duration=row['end'] - row['start']
+#             )
+            
+#             # Always chunk into frames, this way longer segments get 
+#             # separated into chunks
+#             num_frames = max(1, int(np.ceil(len(wave) / conf.CONTEXT_WIN)))
+#             wave = lb.util.fix_length(
+#                 wave,
+#                 size=num_frames * conf.CONTEXT_WIN,
+#                 mode='constant'
+#             )
+            
+#             frames = wave.reshape(num_frames, conf.CONTEXT_WIN)
+            
+#             for frame in frames:
+#                 yield frame.astype(np.float32), np.int32(row['label'])
+                
+
+#     # In your TFLoader:
+#     def get_dataset(self):
+#         # Create a dataset of the filenames and metadata first
+#         ds = tf.data.Dataset.from_tensor_slices((
+#             self.df['filename'].values,
+#             self.df['start'].values,
+#             self.df['end'].values,
+#             self.df['label'].values
+#         ))
+        
+#         # Parallelize the loading! 
+#         ds = ds.map(self.audio_generator, num_parallel_calls=tf.data.AUTOTUNE)
+#         return ds
+        
+#     # def get_dataset(self):
+#     #     """Create tf.data.Dataset from generator"""
+#     #     dataset = tf.data.Dataset.from_generator(
+#     #         self.audio_generator,
+#     #         output_signature=(
+#     #             tf.TensorSpec(shape=(conf.CONTEXT_WIN,), dtype=tf.float32),
+#     #             tf.TensorSpec(shape=(), dtype=tf.int32)
+#     #         )
+#     #     )
+#     #     return dataset
+
 class TFAudioDataset:
     def __init__(self, df, mode='train'):
-        """TensorFlow equivalent of your PyTorch AudioDataset"""
-        self.df = df.reset_index(drop=True)  # Important for iteration
+        self.df = df.reset_index(drop=True)
         self.mode = mode
-        self.nr_loaded = 0
+
+    def load_single_row(self, filename, start, end, label):
+        # 1. Extract raw values from the TF Tensors
+        # filename comes in as a byte-string tensor
+        path_str = filename.numpy().decode('utf-8')
+        start_val = float(start.numpy())
+        end_val = float(end.numpy())
+        label_val = int(label.numpy())
         
-    def audio_generator(self):
-        for idx, row in self.df.iterrows():
-            wave, sr = lb.load(
-                path=row['filename'],
-                sr=conf.SR,
-                offset=row['start'], 
-                duration=row['end'] - row['start']
-            )
-            
-            # Always chunk into frames, this way longer segments get 
-            # separated into chunks
-            num_frames = max(1, int(np.ceil(len(wave) / conf.CONTEXT_WIN)))
-            wave = lb.util.fix_length(
-                wave,
-                size=num_frames * conf.CONTEXT_WIN,
-                mode='constant'
-            )
-            
-            frames = wave.reshape(num_frames, conf.CONTEXT_WIN)
-            
-            for frame in frames:
-                yield frame.astype(np.float32), np.int32(row['label'])
-        
-    def get_dataset(self):
-        """Create tf.data.Dataset from generator"""
-        dataset = tf.data.Dataset.from_generator(
-            self.audio_generator,
-            output_signature=(
-                tf.TensorSpec(shape=(conf.CONTEXT_WIN,), dtype=tf.float32),
-                tf.TensorSpec(shape=(), dtype=tf.int32)
-            )
+        # 2. Now Librosa will be happy with plain Python types
+        wave, sr = lb.load(
+            path=path_str,
+            sr=conf.SR,
+            offset=start_val, 
+            duration=end_val - start_val
         )
-        return dataset
+        
+        # 3. Ensure consistent length (7755)
+        wave = lb.util.fix_length(wave, size=conf.CONTEXT_WIN)
+        
+        return wave.astype(np.float32), np.int32(label_val)
+
+    def get_dataset(self):
+        # 1. Create a dataset of metadata
+        ds = tf.data.Dataset.from_tensor_slices((
+            self.df['filename'].values,
+            self.df['start'].values,
+            self.df['end'].values,
+            self.df['label'].values
+        ))
+        
+        # 2. Use py_function to run Librosa in parallel
+        def py_map_fn(f, s, e, l):
+            audio, label = tf.py_function(
+                func=self.load_single_row,
+                inp=[f, s, e, l],
+                Tout=[tf.float32, tf.int32]
+            )
+            # Crucial: Set the shapes so the rest of the pipeline doesn't crash
+            audio.set_shape((conf.CONTEXT_WIN,))
+            label.set_shape(())
+            return audio, label
+
+        # 3. Parallelize! num_parallel_calls is what makes the L4 fast
+        ds = ds.map(py_map_fn, num_parallel_calls=tf.data.AUTOTUNE)
+        return ds
 
 
 class TFLoader:
@@ -101,18 +180,22 @@ class TFLoader:
         self.n_eval = len(eval_df)
         self.n_noise = len(df[df.label==0])
             
-
-    
     def train_loader(self, batch_size=None):
-        batch_size = batch_size or conf.BATCH_SIZE
         dataset = self.train.get_dataset()
-        # dataset = dataset.shuffle(
-        #     buffer_size=1000, 
-        #     reshuffle_each_iteration=True
-        # )
-        # dataset = dataset.batch(batch_size, drop_remainder=True)
-        # dataset = dataset.prefetch(tf.data.AUTOTUNE)
+        # This is the key: parallelize the generator execution
+        dataset = dataset.map(lambda x, y: (x, y), num_parallel_calls=tf.data.AUTOTUNE)
         return dataset
+    
+    # def train_loader(self, batch_size=None):
+    #     batch_size = batch_size or conf.BATCH_SIZE
+    #     dataset = self.train.get_dataset()
+    #     # dataset = dataset.shuffle(
+    #     #     buffer_size=1000, 
+    #     #     reshuffle_each_iteration=True
+    #     # )
+    #     # dataset = dataset.batch(batch_size, drop_remainder=True)
+    #     # dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    #     return dataset
     
     def val_loader(self, batch_size=None):
         batch_size = batch_size or conf.BATCH_SIZE
