@@ -56,7 +56,7 @@ class TorchModel(nn.Module):
         if Path(f'../trainings/{training_path}/{training_path}.pt').exists():
             checkpoint_path = Path(f'../trainings/{training_path}/{training_path}.pt')
         elif Path(f'acodet/src/models/{training_path}/{training_path}.pt').exists():
-            checkpoint_path = Path(f'../trainings/{training_path}/{training_path}.pt')
+            checkpoint_path = Path(f'acodet/src/models/{training_path}/{training_path}.pt')
         else:
             print(f"Model file {training_path} not found. Please check path.")
             return 1
