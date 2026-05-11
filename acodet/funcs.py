@@ -438,10 +438,10 @@ def save_model_results(ckpt_dir: str, result: dict):
     result : dict
         training results
     """
-    result["fbeta"] = [n for n in result["fbeta"]]
-    result["val_fbeta"] = [n for n in result["val_fbeta"]]
-    result["fbeta1"] = [n for n in result["fbeta1"]]
-    result["val_fbeta1"] = [n for n in result["val_fbeta1"]]
+    result["fbeta"] = [[float(i) for i in n] for n in result["fbeta"]]
+    result["val_fbeta"] = [[float(i) for i in n] for n in result["val_fbeta"]]
+    result["fbeta1"] = [[float(i) for i in n] for n in result["fbeta1"]]
+    result["val_fbeta1"] = [[float(i) for i in n] for n in result["val_fbeta1"]]
     with open(f"{ckpt_dir}/results.json", "w") as f:
         json.dump(result, f)
 
