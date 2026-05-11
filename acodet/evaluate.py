@@ -18,7 +18,12 @@ def evaluate(train_date=False, **kwargs):
     logging.basicConfig(level='INFO', format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger(__name__)
 
-    model_file = conf.EVAL_MODEL_FILE
+    model_file = conf.LOAD_CKPT_PATH
+    if not conf.LOAD_CKPT_PATH:
+        model_file = conf.MODEL_NAME
+    eval_path = Path(f'../trainings/{model_file}') / 'evaluation'
+    eval_path.mkdir(exist_ok=True, parents=True)
+    print(eval_path)
     
     if not conf.MODELCLASSNAME in ('TorchModel', 'HumpBackNorthAtlantic', 'BacpipeModel'):
         logger.error(f"Evaluation step not yet implemented for {conf.MODELCLASSNAME}. Aborting.")
@@ -39,73 +44,17 @@ def evaluate(train_date=False, **kwargs):
     if conf.MODELCLASSNAME == 'TorchModel':
         # if using TorchModel, load from the appropriate path
         model = models.init_model()
-        model_path = Path(model_file)
-        if not Path.exists(model_path):
-            logger.error(f"Model file {model_file} not found. Please check path.")
-            return 1
-        checkpoint = torch.load(model_file, map_location=torch.device(conf.DEVICE))
-        model.load_state_dict(checkpoint)
-        figure_dir = model_path.parent.joinpath('evaluation/')
-        figure_dir.mkdir(exist_ok=True)
-        model = model.eval()
-        print(figure_dir)
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         model = models.init_model()
-        model_path = Path(model_file)
         conf.SR = model.embedder.model.sr
         
-        # this is the case for using their own classifiers
-        if not conf.BOOL_LIN_CLFIER and conf.MODEL_NAME in ['perch_v2', 'google_whale']:
-            model.to(conf.DEVICE)
-        
-        # this is using the linear classifiers we trained
-        else:
-            
-            if not Path.exists(model_path):
-                logger.error(f"Model file {model_file} not found. Please check path.")
-                return 1
-            try:
-                checkpoint = torch.load(model_file, map_location=torch.device(conf.DEVICE))
-            except:
-                checkpoint = torch.load(model_file, weights_only=False, map_location=torch.device(conf.DEVICE))
-            try:
-                model.lin_classifier.load_state_dict(checkpoint)
-            except TypeError:
-                model.lin_classifier.load_state_dict(checkpoint())
-            model.to(conf.DEVICE)
-            lin_classifier = model.lin_classifier
-            backbone = model.embedder.model
-            if conf.MODEL_NAME in ['perch_v2', 'google_whale']:
-                lin_classifier.to('cpu')
-                model = lambda x: lin_classifier(torch.tensor(backbone(backbone.preprocess(x))))
-            else:
-                model = lambda x: lin_classifier(backbone(backbone.preprocess(x)))
-        
-        # preprocessed_frames = model.model.model.preprocess(audio)
-        # new_predictions = torch.tensor(model.classify(preprocessed_frames, **kwargs))
-        
-        
-        figure_dir = model_path.parent.joinpath('evaluation/')
-        figure_dir.mkdir(exist_ok=True)
-        print(figure_dir)
-        
-    elif not train_date:
-        # allow user to evaluate a model that they have not trained yet
-        model = models.init_model(timestamp_foldername=timestamp_foldername)
-        figure_dir = f"../trainings/{timestamp_foldername}/figures/"
+    # elif not train_date:
+    #     # allow user to evaluate a model that they have not trained yet
+    #     model = models.init_model(timestamp_foldername=timestamp_foldername)
     else:
-        # load specified training
-        if Path(f"../trainings/{train_date}/").exists():
-            checkpoint_dir=f"../trainings/{train_date}/{train_date}.keras"
-        elif Path(f"acodet/src/models/{train_date}/").exists():
-            checkpoint_dir=f"acodet/src/models/{train_date}/{train_date}.keras"
-        else:
-            logger.error("Advanced config setting `load_ckpt_path` not found")
-            return 1
         logger.info("initializing model")
-        model = models.init_model(checkpoint_dir=checkpoint_dir)
+        model = models.init_model()
 
-        figure_dir = f"../trainings/{train_date}/figures/"
 
     logger.info(f"Loading test data from {conf.ANNOT_DEST}")
 
@@ -187,7 +136,8 @@ def evaluate(train_date=False, **kwargs):
     predictions = predictions.flatten()
 
     # create path to save the figures in
-    Path(figure_dir).mkdir(exist_ok=True, parents=True)
+    figure_dir = eval_path / 'figures'
+    figure_dir.mkdir(exist_ok=True, parents=True)
 
     ####################################
     ### Precision, recall, and f1 score 

@@ -56,8 +56,19 @@ class HumpBackNorthAtlantic(ModelHelper):
     """
 
     def __init__(self, **kwargs):
-        if kwargs.get('checkpoint_dir'):
-            self.ckpt = kwargs.get('checkpoint_dir')
+        if kwargs.get('training_path'):
+            model_name = kwargs.get('training_path')
+            # load specified training
+            if Path(f"../trainings/{model_name}/{model_name}.keras").exists():
+                self.ckpt=f"../trainings/{model_name}/{model_name}.keras"
+            elif Path(f"acodet/src/models/{model_name}/{model_name}.keras").exists():
+                self.ckpt=f"acodet/src/models/{model_name}/{model_name}.keras"
+            else:
+                self.ckpt = None
+                print("Advanced config setting `load_ckpt_path` not found")
+                return 1
+        else:
+            self.ckpt = None
             
 
     def load_model(self, **kwargs):
@@ -95,6 +106,7 @@ class HumpBackNorthAtlantic(ModelHelper):
                     self.model, 
                     Path(conf.MODEL_DIR) / 'original_model_weights.npz'
                     )
+                print(f'Loaded {conf.MODEL_NAME}')
             else:
                 self.model = tf.keras.models.load_model(
                     self.ckpt,
@@ -106,6 +118,7 @@ class HumpBackNorthAtlantic(ModelHelper):
                         "FBetaScore": FBetaScore
                         }
                     )
+                print(f'Successfully loaded {self.ckpt}')
 
     
     def download_model(self):
@@ -302,8 +315,6 @@ class BacpipeModel(nn.Module):
             from bacpipe.embedding_evaluation.probing.train_probe import LinearProbe as head
         
         if conf.BOOL_LIN_CLFIER:
-
-            
             self.lin_classifier = head(in_dim=bacpipe.EMBEDDING_DIMENSIONS[conf.MODEL_NAME], out_dim=1)
             
             if conf.MODEL_NAME in bacpipe.TF_MODELS:
@@ -315,19 +326,67 @@ class BacpipeModel(nn.Module):
             else:
                 self.lin_classifier.to(device)
                 self.probe_device = device
+                
+    def load_model(self, training_path):
+        if not training_path:
+            print(f'\nSuccessfully loaded {conf.MODEL_NAME} without linear classifier\n')
+            return
+        
+        from pathlib import Path
+        if Path(f'../trainings/{training_path}/{training_path}_bacpipe_lin_clfier.pt').exists():
+            checkpoint_path = Path(f'../trainings/{training_path}/{training_path}_bacpipe_lin_clfier.pt')
+        elif Path(f'acodet/src/models/{training_path}/{training_path}_bacpipe_lin_clfier.pt').exists():
+            checkpoint_path = Path(f'acodet/src/models/{training_path}/{training_path}_bacpipe_lin_clfier.pt')
+        else:
+            print(f"Model file {training_path} not found. Please check path.")
+            return 1
+        
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=torch.device(conf.DEVICE))
+        except:
+            checkpoint = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(conf.DEVICE))
+            
+        try:
+            self.lin_classifier.load_state_dict(checkpoint)
+        except TypeError:
+            self.lin_classifier.load_state_dict(checkpoint())
+        print(f'\nSuccessfully loaded {checkpoint_path}\n')
     
     def forward(self, x, y=None, noise=None, path=None, start=None, training=False, **kwargs):
-        with torch.no_grad():
-            x = self.embedder.model.preprocess(x)
-            embeds = self.embedder.model(x)
-        
-        self.lin_classifier.to(self.probe_device)
-        if conf.BOOL_LIN_CLFIER:
-            logits = self.lin_classifier(torch.tensor(embeds))
-            return logits
-        else:
-            predictions = self.embedder.model.classifier_outputs[-embeds.shape[0]:]
+        if not conf.BOOL_LIN_CLFIER:
+            self.embedder.get_embeddings_from_model(x)
+            predictions = self.embedder.model.classifier_predictions(x)
+            
+            if (conf.MODEL_NAME == 'perch_v2'):
+                model_labels = np.array(self.embedder.model.classes)
+                humpback_label_idx = np.where(model_labels=='Megaptera novaeangliae')[0][0]
+                predictions = predictions[:, humpback_label_idx]
+            elif (conf.MODEL_NAME == 'google_whale'):
+                model_labels = np.array(self.embedder.model.classes)
+                humpback_label_idx = np.where(model_labels=='Humpback')[0][0]
+                predictions = predictions[:, humpback_label_idx]
             return predictions
+        else:
+            if isinstance(x, torch.Tensor):
+                from bacpipe import TF_MODELS
+                if conf.MODEL_NAME in TF_MODELS:
+                    embeds = self.embedder.model(x.cpu()).squeeze()
+                else:
+                    embeds = self.embedder.model(x).squeeze()
+            else:
+                with torch.no_grad():
+                    embeds = self.embedder.get_embeddings_from_model(x)
+            
+            self.lin_classifier.to(self.probe_device)
+            embeds = torch.tensor(embeds).to(self.probe_device)
+            logits = self.lin_classifier(embeds)
+            return logits
+        
+            # NOTE: this is if i want all class results, but right now
+            # we're only interested in humpback results
+            # else:
+            #     predictions = self.embedder.model.classifier_outputs[-embeds.shape[0]:]
+            #     return predictions
 
         
 
@@ -356,11 +415,10 @@ def init_model(
         the sequential model with pretrained weights
     """
     model_class = getattr(sys.modules[__name__], model_name)
-    mod_obj = model_class(**kwargs)
+    mod_obj = model_class(training_path=training_path, **kwargs)
+    mod_obj.load_model(training_path=training_path)
     if conf.MODEL_NAME in ["FlatHBNA"] or conf.MODELCLASSNAME == "BacpipeModel":
         input_specs = True
-    if model_class == HumpBackNorthAtlantic:
-        mod_obj.load_model()
     if not input_specs and hasattr(mod_obj, 'change_input_to_array'):
         mod_obj.change_input_to_array()
     if conf.MODELCLASSNAME == 'HumpBackNorthAtlantic':

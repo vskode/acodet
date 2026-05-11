@@ -647,7 +647,34 @@ def run_inference(
             )
         predictions.extend(preds)
     elif conf.MODELCLASSNAME == 'BacpipeModel':
-        predictions = model.classify(file, **kwargs)
+        if conf.BOOL_LIN_CLFIER:
+            import torch
+            with torch.no_grad():
+                predictions = torch.sigmoid(model(file)).squeeze()
+            try:
+                predictions = np.array(predictions)
+            except:
+                predictions = np.array(predictions.cpu().detach())
+            if len(predictions.shape) == 0:
+                predictions = np.array([predictions])
+                
+        elif conf.MODEL_NAME == 'google_whale':
+            import tensorflow as tf
+            predictions = model(file, **kwargs)
+            predictions = tf.sigmoid(predictions)
+        else:
+            predictions = model(file, **kwargs)
+    elif conf.MODELCLASSNAME == 'TorchModel':
+        import torch
+        audio = load_audio(file, channel)
+        audio_batches = batch_audio(audio)
+        torch_batches = []
+        for batch in audio_batches:
+            torch_batches.append(torch.tensor(window_data_for_prediction(batch).numpy(), dtype=torch.float32))
+        torch_batches = torch.vstack(torch_batches).unsqueeze(1)
+        
+        with torch.inference_mode():
+            predictions = torch.sigmoid(model(torch_batches)).squeeze()
             
     return np.array(predictions)
 

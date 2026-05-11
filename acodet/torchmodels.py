@@ -51,6 +51,19 @@ class TorchModel(nn.Module):
         
         self.augment = TorchAugment(64, conf.N_TIME_BINS)
 
+    def load_model(self, training_path):
+        from pathlib import Path
+        if Path(f'../trainings/{training_path}/{training_path}.pt').exists():
+            checkpoint_path = Path(f'../trainings/{training_path}/{training_path}.pt')
+        elif Path(f'acodet/src/models/{training_path}/{training_path}.pt').exists():
+            checkpoint_path = Path(f'../trainings/{training_path}/{training_path}.pt')
+        else:
+            print(f"Model file {training_path} not found. Please check path.")
+            return 1
+        checkpoint = torch.load(checkpoint_path, map_location=torch.device(conf.DEVICE))
+        self.load_state_dict(checkpoint)
+        print(f'\nsuccessfully loaded {checkpoint_path}\n')
+        self.backbone = self.backbone.eval()
 
     def forward(
         self, x, y=None, noise=None, 
@@ -78,7 +91,12 @@ class TorchModel(nn.Module):
         if len(x_processed.shape) == 3:
             x_processed = x_processed.unsqueeze(1)
             
-        for idx in range(0, x_processed.shape[0] // conf.BATCH_SIZE):
+        for idx in range(
+            0, 
+            x_processed.shape[0] // conf.BATCH_SIZE 
+            if x_processed.shape[0] > conf.BATCH_SIZE 
+            else 1
+            ):
             # Forward pass through the CNN backbone
             logits.append(self.backbone(x_processed[
                 idx*conf.BATCH_SIZE : (idx+1)*conf.BATCH_SIZE
