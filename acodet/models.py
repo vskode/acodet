@@ -1,15 +1,6 @@
-# import tensorflow as tf
-# from tensorflow_addons import metrics
 from pathlib import Path
 import zipfile
 import sys
-import json
-
-import timm
-from types import SimpleNamespace
-# from nnAudio.features.mel import MelSpectrogram
-from .humpback_model_dir.torch_PCEN import PCEN as torch_PCEN
-
 import torch
 import torch.nn as nn
 import torchaudio as ta
@@ -19,37 +10,12 @@ import numpy as np
 
 from acodet.funcs import get_val_labels
 from . import global_config as conf
-# from .humpback_model_dir import humpback_model
-# from .humpback_model_dir import front_end
-# from .humpback_model_dir import leaf_pcen
-
-# from .torchmodels import TorchModel
 
 
 class ModelHelper:
     """
     Helper class to provide checkpoint loading and changing of input shape.
     """
-
-    def load_ckpt(self, ckpt_path, ckpt_name="last"):
-        if isinstance(ckpt_path, Path):
-            ckpt_path = ckpt_path.stem
-        ckpt_path = (
-            Path("../trainings").joinpath(ckpt_path).joinpath(f"unfreeze_{conf.UNFREEZE}")
-        )  # TODO namen ändern
-        try:
-            file_path = ckpt_path.joinpath(f"cp-{ckpt_name}.ckpt.index")
-            if not file_path.exists():
-                ckpts = list(ckpt_path.glob("cp-*.ckpt*"))
-                ckpts.sort()
-                ckpt = ckpts[-1]
-            else:
-                ckpt = file_path
-            self.model.load_weights(
-                str(ckpt).replace(".index", "")
-            ).expect_partial()
-        except Exception as e:
-            print("Checkpoint not found.", e)
 
     def change_input_to_array(self):
         """
@@ -90,7 +56,9 @@ class HumpBackNorthAtlantic(ModelHelper):
     """
 
     def __init__(self, **kwargs):
-        pass
+        if kwargs.get('checkpoint_dir'):
+            self.ckpt = kwargs.get('checkpoint_dir')
+            
 
     def load_model(self, **kwargs):
         from .humpback_model_dir.leaf_pcen import FBetaScore
@@ -113,19 +81,31 @@ class HumpBackNorthAtlantic(ModelHelper):
         elif int(tf.__version__.split('.')[1]) > 15:
             from acodet.transfer_weights import inject_weights
             from acodet.tf220 import PCEN, Block, ResidualPath, MainPath
-            self.model = tf.keras.models.load_model(
-                Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME+'.keras'),
-                custom_objects={
-                    "PCEN": PCEN,
-                    "Block": Block,
-                    "ResidualPath": ResidualPath,
-                    "MainPath": MainPath
-                }
-            )
-            inject_weights(
-                self.model, 
-                Path(conf.MODEL_DIR) / 'original_model_weights.npz'
+            if self.ckpt is None:
+                self.model = tf.keras.models.load_model(
+                    Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME+'.keras'),
+                    custom_objects={
+                        "PCEN": PCEN,
+                        "Block": Block,
+                        "ResidualPath": ResidualPath,
+                        "MainPath": MainPath
+                    }
                 )
+                inject_weights(
+                    self.model, 
+                    Path(conf.MODEL_DIR) / 'original_model_weights.npz'
+                    )
+            else:
+                self.model = tf.keras.models.load_model(
+                    self.ckpt,
+                    custom_objects={
+                        "PCEN": PCEN,
+                        "Block": Block,
+                        "ResidualPath": ResidualPath,
+                        "MainPath": MainPath,
+                        "FBetaScore": FBetaScore
+                        }
+                    )
 
     
     def download_model(self):
@@ -314,12 +294,17 @@ class BacpipeModel(nn.Module):
         
         conf.SR = self.embedder.model.sr
         conf.CONTEXT_WIN = self.embedder.model.segment_length
-        from bacpipe.embedding_evaluation.probing.train_probe import LinearClassifier
+        try:
+            from bacpipe.embedding_evaluation.probing.train_probe import LinearClassifier as head
+        except:
+            # starting from version 1.3.2 I changed this to LinearProbe 
+            # to prevent disambiguation between probe and classifier
+            from bacpipe.embedding_evaluation.probing.train_probe import LinearProbe as head
         
         if conf.BOOL_LIN_CLFIER:
 
             
-            self.lin_classifier = LinearClassifier(in_dim=bacpipe.EMBEDDING_DIMENSIONS[conf.MODEL_NAME], out_dim=1)
+            self.lin_classifier = head(in_dim=bacpipe.EMBEDDING_DIMENSIONS[conf.MODEL_NAME], out_dim=1)
             
             if conf.MODEL_NAME in bacpipe.TF_MODELS:
                 # we need to do this so that the tensorflow model can use
@@ -376,8 +361,6 @@ def init_model(
         input_specs = True
     if model_class == HumpBackNorthAtlantic:
         mod_obj.load_model()
-    elif training_path:
-        mod_obj.load_ckpt(training_path)
     if not input_specs and hasattr(mod_obj, 'change_input_to_array'):
         mod_obj.change_input_to_array()
     if conf.MODELCLASSNAME == 'HumpBackNorthAtlantic':

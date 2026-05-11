@@ -95,13 +95,15 @@ def evaluate(train_date=False, **kwargs):
         figure_dir = f"../trainings/{timestamp_foldername}/figures/"
     else:
         # load specified training
-        if not Path(f"../trainings/{train_date}/").exists():
+        if Path(f"../trainings/{train_date}/").exists():
+            checkpoint_dir=f"../trainings/{train_date}/{train_date}.keras"
+        elif Path(f"acodet/src/models/{train_date}/").exists():
+            checkpoint_dir=f"acodet/src/models/{train_date}/{train_date}.keras"
+        else:
             logger.error("Advanced config setting `load_ckpt_path` not found")
             return 1
         logger.info("initializing model")
-        model = models.init_model(
-            checkpoint_dir=f"../trainings/{train_date}/unfreeze_no-TF",
-        )
+        model = models.init_model(checkpoint_dir=checkpoint_dir)
 
         figure_dir = f"../trainings/{train_date}/figures/"
 
@@ -115,7 +117,11 @@ def evaluate(train_date=False, **kwargs):
 
     predictions = []
     class_labels = []
-    for idx, tuple in tqdm(enumerate(test_data), 'running inference on test data', total=len(data_loader.test)):
+    for idx, tuple in tqdm(
+        enumerate(test_data), 
+        'running inference on test data', 
+        total=len(data_loader.test) // conf.BATCH_SIZE
+        ):
         audio, new_labels, paths, timestamps = tuple
 
         if conf.MODELCLASSNAME == 'BacpipeModel':
@@ -145,8 +151,8 @@ def evaluate(train_date=False, **kwargs):
         
         # Uncomment this if you just want to try running it for a little data to 
         # make sure the code runs.
-        if idx > 100:
-            break
+        # if idx > 100:
+        #     break
     
     if not isinstance(predictions[0], torch.Tensor):
         predictions = torch.tensor(np.array(predictions))
