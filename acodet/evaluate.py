@@ -75,7 +75,11 @@ def evaluate(train_date=False, **kwargs):
             model.to(conf.DEVICE)
             lin_classifier = model.lin_classifier
             backbone = model.embedder.model
-            model = lambda x: lin_classifier(backbone(backbone.preprocess(x)))
+            if conf.MODEL_NAME in ['perch_v2', 'google_whale']:
+                lin_classifier.to('cpu')
+                model = lambda x: lin_classifier(torch.tensor(backbone(backbone.preprocess(x))))
+            else:
+                model = lambda x: lin_classifier(backbone(backbone.preprocess(x)))
         
         # preprocessed_frames = model.model.model.preprocess(audio)
         # new_predictions = torch.tensor(model.classify(preprocessed_frames, **kwargs))
@@ -141,7 +145,7 @@ def evaluate(train_date=False, **kwargs):
         
         # Uncomment this if you just want to try running it for a little data to 
         # make sure the code runs.
-        if idx > 10:
+        if idx > 100:
             break
     
     if not isinstance(predictions[0], torch.Tensor):
@@ -154,11 +158,19 @@ def evaluate(train_date=False, **kwargs):
     # I commented these two out cause at the moment, we are using the model's only as 
     # feature extractors, we would need to add another option 
     
-    if conf.MODEL_NAME == 'perch_v2':
+    if (
+        conf.MODEL_NAME == 'perch_v2' 
+        and conf.MODELCLASSNAME == 'BacpipeModel'
+        and not conf.BOOL_LIN_CLFIER
+        ):
         model_labels = np.array(model.embedder.model.classes)
         humpback_label_idx = np.where(model_labels=='Megaptera novaeangliae')[0][0]
         predictions = predictions[:, humpback_label_idx]
-    elif conf.MODEL_NAME == 'google_whale':
+    elif (
+        conf.MODEL_NAME == 'google_whale' 
+        and conf.MODELCLASSNAME == 'BacpipeModel'
+        and not conf.BOOL_LIN_CLFIER
+        ):
         model_labels = np.array(model.embedder.model.classes)
         humpback_label_idx = np.where(model_labels=='Humpback')[0][0]
         predictions = predictions[:, humpback_label_idx]
@@ -268,6 +280,9 @@ def evaluate(train_date=False, **kwargs):
     # save figure
     fig_filepath = Path(figure_dir).joinpath('roc_curve.png')
     fig.savefig(fig_filepath)
+    
+    
+    print(f'All plots saved to {figure_dir=}')
 
     return
 
