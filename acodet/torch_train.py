@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from acodet import global_config as conf
 
-def train(model, data_loaders, device=None):
+def train(model, data_loaders, output_dir, device=None):
     if not device:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if device == 'cuda':
@@ -26,6 +26,24 @@ def train(model, data_loaders, device=None):
     
     train_loader = data_loaders.train_loader()
     val_loader = data_loaders.val_loader()
+
+    # Set up training stats file
+    with open(output_dir.joinpath('training_stats.csv'), 'w') as file:
+        file.write(
+            'epoch,' +\
+            'train_precision,' +\
+            'train_recall,' +\
+            'train_f1,' +\
+            'train_loss,' +\
+            'train_support_0,' +\
+            'train_support_1,' +\
+            'val_precision,' +\
+            'val_recall,' +\
+            'val_f1,' +\
+            'val_loss,' +\
+            'val_support_0,' +\
+            'val_support_1\n'
+                )
     
     # Setup explicit noise iterator
     noise_loader = data_loaders.noise_loader()
@@ -215,6 +233,25 @@ def train(model, data_loaders, device=None):
             f"Loss: {val_loss:.4f} "
             f"| Support ({val_support['0']},{val_support['1']})"
             )
+
+        # dump summary to file
+        with open(output_dir.joinpath('training_stats.csv'), 'a') as file:
+            file.write(
+                f"{epoch+1}," +\
+                f"{train_prec}," +\
+                f"{train_recall}," +\
+                f"{train_f1}," +\
+                f"{train_loss}," +\
+                f"{train_support['0']}," +\
+                f"{train_support['1']}," +\
+                f"{val_prec}," +\
+                f"{val_recall}," +\
+                f"{val_f1}," +\
+                f"{val_loss}," +\
+                f"{val_support['0']}," +\
+                f"{val_support['1']}\n"
+                )
+
 
         # 6. Step the Scheduler
         scheduler.step()

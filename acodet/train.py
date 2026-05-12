@@ -361,7 +361,7 @@ def run_training(
             annotations,
         )
         
-        model = train(model, data_loaders, device=conf.DEVICE)
+        model = train(model, data_loaders, model_output_dir, device=conf.DEVICE)
         
         import torch
         model_file_name = model_id + '.pt'
@@ -378,7 +378,7 @@ def run_training(
             annotations,
         )
         
-        model = train(model, data_loaders, device=conf.DEVICE)
+        model = train(model, data_loaders, model_output_dir, device=conf.DEVICE)
         
         import torch
         model_file_name = model_id + '_bacpipe_lin_clfier.pt'
