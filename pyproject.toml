@@ -17,6 +17,7 @@ dependencies = [
     "librosa",
     "ml-collections",
     "numba",
+    "numpy<2",
     "panel",
     "plotly",
     "pysocks",
