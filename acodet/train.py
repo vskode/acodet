@@ -109,21 +109,22 @@ def run_training(
     time_start = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
     if load_ckpt_path:
         time_start = load_ckpt_path
-    Path(f"../trainings/{time_start}").mkdir(exist_ok=True, parents=True)
     
-    # make a directory within the conf.MODEL_DIR to save the final model in
+    # make a directory within '../trainings' to save all training outputs 
     if conf.MODELCLASSNAME == 'BacpipeModel':
         model_id = conf.MODEL_NAME.lower() + '_' + time_start
     else:
         model_id = conf.MODELCLASSNAME.lower() + '_' + time_start
 
-    model_sub_dir = Path(conf.MODEL_DIR).joinpath(model_id)
-    model_sub_dir.mkdir(exist_ok=True, parents=True)
+    # make a directory in '../trainings' to save training info in
+    model_output_dir = Path(f"../trainings").joinpath(model_id)
+    model_output_dir.mkdir(exist_ok=True, parents=True)
+    print(f"Saving all model info to: {model_output_dir}")
 
     # save the global config constants to model directory for later reference
     global_config_constants = dir(conf)
     cleaned_constants = [i for i in global_config_constants if i.isupper()]  # filter for just uppercase constants
-    with open(model_sub_dir.joinpath('global_config.txt'), 'w') as file:
+    with open(model_output_dir.joinpath('global_config.txt'), 'w') as file:
         for constant in cleaned_constants:
             file.write(constant + ',' + str(getattr(conf, constant)) + '\n')
 
@@ -168,7 +169,7 @@ def run_training(
         seed = np.random.randint(100)
         info_text += f'\ntrain_set_size = {tfl_obj.n_train}'
         # info_text += f'\nnoise_set_size = {n_noise}'
-        open(f"../trainings/{time_start}/training_info.txt", "w").write(info_text)
+        open(model_output_dir.joinpath("training_info.txt"), "w").write(info_text)
 
         ###################### DATA PREPROC PIPELINE ################################
 
@@ -256,15 +257,16 @@ def run_training(
         #     return lr(step - 2000)  # Then use CosineDecay
 
         # final_lr_schedule = tf.keras.optimizers.schedules.LearningRateSchedule(warmup_schedule)
+        checkpoint_dir = model_output_dir.joinpath(f"unfreeze_{unfreeze}")
         if int(tf.__version__.split('.')[1]) == 15:
             optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
             checkpoint_path = (
-                f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.ckpt"
+                checkpoint_dir.joinpath('/cp-last.ckpt')
             )
         else:
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
             checkpoint_path = (
-                f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.weights.h5"
+                checkpoint_dir.joinpath('/cp-last.weights.h5')
             )
         model.compile(
             optimizer=optimizer,
@@ -293,10 +295,8 @@ def run_training(
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
 
+        checkpoint_path.mkdir(exist_ok=True, parents=True)
 
-        checkpoint_dir = Path(checkpoint_path).parent
-        checkpoint_dir.mkdir(exist_ok=True, parents=True)
-        
         earlystopping_callback = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
             min_delta=0.01,
@@ -332,7 +332,7 @@ def run_training(
         )
         result = hist.history      
         save_model_results(checkpoint_dir, result)
-        save_model(model_file_name, model_sub_dir, model)
+        save_model(model_file_name, model_output_dir, model)
         
         ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 
@@ -365,7 +365,7 @@ def run_training(
         
         import torch
         model_file_name = model_id + '.pt'
-        torch.save(model.state_dict(), model_sub_dir.joinpath(model_file_name))
+        torch.save(model.state_dict(), model_output_dir.joinpath(model_file_name))
         
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         set_seed(42)
@@ -384,13 +384,13 @@ def run_training(
         model_file_name = model_id + '_bacpipe_lin_clfier.pt'
         torch.save(
             model.lin_classifier.state_dict(), 
-            model_sub_dir.joinpath(model_file_name)
+            model_output_dir.joinpath(model_file_name)
             )
 
 
 def save_model(
     model_file_name,
-    model_sub_dir,
+    model_output_dir,
     model,
     lr=5e-4,
     weight_clip=None,
@@ -421,7 +421,7 @@ def save_model(
             ),
         ],
     )
-    model.save(model_sub_dir.joinpath(model_file_name))
+    model.save(model_output_dir.joinpath(model_file_name))
 
 
 ##############################################################################
