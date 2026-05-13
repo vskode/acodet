@@ -145,7 +145,7 @@ def run_training(
         from acodet.plot_utils import plot_model_results, create_and_save_figure
         from acodet.tfrec import run_data_pipeline, prepare, make_spec_tensor
         from acodet.augmentation import run_augment_pipeline
-        from acodet.humpback_model_dir.leaf_pcen import FBetaScore, TPositives
+        from acodet.humpback_model_dir.leaf_pcen import FBetaScore, TPositives, Support
         import tensorflow as tf
         
         from .tf_dataloader import TFLoader
@@ -275,21 +275,33 @@ def run_training(
             optimizer=optimizer,
             loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
             metrics=[
-                tf.keras.metrics.BinaryAccuracy(),
+                # tf.keras.metrics.BinaryAccuracy(),
                 tf.keras.metrics.Precision(),
                 tf.keras.metrics.Recall(),
-                FBetaScore(
-                    num_classes=1,
-                    beta=f_score_beta,
-                    threshold=f_score_thresh,
-                    name="fbeta",
-                ),
+                # FBetaScore(
+                #    num_classes=1,
+                #    beta=f_score_beta,
+                #    threshold=f_score_thresh,
+                #    name="fbeta",
+                # ),
                 FBetaScore(
                     num_classes=1,
                     beta=1.0,
                     threshold=f_score_thresh,
-                    name="fbeta1",
+                    name="f_1",
                 ),
+                Support(
+                    num_classes=1,
+                    threshold=f_score_thresh,
+                    name="support_0",
+                    call=0
+                ),
+                Support(
+                    num_classes=1,
+                    threshold=f_score_thresh,
+                    name="support_1",
+                    call=1
+                )
                 # TPositives(name='tpos')
             ],
         )
@@ -411,20 +423,32 @@ def save_model(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
         loss=tf.keras.losses.BinaryCrossentropy(),
         metrics=[
-            tf.keras.metrics.BinaryAccuracy(),
+            # tf.keras.metrics.BinaryAccuracy(),
             tf.keras.metrics.Precision(),
             tf.keras.metrics.Recall(),
-            FBetaScore(
-                num_classes=1,
-                beta=f_score_beta,
-                threshold=f_score_thresh,
-                name="fbeta",
-            ),
+            # FBetaScore(
+            #    num_classes=1,
+            #    beta=f_score_beta,
+            #    threshold=f_score_thresh,
+            #    name="fbeta",
+            # ),
             FBetaScore(
                 num_classes=1,
                 beta=1.0,
                 threshold=f_score_thresh,
-                name="fbeta1",
+                name="f_1",
+            ),
+            Support(
+                num_classes=1,
+                threshold=f_score_thresh,
+                call=0,
+                name="support_0",
+            ),
+            Support(
+                num_classes=1,
+                threshold=f_score_thresh,
+                call=1,
+                name="support_1",
             ),
         ],
     )

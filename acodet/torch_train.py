@@ -31,15 +31,15 @@ def train(model, data_loaders, output_dir, device=None):
     with open(output_dir.joinpath('training_stats.csv'), 'w') as file:
         file.write(
             'epoch,' +\
-            'train_precision,' +\
-            'train_recall,' +\
-            'train_f1,' +\
-            'train_loss,' +\
-            'train_support_0,' +\
-            'train_support_1,' +\
+            'precision,' +\
+            'recall,' +\
+            'f_1,' +\
+            'loss,' +\
+            'support_0,' +\
+            'support_1,' +\
             'val_precision,' +\
             'val_recall,' +\
-            'val_f1,' +\
+            'val_f_1,' +\
             'val_loss,' +\
             'val_support_0,' +\
             'val_support_1\n'
