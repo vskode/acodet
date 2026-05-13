@@ -317,6 +317,12 @@ def run_training(
             save_freq="epoch",
         )
 
+        trainstats_callback = tf.keras.callbacks.CSVLogger(
+            filename=model_output_dir.joinpath('training_stats.csv'),
+            separator=',',
+            append=True
+        )
+
         model.save_weights(checkpoint_path)
 
         model_file_name = model_id
@@ -329,7 +335,7 @@ def run_training(
             steps_per_epoch=steps_per_epoch,
             validation_data=val_data,
             validation_steps=steps_per_epoch,  
-            callbacks=[earlystopping_callback, modelsaving_callback],
+            callbacks=[earlystopping_callback, modelsaving_callback, trainstats_callback],
         )
         result = hist.history      
         save_model_results(checkpoint_dir, result)
