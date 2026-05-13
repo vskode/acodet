@@ -258,16 +258,19 @@ def run_training(
 
         # final_lr_schedule = tf.keras.optimizers.schedules.LearningRateSchedule(warmup_schedule)
         checkpoint_dir = model_output_dir.joinpath(f"unfreeze_{unfreeze}")
+        checkpoint_dir.mkdir(exist_ok=True, parents=True)
+
         if int(tf.__version__.split('.')[1]) == 15:
             optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
             checkpoint_path = (
-                checkpoint_dir.joinpath('/cp-last.ckpt')
+                checkpoint_dir.joinpath('cp-last.ckpt')
             )
         else:
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
             checkpoint_path = (
-                checkpoint_dir.joinpath('/cp-last.weights.h5')
+                checkpoint_dir.joinpath('cp-last.weights.h5')
             )
+
         model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
@@ -294,8 +297,6 @@ def run_training(
         if unfreeze:
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
-
-        checkpoint_path.mkdir(exist_ok=True, parents=True)
 
         earlystopping_callback = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
