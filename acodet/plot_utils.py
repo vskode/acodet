@@ -51,7 +51,10 @@ def plot_model_results(
         with open(f"{checkpoint_path}/results.json", "r") as f:
             results = json.load(f)
             for k in drop_keyz:
-                del results[k]
+                try:
+                    del results[k]
+                except KeyError:
+                    continue
 
         if j == 0:
             c = len(list(results.keys())) // 2

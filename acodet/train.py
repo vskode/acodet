@@ -356,7 +356,7 @@ def run_training(
         ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 
         plot_model_results(
-            time_start, data=data_description, init_lr=init_lr, final_lr=final_lr
+            model_id, data=data_description, init_lr=init_lr, final_lr=final_lr
         )
         
         # create_and_save_figure(
@@ -418,7 +418,7 @@ def save_model(
 ):
     
     import tensorflow as tf
-    from acodet.humpback_model_dir.leaf_pcen import FBetaScore
+    from acodet.humpback_model_dir.leaf_pcen import FBetaScore, Support
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
         loss=tf.keras.losses.BinaryCrossentropy(),
