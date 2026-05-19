@@ -440,8 +440,12 @@ def save_model_results(ckpt_dir: str, result: dict):
     """
     # result["fbeta"] = [[float(i) for i in n] for n in result["fbeta"]]
     # result["val_fbeta"] = [[float(i) for i in n] for n in result["val_fbeta"]]
-    result["f_1"] = [[float(i) for i in n] for n in result["f_1"]]
-    result["val_f_1"] = [[float(i) for i in n] for n in result["val_f_1"]]
+    try:
+        result["f_1"] = [n.item() for n in result["f_1"]]
+        result["val_f_1"] = [n.item() for n in result["val_f_1"]]
+    except AttributeError:
+        result["f_1"] = [n for n in result["f_1"]]
+        result["val_f_1"] = [n for n in result["val_f_1"]]
     with open(f"{ckpt_dir}/results.json", "w") as f:
         json.dump(result, f)
 
