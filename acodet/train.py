@@ -109,21 +109,22 @@ def run_training(
     time_start = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
     if load_ckpt_path:
         time_start = load_ckpt_path
-    Path(f"../trainings/{time_start}").mkdir(exist_ok=True, parents=True)
     
-    # make a directory within the conf.MODEL_DIR to save the final model in
+    # make a directory within '../trainings' to save all training outputs 
     if conf.MODELCLASSNAME == 'BacpipeModel':
         model_id = conf.MODEL_NAME.lower() + '_' + time_start
     else:
         model_id = conf.MODELCLASSNAME.lower() + '_' + time_start
 
-    model_sub_dir = Path(conf.MODEL_DIR).joinpath(model_id)
-    model_sub_dir.mkdir(exist_ok=True, parents=True)
+    # make a directory in '../trainings' to save training info in
+    model_output_dir = Path(f"../trainings").joinpath(model_id)
+    model_output_dir.mkdir(exist_ok=True, parents=True)
+    print(f"Saving all model info to: {model_output_dir}")
 
     # save the global config constants to model directory for later reference
     global_config_constants = dir(conf)
     cleaned_constants = [i for i in global_config_constants if i.isupper()]  # filter for just uppercase constants
-    with open(model_sub_dir.joinpath('global_config.txt'), 'w') as file:
+    with open(model_output_dir.joinpath('global_config.txt'), 'w') as file:
         for constant in cleaned_constants:
             file.write(constant + ',' + str(getattr(conf, constant)) + '\n')
 
@@ -144,7 +145,7 @@ def run_training(
         from acodet.plot_utils import plot_model_results, create_and_save_figure
         from acodet.tfrec import run_data_pipeline, prepare, make_spec_tensor
         from acodet.augmentation import run_augment_pipeline
-        from acodet.humpback_model_dir.leaf_pcen import FBetaScore, TPositives
+        from acodet.humpback_model_dir.leaf_pcen import FBetaScore, TPositives, Support
         import tensorflow as tf
         
         from .tf_dataloader import TFLoader
@@ -168,7 +169,7 @@ def run_training(
         seed = np.random.randint(100)
         info_text += f'\ntrain_set_size = {tfl_obj.n_train}'
         # info_text += f'\nnoise_set_size = {n_noise}'
-        open(f"../trainings/{time_start}/training_info.txt", "w").write(info_text)
+        open(model_output_dir.joinpath("training_info.txt"), "w").write(info_text)
 
         ###################### DATA PREPROC PIPELINE ################################
 
@@ -256,35 +257,51 @@ def run_training(
         #     return lr(step - 2000)  # Then use CosineDecay
 
         # final_lr_schedule = tf.keras.optimizers.schedules.LearningRateSchedule(warmup_schedule)
+        checkpoint_dir = model_output_dir.joinpath(f"unfreeze_{unfreeze}")
+        checkpoint_dir.mkdir(exist_ok=True, parents=True)
+
         if int(tf.__version__.split('.')[1]) == 15:
             optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=lr)
             checkpoint_path = (
-                f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.ckpt"
+                checkpoint_dir.joinpath('cp-last.ckpt')
             )
         else:
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
             checkpoint_path = (
-                f"../trainings/{time_start}/unfreeze_{unfreeze}" + "/cp-last.weights.h5"
+                checkpoint_dir.joinpath('cp-last.weights.h5')
             )
+
         model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
             metrics=[
-                tf.keras.metrics.BinaryAccuracy(),
+                # tf.keras.metrics.BinaryAccuracy(),
                 tf.keras.metrics.Precision(),
                 tf.keras.metrics.Recall(),
-                FBetaScore(
-                    num_classes=1,
-                    beta=f_score_beta,
-                    threshold=f_score_thresh,
-                    name="fbeta",
-                ),
+                # FBetaScore(
+                #    num_classes=1,
+                #    beta=f_score_beta,
+                #    threshold=f_score_thresh,
+                #    name="fbeta",
+                # ),
                 FBetaScore(
                     num_classes=1,
                     beta=1.0,
                     threshold=f_score_thresh,
-                    name="fbeta1",
+                    name="f_1",
                 ),
+                Support(
+                    num_classes=1,
+                    threshold=f_score_thresh,
+                    name="support_0",
+                    call=0
+                ),
+                Support(
+                    num_classes=1,
+                    threshold=f_score_thresh,
+                    name="support_1",
+                    call=1
+                )
                 # TPositives(name='tpos')
             ],
         )
@@ -293,10 +310,6 @@ def run_training(
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
 
-
-        checkpoint_dir = Path(checkpoint_path).parent
-        checkpoint_dir.mkdir(exist_ok=True, parents=True)
-        
         earlystopping_callback = tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
             min_delta=0.01,
@@ -316,6 +329,12 @@ def run_training(
             save_freq="epoch",
         )
 
+        trainstats_callback = tf.keras.callbacks.CSVLogger(
+            filename=model_output_dir.joinpath('training_stats.csv'),
+            separator=',',
+            append=True
+        )
+
         model.save_weights(checkpoint_path)
 
         model_file_name = model_id
@@ -328,11 +347,11 @@ def run_training(
             steps_per_epoch=steps_per_epoch,
             validation_data=val_data,
             validation_steps=steps_per_epoch,  
-            callbacks=[earlystopping_callback, modelsaving_callback],
+            callbacks=[earlystopping_callback, modelsaving_callback, trainstats_callback],
         )
         result = hist.history      
         save_model_results(checkpoint_dir, result)
-        save_model(model_file_name, model_sub_dir, model)
+        save_model(model_file_name, model_output_dir, model)
         
         ############## PLOT TRAINING PROGRESS & MODEL EVALUTAIONS ###################
 
@@ -361,11 +380,11 @@ def run_training(
             annotations,
         )
         
-        model = train(model, data_loaders, device=conf.DEVICE)
+        model = train(model, data_loaders, model_output_dir, device=conf.DEVICE)
         
         import torch
         model_file_name = model_id + '.pt'
-        torch.save(model.state_dict(), model_sub_dir.joinpath(model_file_name))
+        torch.save(model.state_dict(), model_output_dir.joinpath(model_file_name))
         
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         set_seed(42)
@@ -378,19 +397,19 @@ def run_training(
             annotations,
         )
         
-        model = train(model, data_loaders, device=conf.DEVICE)
+        model = train(model, data_loaders, model_output_dir, device=conf.DEVICE)
         
         import torch
         model_file_name = model_id + '_bacpipe_lin_clfier.pt'
         torch.save(
             model.lin_classifier.state_dict(), 
-            model_sub_dir.joinpath(model_file_name)
+            model_output_dir.joinpath(model_file_name)
             )
 
 
 def save_model(
     model_file_name,
-    model_sub_dir,
+    model_output_dir,
     model,
     lr=5e-4,
     weight_clip=None,
@@ -404,24 +423,36 @@ def save_model(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
         loss=tf.keras.losses.BinaryCrossentropy(),
         metrics=[
-            tf.keras.metrics.BinaryAccuracy(),
+            # tf.keras.metrics.BinaryAccuracy(),
             tf.keras.metrics.Precision(),
             tf.keras.metrics.Recall(),
-            FBetaScore(
-                num_classes=1,
-                beta=f_score_beta,
-                threshold=f_score_thresh,
-                name="fbeta",
-            ),
+            # FBetaScore(
+            #    num_classes=1,
+            #    beta=f_score_beta,
+            #    threshold=f_score_thresh,
+            #    name="fbeta",
+            # ),
             FBetaScore(
                 num_classes=1,
                 beta=1.0,
                 threshold=f_score_thresh,
-                name="fbeta1",
+                name="f_1",
+            ),
+            Support(
+                num_classes=1,
+                threshold=f_score_thresh,
+                call=0,
+                name="support_0",
+            ),
+            Support(
+                num_classes=1,
+                threshold=f_score_thresh,
+                call=1,
+                name="support_1",
             ),
         ],
     )
-    model.save(model_sub_dir.joinpath(model_file_name))
+    model.save(model_output_dir.joinpath(model_file_name))
 
 
 ##############################################################################

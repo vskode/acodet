@@ -160,6 +160,55 @@ class FBetaScore(tf.keras.metrics.Metric):
             "threshold": self.threshold,
         })
         return config
+
+
+class Support(tf.keras.metrics.Metric):
+    def __init__(self, num_classes=1, threshold=0.5, name="support", call=True, dtype=tf.float32, **kwargs):
+        super().__init__(name=name, dtype=dtype, **kwargs)
+        self.num_classes = num_classes
+        self.threshold = threshold
+        self.call = call
+
+        # Initialize variables
+        self.calls = self.add_weight(name="calls", shape=(num_classes,), initializer="zeros")
+        self.noise = self.add_weight(name="noise", shape=(num_classes,), initializer="zeros")
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        import tensorflow as tf
+        # 1. Cast inputs to the correct type
+        y_true = tf.cast(y_true, self.dtype)
+
+        # 2. Ensure shapes match to prevent broadcasting explosion
+        # If y_true is (Batch,) and y_pred is (Batch, 1), this reshapes y_true to (Batch, 1)
+        # (Not strictly necessary since we're not currently using y_pred)
+        y_true = tf.reshape(y_true, tf.shape(y_pred))
+
+        # 3. Calculate stats
+        calls = tf.reduce_sum(y_true, axis=0)
+        noise = tf.reduce_sum((1 - y_true), axis=0)
+
+        self.calls.assign_add(calls)
+        self.noise.assign_add(noise)
+
+    def result(self):
+        if self.call:
+            return self.calls
+        else:
+            return self.noise
+
+    def reset_state(self):
+        import tensorflow as tf
+        for v in self.variables:
+            v.assign(tf.zeros_like(v))
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "num_classes": self.num_classes,
+            "threshold": self.threshold,
+            "call": self.call,
+        })
+        return config
     
 
 class TPositives(tf.keras.metrics.Metric):
