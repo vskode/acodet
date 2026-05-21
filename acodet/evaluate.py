@@ -148,6 +148,15 @@ def evaluate(train_date=False, **kwargs):
     precision, recall, thresholds = metrics.precision_recall_curve(class_labels, predictions)
     fig_filepath = Path(figure_dir).joinpath('precision_recall_stats.txt')
 
+    fn, true, fp = np.unique([np.round(jj)-ii for jj, ii in zip(predictions, class_labels)], return_counts=True)[-1]
+    logger.info(f"{fn=}, {true=}, {fp=}")
+    
+    d = metrics.classification_report(
+        class_labels,
+        [np.round(ii) for ii in predictions],
+        output_dict=True
+    )
+    logger.info(d)
     # iterate through thresholds
     # and write precision, recall, and f1 score to a text file
     f1_scores = []
