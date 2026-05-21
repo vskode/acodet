@@ -606,6 +606,8 @@ def create_Raven_annotation_df(preds: np.ndarray) -> pd.DataFrame:
         ]
     )
     df['Selection'] = range(1, len(preds)+1)
+    df['View'] = 'Spectrogram 1'
+    df['Channel'] = '1'
     df = df.set_index('Selection')
     df["Begin Time (s)"] = (
         np.arange(0, len(preds)) * conf.CONTEXT_WIN
@@ -724,7 +726,8 @@ def create_annotation_df(
                 preds = tf.reduce_max(all_preds, axis=1).numpy()
         df = create_Raven_annotation_df(preds, ind)
         annots = pd.concat([annots, df], ignore_index=True)
-
+    annots['View'] = 'Spectrogram 1'
+    annots['Channel'] = '1'
     annots.index = np.arange(1, len(annots) + 1)
     annots.index.name = "Selection"
     return annots
@@ -866,7 +869,7 @@ def gen_annotations(
         
         save_path.mkdir(exist_ok=True, parents=True)
         annotation_df.to_csv(
-            save_path.joinpath(f"{file.stem}_annot_{mod_label}.txt"), sep="\t"
+            save_path.joinpath(f"{file.stem}_annot_{mod_label}.selection.table.txt"), sep="\t"
         )
 
     return annotation_df
