@@ -189,7 +189,7 @@ def train(model, data_loaders, output_dir, device=None):
 
                 outputs = model(inputs)
                 val_loss = criterion(outputs.squeeze(), labels)
-                val_running_loss += val_loss.item() / inputs.size(0)
+                val_running_loss += val_loss.item() * inputs.size(0)
                 
                 probs = torch.sigmoid(outputs)
                 preds = (probs > 0.5).float().flatten()
