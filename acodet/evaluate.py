@@ -21,16 +21,12 @@ def evaluate(train_date=False, **kwargs):
     model_file = conf.LOAD_CKPT_PATH
     if not conf.LOAD_CKPT_PATH:
         model_file = conf.MODEL_NAME
-    eval_path = Path(f'../trainings/{model_file}') / 'evaluation'
-    eval_path.mkdir(exist_ok=True, parents=True)
-    print(eval_path)
+    figure_dir = Path(f'../trainings/{model_file}') / 'evaluation'
+    figure_dir.mkdir(exist_ok=True, parents=True)
     
     if not conf.MODELCLASSNAME in ('TorchModel', 'HumpBackNorthAtlantic', 'BacpipeModel'):
         logger.error(f"Evaluation step not yet implemented for {conf.MODELCLASSNAME}. Aborting.")
         return 1
-
-    if conf.DEVICE != 'cpu':
-        logger.warning(f"This script runs on CPU. Current device {conf.DEVICE} may not be used.")
 
     # don't import tensorflow if it's not needed
     if not conf.MODELCLASSNAME in ('TorchModel', 'BacpipeModel'):
@@ -100,8 +96,8 @@ def evaluate(train_date=False, **kwargs):
         
         # Uncomment this if you just want to try running it for a little data to 
         # make sure the code runs.
-        # if idx > 100:
-        #     break
+        if idx > 100:
+            break
     
     if not isinstance(predictions[0], torch.Tensor):
         predictions = torch.tensor(np.array(predictions))
@@ -109,7 +105,7 @@ def evaluate(train_date=False, **kwargs):
     else:
         predictions = torch.hstack(predictions).to('cpu')
         class_labels = torch.hstack(class_labels).to('cpu')
-            
+
     # I commented these two out cause at the moment, we are using the model's only as 
     # feature extractors, we would need to add another option 
     
@@ -135,10 +131,6 @@ def evaluate(train_date=False, **kwargs):
     class_labels = class_labels.flatten()
     predictions = predictions.flatten()
 
-    # create path to save the figures in
-    figure_dir = eval_path / 'figures'
-    figure_dir.mkdir(exist_ok=True, parents=True)
-
     ####################################
     ### Precision, recall, and f1 score 
     ####################################
@@ -146,7 +138,7 @@ def evaluate(train_date=False, **kwargs):
 
     # calculate precision and recall
     precision, recall, thresholds = metrics.precision_recall_curve(class_labels, predictions)
-    fig_filepath = Path(figure_dir).joinpath('precision_recall_stats.txt')
+    fig_filepath = Path(figure_dir).joinpath('precision_recall_stats.csv')
 
     fn, true, fp = np.unique([np.round(jj)-ii for jj, ii in zip(predictions, class_labels)], return_counts=True)[-1]
     logger.info(f"{fn=}, {true=}, {fp=}")
@@ -173,7 +165,7 @@ def evaluate(train_date=False, **kwargs):
     # create threshold vs f1 score plot
     fig, ax = plt.subplots()
     ax.plot(thresholds, f1_scores)
-    ax.set_title('F1 Score by threshold')
+    ax.set_title(f'F1 Score by threshold: {model_file}')
     ax.set_ylim(0.0, 1.05)
     ax.set_ylabel('F1 Score')
     ax.set_xlabel('Threshold')
@@ -183,7 +175,7 @@ def evaluate(train_date=False, **kwargs):
     # create precision-recall curve plot
     fig, ax = plt.subplots()
     ax.plot(recall, precision, color='tab:blue', label='PR curve (area = %0.2f)' % auc_pr)
-    ax.set_title('Precision-Recall Curve')
+    ax.set_title(f'Precision-Recall Curve: {model_file}')
     ax.set_ylabel('Precision')
     ax.set_xlabel('Recall')
     ax.set_xlim([0.0, 1.0])
@@ -194,10 +186,42 @@ def evaluate(train_date=False, **kwargs):
     fig_filepath = Path(figure_dir).joinpath('precision_recall_curve.png')
     fig.savefig(fig_filepath)
 
+    #####################################
+    # Confusion matrix for threshold of 0.5
+    #####################################
+    logger.info("Creating confusion matrix for threshold 0.5")
+
+    # a confusion needs binary classification
+    # use 0.5 first, which is what we use in 
+    # training logging
+    # so it's a clean comparison
+
+    # first find the threshold closest to 0.5
+    # create a matrix of the absolute difference between threshold and 0.5
+    threshold_diff = np.absolute(thresholds - 0.5)
+    # then find the index of the smallest element of that array
+    closest_threshold_index = threshold_diff.argmin() 
+    closest_threshold = thresholds[closest_threshold_index]
+
+    # now use that cutoff to sort predictions into noise/ call
+    prediction_classes = (predictions > closest_threshold).to(torch.float)
+
+    # calculate confusion matrix
+    confusion_matrix = metrics.confusion_matrix(class_labels, prediction_classes)
+    cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix)
+    title = f"{model_file} threshold {closest_threshold:.2f}"
+    cm_display.plot()
+    cm_display.ax_.set_title(title)
+
+    # save plot
+    fig_filepath = Path(figure_dir).joinpath(f'confusion_matrix_05.png')
+    cm_display.figure_.savefig(fig_filepath)
+    plt.close()
+
     ###################################
-    # Confusion matrix
+    # Confusion matrix for best f1 score`
     ###################################
-    logger.info("Creating confusion matrix")
+    logger.info("Creating confusion matrix for best threshold")
 
     # a confusion matrix needs binary classification
     # so use the best f1 score calculated above
@@ -215,12 +239,25 @@ def evaluate(train_date=False, **kwargs):
 
     # create interpretable display
     cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix)
+    cm_display.plot()
+    cm_display.ax_.set_title(f"{model_file} threshold {best_threshold:.2f}")
 
     # save plot
-    threshold_pretty = (best_threshold * 100).astype('int')
-    fig_filepath = Path(figure_dir).joinpath(f'confusion_matrix_threshold_{threshold_pretty}.png')
-    cm_display.plot().figure_.savefig(fig_filepath)
+    fig_filepath = Path(figure_dir).joinpath(f'confusion_matrix_best_threshold.png')
+    cm_display.figure_.savefig(fig_filepath)
     plt.close()
+    
+    ###################################################
+    # write the stats of the best f1 score to file
+    ###################################################
+
+    best_stats_filepath = Path(figure_dir).joinpath('best_f1_stats.csv')
+    with open(best_stats_filepath, 'w') as file:
+        file.write("precision,recall,threshold,f1_score\n")
+        file.write(str(precision[best_f1_index]) + ',' + \
+                str(recall[best_f1_index]) + ',' + \
+                str(thresholds[best_f1_index]) + ',' + \
+                str(f1_scores[best_f1_index]) + '\n')
 
     ###################################
     # ROC Curve
@@ -239,7 +276,7 @@ def evaluate(train_date=False, **kwargs):
     ax.set_ylim(0.0, 1.05)
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
-    ax.set_title("ROC Curve")
+    ax.set_title(f"ROC Curve: {model_file}")
     plt.legend()
 
     # save figure
