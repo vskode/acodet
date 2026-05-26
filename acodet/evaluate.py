@@ -96,8 +96,8 @@ def evaluate(train_date=False, **kwargs):
         
         # Uncomment this if you just want to try running it for a little data to 
         # make sure the code runs.
-        if idx > 100:
-            break
+        # if idx > 100:
+        #    break
     
     if not isinstance(predictions[0], torch.Tensor):
         predictions = torch.tensor(np.array(predictions))
