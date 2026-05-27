@@ -58,7 +58,8 @@ def compensate_for_naming_inconsistencies(hard_drive_path, file):
             )
 
     if not file_path:
-        print("sound file could not be found, continuing with next file")
+        print(f"Unable to find sound file for {file.stem} under sound directory {hard_drive_path}. Continuing with "
+              "next file.")
         return False
     return file_path
 
@@ -141,7 +142,7 @@ def differentiate_label_flags(df, flag=None):
             df.loc[:, conf.ANNOTATION_COLUMN] = 'n'
     if type(df[conf.ANNOTATION_COLUMN][0]) == str:
         df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c", 
-                "label"] = 1
+                "label"] = "1"
         df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n", 
                 "label"] = "explicit 0"
     df_std = seperate_long_annotations(df)
@@ -163,7 +164,7 @@ def differentiate_label_flags(df, flag=None):
 
 def get_labels(file, df, active_learning=False, **kwargs):
     if not active_learning:
-        df["label"] = 1
+        df["label"] = "1"
     else:
         noise_flag, annotated_flag, calls_flag = [
             "_allnoise",
@@ -172,10 +173,10 @@ def get_labels(file, df, active_learning=False, **kwargs):
         ]
         df = df.iloc[df.Selection.drop_duplicates().index]
         if calls_flag in file.stem:
-            df["label"] = 1
+            df["label"] = "1"  # Create column using a string b/c we will sometimes use "explicit 0" as a label.
             df = differentiate_label_flags(df, flag="calls")
         elif noise_flag in file.stem:
-            df["label"] = 0
+            df["label"] = "0"  # Create column using a string b/c we will sometimes use "explicit 0" as a label.
             df = differentiate_label_flags(df, flag="noise")
         elif annotated_flag in file.stem:
             df_clean = remove_str_flags_from_predictions(df)
