@@ -48,7 +48,7 @@ def print_train_sizes():
 
 def run_training(
     ModelClassName=conf.MODELCLASSNAME,
-    data_dir=conf.TFREC_DESTINATION,
+    data_dir=conf.ANNOT_DESTINATION,
     # TODO trennen destination und standardpfad - oder doch nicht?
     batch_size=conf.BATCH_SIZE,
     epochs=conf.EPOCHS,
@@ -462,7 +462,7 @@ def save_model(
 ##############################################################################
 
 if __name__ == "__main__":
-    data_dir = list(Path(conf.TFREC_DESTINATION).iterdir())
+    data_dir = list(Path(conf.ANNOT_DESTINATION).iterdir())
 
     epochs = [*[43] * 5, 100]
     batch_size = [32] * 6

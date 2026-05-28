@@ -130,28 +130,6 @@ def create_example(audio, label, file, time):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def read_raw_file(file, annots, **kwargs):
-    """
-    Load annotations for file, correct annotation starting times to make sure
-    that the signal is in the window center.
-
-    Args:
-        file (string): path to file
-
-    Returns:
-        tuple: audio segment arrays, label arrays and time arrays
-    """
-
-    file_annots = funcs.get_annots_for_file(annots, file)
-
-    x_call, x_noise, times_c, times_n = funcs.cntxt_wndw_arr(
-        file_annots, file, **kwargs
-    )
-    y_call = np.ones(len(x_call), dtype="float32")
-    y_noise = np.zeros(len(x_noise), dtype="float32")
-
-    return (x_call, y_call, times_c), (x_noise, y_noise, times_n)
-
 
 def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
     """
@@ -370,7 +348,7 @@ def write_tfrec_dataset(annot_dir=conf.ANNOT_DEST, active_learning=True):
     else:
         all_noise = False
 
-    save_dir = Path(conf.TFREC_DESTINATION).joinpath(
+    save_dir = Path(conf.ANNOT_DESTINATION).joinpath(
         get_src_dir_structure(file, annot_dir)
     )
 

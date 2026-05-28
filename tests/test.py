@@ -26,7 +26,7 @@ session[
 session[
     "reviewed_annotation_source"
 ] = "tests/test_files/test_generated_annotations"
-session["tfrecords_destination_folder"] = "tests/test_files/test_tfrecords"
+session["annotation_destination_folder"] = "tests/test_files/test_tfrecords"
 
 with open("acodet/src/tmp_session.json", "w") as f:
     json.dump(session, f)
@@ -92,7 +92,7 @@ def test_tfrecord():
     time_stamps.sort()
     time_stamp = time_stamps[-1]
     write_tfrec_dataset(annot_dir=time_stamp, active_learning=False)
-    metadata_file_path = Path(conf.TFREC_DESTINATION).joinpath(
+    metadata_file_path = Path(conf.ANNOT_DESTINATION).joinpath(
         "dataset_meta_train.json"
     )
     assert metadata_file_path.exists() ==1, \

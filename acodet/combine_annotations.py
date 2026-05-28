@@ -8,6 +8,7 @@ import os
 import numpy as np
 import acodet.global_config as conf
 import json
+from tqdm import tqdm
 
 with open("acodet/annotation_mappers.json", "r") as m:
     mappers = json.load(m)
@@ -128,7 +129,7 @@ def label_explicit_noise(df):
     df_clean = remove_str_flags_from_predictions(df)
 
     expl_noise_crit_idx = np.where(df_clean[conf.ANNOTATION_COLUMN] > 0.9)[0]
-    df.loc[expl_noise_crit_idx, "label"] = "explicit 0"
+    df.loc[expl_noise_crit_idx, "label"] = -1
     return df
 
 
@@ -144,7 +145,7 @@ def differentiate_label_flags(df, flag=None):
         df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c", 
                 "label"] = "1"
         df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n", 
-                "label"] = "explicit 0"
+                "label"] = -1
     df_std = seperate_long_annotations(df)
 
     
@@ -162,7 +163,7 @@ def differentiate_label_flags(df, flag=None):
     return df_std
 
 
-def get_labels(file, df, active_learning=False, **kwargs):
+def get_labels(file, df, active_learning=False, inbetween_noise=False, **kwargs):
     if not active_learning:
         df["label"] = "1"
     else:
@@ -179,9 +180,32 @@ def get_labels(file, df, active_learning=False, **kwargs):
             df["label"] = "0"  # Create column using a string b/c we will sometimes use "explicit 0" as a label.
             df = differentiate_label_flags(df, flag="noise")
         elif annotated_flag in file.stem:
-            df_clean = remove_str_flags_from_predictions(df)
-            df.loc[df_clean.index, conf.ANNOTATION_COLUMN] = "u"
-            df = differentiate_label_flags(df)
+            if conf.ANNOTATION_COLUMN in df.columns:
+                df_clean = remove_str_flags_from_predictions(df)
+                df.loc[df_clean.index, conf.ANNOTATION_COLUMN] = "u"
+                df = differentiate_label_flags(df)
+            else:
+                df = differentiate_label_flags(df, flag='calls')
+                
+                
+    if inbetween_noise:
+        df = df.sort_values('Begin Time (s)')
+        between_annotations_durations = df['Begin Time (s)'][1:].values - df['End Time (s)'][:-1].values
+        df_inb = df.copy()
+        prev_rows = df.iloc[:-1][between_annotations_durations > 0]
+        for (idx, row), duration in zip(
+            prev_rows.iterrows(), 
+            between_annotations_durations[between_annotations_durations > 0]
+            ):
+            for i in range(int(duration // 3.87)):
+                row['Begin Time (s)'] = row['End Time (s)']
+                row['End Time (s)'] = row['Begin Time (s)'] + 3.8775
+                row['label'] = 0
+                row['Prediction/Comments'] = 0
+                row['Selection'] = len(df_inb)
+                df_inb.loc[len(df_inb), :] = row
+        df_inb = df_inb.sort_values('Begin Time (s)')
+        df = df_inb
     return df
 
 
@@ -229,9 +253,9 @@ def finalize_annotation(file, freq_time_crit=False, **kwargs):
     if freq_time_crit:
         ann = filter_out_high_freq_and_high_transient(ann)
 
-    ann_explicit_noise = ann.loc[ann["label"] == "explicit 0", :]
+    ann_explicit_noise = ann.loc[ann["label"] == -1, :]
     ann_explicit_noise["label"] = 0
-    ann = ann.drop(ann.loc[ann["label"] == "explicit 0"].index)
+    ann = ann.drop(ann.loc[ann["label"] == -1].index)
     std_annot_train = standardize(ann, mapper=mapper)
     std_annot_enoise = standardize(ann_explicit_noise, mapper=mapper)
 
@@ -277,54 +301,55 @@ def generate_final_annotations(
             return_counts=True,
         )
     files.sort()
-    ind = 0
-    for i, folder in enumerate(folders):
-        df_t, df_n = pd.DataFrame(), pd.DataFrame()
-        for _ in range(counts[i]):
-            if leading_underscore_in_parent_dirs(files[ind]):
-                print(
-                    files[ind],
-                    " skipped due to leading underscore in parent dir.",
-                )
-                ind += 1
-                continue
-            df_train, df_enoise = finalize_annotation(
-                files[ind],
-                all_noise=False,
-                active_learning=active_learning,
-                **kwargs,
+    df_t, df_n = pd.DataFrame(), pd.DataFrame()
+    for file in tqdm(files, 'Gathering annotations from files', len(files)):
+        if leading_underscore_in_parent_dirs(file):
+            print(
+                file,
+                " skipped due to leading underscore in parent dir.",
             )
-            df_t = pd.concat([df_t, df_train])
-            df_n = pd.concat([df_n, df_enoise])
-            print(f"Completed file {ind}/{len(files)}.", end="\r")
-            ind += 1
+            continue
+        df_train, df_enoise = finalize_annotation(
+            file,
+            all_noise=False,
+            active_learning=active_learning,
+            **kwargs,
+        )
+        df_t = pd.concat([df_t, df_train])
+        df_n = pd.concat([df_n, df_enoise])
 
         ####### use validation_files.csv to assign what's val and what's train
-        save_dir = Path(conf.ANNOT_DEST).joinpath(folder)
-        save_dir.mkdir(exist_ok=True, parents=True)
-        df_t.to_csv(save_dir.joinpath("combined_annotations.csv"))
-        df_n.to_csv(save_dir.joinpath("explicit_noise.csv"))
+    
         
+    save_dir = Path(conf.ANNOT_DEST)
+    save_dir.mkdir(exist_ok=True, parents=True)
+    df_t.to_csv(save_dir.joinpath("combined_annotations.csv"))
+    df_n.to_csv(save_dir.joinpath("explicit_noise.csv"))
+    
+    if True:
+        add_validation_labels(save_dir)
         # this is to ensure that we are using the same validation set
-        if True:
-            try:
-                df_t = pd.read_csv(save_dir.joinpath("combined_annotations.csv"))
-                df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
-                df_t['subset'] = 'train'
-                df_n['subset'] = 'train'
-                df_val = pd.read_csv(conf.REV_ANNOT_SRC + '/validation_files.csv')
-                stems_t = np.array([Path(f).stem for f in df_t['filename']])
-                stems_n = np.array([Path(f).stem for f in df_n['filename']])
-                for file in df_val['validation_files'].values:
-                    bool_stems_t = stems_t == str(file)
-                    bool_stems_n = stems_n == str(file)
-                    df_t.loc[bool_stems_t, 'subset'] = 'val'
-                    df_n.loc[bool_stems_n, 'subset'] = 'val'
-                df_t.to_csv(save_dir.joinpath("combined_annotations.csv"), index=False)
-                df_n.to_csv(save_dir.joinpath("explicit_noise.csv"), index=False)
-            except:
-                pass
+
     # save_ket_annot_only_existing_paths(df)
+    
+def add_validation_labels(save_dir):
+    try:
+        df_t = pd.read_csv(save_dir.joinpath("combined_annotations.csv"))
+        df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
+        df_t['subset'] = 'train'
+        df_n['subset'] = 'train'
+        df_val = pd.read_csv(conf.REV_ANNOT_SRC + '/validation_files.csv')
+        stems_t = np.array([Path(f).stem for f in df_t['filename']])
+        stems_n = np.array([Path(f).stem for f in df_n['filename']])
+        for file in df_val['validation_files'].values:
+            bool_stems_t = stems_t == str(file)
+            bool_stems_n = stems_n == str(file)
+            df_t.loc[bool_stems_t, 'subset'] = 'val'
+            df_n.loc[bool_stems_n, 'subset'] = 'val'
+        df_t.to_csv(save_dir.joinpath("combined_annotations.csv"), index=False)
+        df_n.to_csv(save_dir.joinpath("explicit_noise.csv"), index=False)
+    except:
+        pass
 
 
 if __name__ == "__main__":

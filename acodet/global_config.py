@@ -82,9 +82,9 @@ FFT_HOP = (CONTEXT_WIN - STFT_FRAME_LEN) // (N_TIME_BINS - 1)
 PRED_BATCH_SIZE = PRED_WIN_LIM * CONTEXT_WIN
 
 ## Paths
-TFREC_DESTINATION = session["tfrecords_destination_folder"]
+ANNOT_DESTINATION = session["annotation_destination_folder"]
 ANNOT_DEST = str(Path(session["annotation_destination"])
-                 .joinpath(Path(TFREC_DESTINATION).stem))
+                 .joinpath(Path(ANNOT_DESTINATION).stem))
 REV_ANNOT_SRC = session["reviewed_annotation_source"]
 GEN_ANNOT_SRC = session["generated_annotation_source"]
 SOUND_FILES_SOURCE = session["sound_files_source"]

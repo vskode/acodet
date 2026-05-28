@@ -104,8 +104,8 @@ def evaluate(train_date=False, **kwargs):
         #    break
     
     if not isinstance(predictions[0], torch.Tensor):
-        predictions = torch.tensor(np.array(predictions))
         class_labels = np.array(class_labels)
+        predictions = torch.tensor(np.array(predictions[:len(class_labels)]))
     else:
         predictions = torch.hstack(predictions).to('cpu')
         class_labels = torch.hstack(class_labels).to('cpu')
@@ -144,8 +144,11 @@ def evaluate(train_date=False, **kwargs):
     precision, recall, thresholds = metrics.precision_recall_curve(class_labels, predictions)
     fig_filepath = Path(figure_dir).joinpath('precision_recall_stats.csv')
 
-    fn, true, fp = np.unique([np.round(jj)-ii for jj, ii in zip(predictions, class_labels)], return_counts=True)[-1]
-    logger.info(f"{fn=}, {true=}, {fp=}")
+    try:
+        fn, true, fp = np.unique([np.round(jj)-ii for jj, ii in zip(predictions, class_labels)], return_counts=True)[-1]
+        logger.info(f"{fn=}, {true=}, {fp=}")
+    except:
+        pass
     
     d = metrics.classification_report(
         class_labels,
@@ -323,7 +326,7 @@ def get_tensorflow_preds():
     from acodet.funcs import get_files, run_inference
     from acodet.annotate import MetaData
     from acodet import tfrec
-    tfrec_path = conf.TFREC_DESTINATION
+    tfrec_path = conf.ANNOT_DESTINATION
     model_name = conf.MODEL_NAME
     
     val_data = tfrec.run_data_pipeline(tfrec_path, "test", return_spec=False)
