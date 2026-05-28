@@ -120,17 +120,17 @@ class Loader(DataLoader):
             files = ca_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
             ca_df.loc[:, 'subset'] = [''] * len(ca_df)
-            ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'eval'
+            ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'test'
         
         if not 'subset' in en_df.columns:
             files = en_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
             en_df.loc[:, 'subset'] = [''] * len(en_df)
-            en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'eval'
+            en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'test'
             
         df = pd.concat([ca_df, en_df], ignore_index=True)
         
-        df = df[df.subset != 'eval']
+        df = df[df.subset != 'test']
         
         rand_ints = np.random.permutation(len(df))
         border = int(len(df) * 0.8)
@@ -142,23 +142,26 @@ class Loader(DataLoader):
         
         df = pd.concat([train, val], ignore_index=True)
             
-        self.train = AudioDataset(
-            df[
-                df['subset'] == 'train'
-                ], 
-            mode='train',
-            )
+        if len(df) > 0:
+            self.train = AudioDataset(
+                df[
+                    df['subset'] == 'train'
+                    ], 
+                mode='train',
+                )
 
-        self.val = AudioDataset(
-            df[
-                df['subset'] == 'val'
-                ], 
-            mode='val',
-            )
-        
+            self.val = AudioDataset(
+                df[
+                    df['subset'] == 'val'
+                    ], 
+                mode='val',
+                )
+        else:
+            self.train = pd.DataFrame()
+            self.val = pd.DataFrame()
         
         eval_df = pd.concat([ca_df, en_df], ignore_index=True)
-        eval_df = eval_df[eval_df.subset == 'eval']
+        eval_df = eval_df[eval_df.subset == 'test']
         
         rand_ints = np.random.permutation(len(eval_df))
         eval_df = eval_df.iloc[rand_ints]

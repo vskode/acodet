@@ -143,7 +143,7 @@ def write_tfrecords(annots, save_dir, inbetween_noise=True, **kwargs):
     Args:
         files (list): list of file paths to the audio files
     """
-    df = annots[annots.subset != 'eval']
+    df = annots[annots.subset != 'test']
         
     rand_ints = np.random.permutation(len(df))
     border = int(len(df) * 0.8)

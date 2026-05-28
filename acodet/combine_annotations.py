@@ -320,13 +320,16 @@ def generate_final_annotations(
 
         ####### use validation_files.csv to assign what's val and what's train
     
+    if 'test' in Path(conf.REV_ANNOT_SRC).stem:
+        df_t.loc[:, 'subset'] = 'test'
+        df_n.loc[:, 'subset'] = 'test'
         
     save_dir = Path(conf.ANNOT_DEST)
     save_dir.mkdir(exist_ok=True, parents=True)
     df_t.to_csv(save_dir.joinpath("combined_annotations.csv"))
     df_n.to_csv(save_dir.joinpath("explicit_noise.csv"))
     
-    if True:
+    if 'train' in Path(conf.REV_ANNOT_SRC).stem:
         add_validation_labels(save_dir)
         # this is to ensure that we are using the same validation set
 

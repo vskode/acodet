@@ -145,16 +145,16 @@ class TFLoader:
             files = ca_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
             ca_df['subset'] = ''
-            ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'eval'
+            ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'test'
         
         if 'subset' not in en_df.columns:
             files = en_df.filename.unique()
             eval_files = files[-int(len(files) * 0.2):]
             en_df['subset'] = ''
-            en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'eval'
+            en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'test'
         
         df = pd.concat([ca_df, en_df], ignore_index=True)
-        df = df[df.subset != 'eval']
+        df = df[df.subset != 'test']
         
         # Split train/val
         rand_ints = np.random.permutation(len(df))
@@ -167,7 +167,7 @@ class TFLoader:
         
         # Eval set
         eval_df = pd.concat([ca_df, en_df], ignore_index=True)
-        eval_df = eval_df[eval_df.subset == 'eval']
+        eval_df = eval_df[eval_df.subset == 'test']
         
         # Create datasets
         self.train = TFAudioDataset(train_df, mode='train')
