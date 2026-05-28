@@ -40,6 +40,8 @@ run_config: 3
 #     - 1 generate new training data from reviewed annotations
 #     - 2 generate new training data from reviewed annotations 
 #       and fill space between annotations with noise annotations
+#     - 3 generate new training data from reviewed annotations
+#       and fill space between annotations with noise annotations
 # for training, chose:
 #     - 1 continue training on existing model and save model in the end
 #     - 2 evaluate saved model

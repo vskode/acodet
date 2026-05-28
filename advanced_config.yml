@@ -48,14 +48,15 @@ annotation_df_fmax: 1000
 scale_fmax_with_predictions: True
 
 ########################  PATHS  #############################################
-# dataset destination directory - save tfrecord dataset to this directory 
-# only change when really necessary
-tfrecords_destination_folder: '../Data/MyNewTFRecordsDataset'
+# Dataset destination directory - save tfrecord dataset to this directory
+# Also used for generating combined annotations (option run_config: 2).
+# Change this for each new dataset/subset desired when using run_config: 2.
+annotation_destination_folder: MyNewDataset
 # default folder to store newly created annotations
-generated_annotations_folder: '../generated_annotations'
+generated_annotations_folder: ../generated_annotations
 # source path for automatically generated combined annotations 
 # Only relevant for creation of new dataset (option run_config: 2)
-annotation_destination: '../combined_annotations'
+annotation_destination: ../combined_annotations
 # name of current North Atlantic humpback whale song model
 model_name: 'Humpback_20221130'
 # name of top level directory when annotating multiple datasets

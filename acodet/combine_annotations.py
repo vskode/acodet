@@ -59,8 +59,7 @@ def compensate_for_naming_inconsistencies(hard_drive_path, file):
             )
 
     if not file_path:
-        print(f"Unable to find sound file for {file.stem} under sound directory {hard_drive_path}. Continuing with "
-              "next file.")
+        print(f"Unable to find sound file for {file.stem} under sound directory {hard_drive_path}.")
         return False
     return file_path
 
@@ -126,9 +125,9 @@ def seperate_long_annotations(df):
 
 
 def label_explicit_noise(df):
-    df_clean = remove_str_flags_from_predictions(df)
-
-    expl_noise_crit_idx = np.where(df_clean[conf.ANNOTATION_COLUMN] > 0.9)[0]
+    # This is a noise file, so everything that got a numeric prediction score of > 0.9 should be
+    # considered a "hard negative" (a.k.a. explicit noise).
+    expl_noise_crit_idx = np.where(pd.to_numeric(df[conf.ANNOTATION_COLUMN], errors="coerce") > 0.9)[0]
     df.loc[expl_noise_crit_idx, "label"] = -1
     return df
 
@@ -136,24 +135,20 @@ def label_explicit_noise(df):
 def differentiate_label_flags(df, flag=None):
     # df.loc[:, conf.ANNOTATION_COLUMN].fillna(value="c", inplace=True)
     if flag == "calls":
-        if not conf.ANNOTATION_COLUMN in df.columns:
+        if conf.ANNOTATION_COLUMN not in df.columns:
             df.loc[:, conf.ANNOTATION_COLUMN] = 'c'
     elif flag == "noise":
-        if not conf.ANNOTATION_COLUMN in df.columns:
+        if conf.ANNOTATION_COLUMN not in df.columns:
             df.loc[:, conf.ANNOTATION_COLUMN] = 'n'
-    if type(df[conf.ANNOTATION_COLUMN][0]) == str:
-        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c", 
-                "label"] = "1"
-        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n", 
-                "label"] = -1
+    if isinstance(df[conf.ANNOTATION_COLUMN][0], str):
+        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c", "label"] = 1
+        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n", "label"] = -1
+
     df_std = seperate_long_annotations(df)
 
-    
-    if type(df[conf.ANNOTATION_COLUMN][0]) == str:
+    if isinstance(df[conf.ANNOTATION_COLUMN][0], str):
         df_std = df_std.drop(
-            df_std.loc[
-                df_std[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "u"
-                ].index
+            df_std.loc[df_std[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "u"].index
         )
         
     df_std.index = pd.RangeIndex(0, len(df_std))
@@ -165,7 +160,7 @@ def differentiate_label_flags(df, flag=None):
 
 def get_labels(file, df, active_learning=False, inbetween_noise=False, **kwargs):
     if not active_learning:
-        df["label"] = "1"
+        df["label"] = 1
     else:
         noise_flag, annotated_flag, calls_flag = [
             "_allnoise",
@@ -174,10 +169,10 @@ def get_labels(file, df, active_learning=False, inbetween_noise=False, **kwargs)
         ]
         df = df.iloc[df.Selection.drop_duplicates().index]
         if calls_flag in file.stem:
-            df["label"] = "1"  # Create column using a string b/c we will sometimes use "explicit 0" as a label.
+            df["label"] = 1
             df = differentiate_label_flags(df, flag="calls")
         elif noise_flag in file.stem:
-            df["label"] = "0"  # Create column using a string b/c we will sometimes use "explicit 0" as a label.
+            df["label"] = 0
             df = differentiate_label_flags(df, flag="noise")
         elif annotated_flag in file.stem:
             if conf.ANNOTATION_COLUMN in df.columns:
@@ -301,6 +296,7 @@ def generate_final_annotations(
             return_counts=True,
         )
     files.sort()
+
     df_t, df_n = pd.DataFrame(), pd.DataFrame()
     for file in tqdm(files, 'Gathering annotations from files', len(files)):
         if leading_underscore_in_parent_dirs(file):
@@ -318,24 +314,32 @@ def generate_final_annotations(
         df_t = pd.concat([df_t, df_train])
         df_n = pd.concat([df_n, df_enoise])
 
-        ####### use validation_files.csv to assign what's val and what's train
-    
+    total_pos = (df_t["label"] == 1).sum() + (df_n["label"] == 1).sum()
+    total_neg = (df_t["label"] == 0).sum() + (df_n["label"] == 0).sum()
+    assert (len(df_t) + len(df_n)) == total_pos + total_neg
+    print(f"Total annotations: {total_pos + total_neg} ({total_pos} positive, {total_neg} negative)")
+
+    # Assign to test set automatically if the name indicates it.
     if 'test' in Path(conf.REV_ANNOT_SRC).stem:
         df_t.loc[:, 'subset'] = 'test'
         df_n.loc[:, 'subset'] = 'test'
-        
+
     save_dir = Path(conf.ANNOT_DEST)
     save_dir.mkdir(exist_ok=True, parents=True)
     df_t.to_csv(save_dir.joinpath("combined_annotations.csv"))
     df_n.to_csv(save_dir.joinpath("explicit_noise.csv"))
-    
+    print(f"Annotations saved to {save_dir}")
+
+    # If this is a train set, mark the train/validation split, if provided.
     if 'train' in Path(conf.REV_ANNOT_SRC).stem:
         add_validation_labels(save_dir)
-        # this is to ensure that we are using the same validation set
 
-    # save_ket_annot_only_existing_paths(df)
-    
+
 def add_validation_labels(save_dir):
+    """
+    Use validation_files.csv to assign what's val and what's train.
+    This is to ensure that we are using the same validation set.
+    """
     try:
         df_t = pd.read_csv(save_dir.joinpath("combined_annotations.csv"))
         df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
