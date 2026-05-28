@@ -62,6 +62,8 @@ def evaluate(train_date=False, **kwargs):
 
     predictions = []
     class_labels = []
+    all_paths = []
+    all_timestamps = []
     for idx, tuple in tqdm(
         enumerate(test_data), 
         'running inference on test data', 
@@ -93,6 +95,8 @@ def evaluate(train_date=False, **kwargs):
                 ).squeeze())
         predictions.extend(new_predictions)
         class_labels.extend(new_labels)
+        all_paths.extend(paths)
+        all_timestamps.extend(timestamps)
         
         # Uncomment this if you just want to try running it for a little data to 
         # make sure the code runs.
@@ -282,8 +286,31 @@ def evaluate(train_date=False, **kwargs):
     # save figure
     fig_filepath = Path(figure_dir).joinpath('roc_curve.png')
     fig.savefig(fig_filepath)
+
+    ##################################################
+    # Save some predictions for manual checking
+    #################################################
+
+    example_dir = Path(figure_dir).joinpath('example_predictions')
+    example_dir.mkdir(exist_ok=True)
+    sample_indices = np.random.choice(len(predictions), size=10, replace=False)
+    min_freq = conf.ANNOTATION_DF_FMIN
+    max_freq = conf.ANNOTATION_DF_FMAX
     
-    
+    for sample_index in sample_indices:
+        audio_id = all_paths[sample_index].split('/')[-1][:-5]
+        filename = example_dir.joinpath(f'{audio_id}_prediction.txt')
+        start_timestamp = all_timestamps[sample_index].item()
+        end_timestamp = start_timestamp + conf.CONTEXT_WIN_S_CORRECTED
+        sample_best_prediction = threshold_labels[sample_index]
+        sample_05_prediction = prediction_classes[sample_index]
+        sample_true_label = class_labels[sample_index]
+        predicted_float = predictions[sample_index]
+        with open(filename, 'w') as file:
+            file.write("Selection\tView\tChannel\tBegin Time (s)\tEnd Time (s)\tHigh Freq (Hz)\tLow Freq (Hz)\tPrediction/Comments\n")
+            file.write("1\tSpectrogram 1\t1\t" + f"{start_timestamp}\t{end_timestamp}\t{max_freq}\t{min_freq}\t" + \
+                    f"Predicted value: {predicted_float:.2f}, predicted class at best threshold {best_threshold:.2f}: {sample_best_prediction}, predicted class at 0.5 threshold: {sample_05_prediction}, true label: {sample_true_label}\n")
+
     print(f'All plots saved to {figure_dir=}')
 
     return
