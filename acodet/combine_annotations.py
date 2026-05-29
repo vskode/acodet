@@ -320,7 +320,7 @@ def generate_final_annotations(
     print(f"Total annotations: {total_pos + total_neg} ({total_pos} positive, {total_neg} negative)")
 
     # Assign to test set automatically if the name indicates it.
-    if 'test' in Path(conf.REV_ANNOT_SRC).stem:
+    if 'test' in conf.REV_ANNOT_SRC:
         df_t.loc[:, 'subset'] = 'test'
         df_n.loc[:, 'subset'] = 'test'
 
@@ -331,7 +331,7 @@ def generate_final_annotations(
     print(f"Annotations saved to {save_dir}")
 
     # If this is a train set, mark the train/validation split, if provided.
-    if 'train' in Path(conf.REV_ANNOT_SRC).stem:
+    if 'train' in conf.REV_ANNOT_SRC:
         add_validation_labels(save_dir)
 
 
@@ -340,23 +340,31 @@ def add_validation_labels(save_dir):
     Use validation_files.csv to assign what's val and what's train.
     This is to ensure that we are using the same validation set.
     """
-    try:
-        df_t = pd.read_csv(save_dir.joinpath("combined_annotations.csv"))
-        df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
-        df_t['subset'] = 'train'
-        df_n['subset'] = 'train'
-        df_val = pd.read_csv(conf.REV_ANNOT_SRC + '/validation_files.csv')
-        stems_t = np.array([Path(f).stem for f in df_t['filename']])
-        stems_n = np.array([Path(f).stem for f in df_n['filename']])
-        for file in df_val['validation_files'].values:
-            bool_stems_t = stems_t == str(file)
-            bool_stems_n = stems_n == str(file)
-            df_t.loc[bool_stems_t, 'subset'] = 'val'
-            df_n.loc[bool_stems_n, 'subset'] = 'val'
-        df_t.to_csv(save_dir.joinpath("combined_annotations.csv"), index=False)
-        df_n.to_csv(save_dir.joinpath("explicit_noise.csv"), index=False)
-    except:
-        pass
+    val_file = Path(conf.REV_ANNOT_SRC).resolve() / "validation_files.csv"
+    if not val_file.is_file():
+        print("No validation_files.csv file found. Cannot assign train/validation subset labels.")
+        return
+
+    df_val = pd.read_csv(val_file)
+    df_t = pd.read_csv(save_dir.joinpath("combined_annotations.csv"))
+    df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
+    df_t["subset"] = "train"
+    df_n["subset"] = "train"
+    stems_t = np.array([Path(f).stem for f in df_t["filename"]])
+    stems_n = np.array([Path(f).stem for f in df_n["filename"]])
+    for file in df_val["validation_files"].values:
+        bool_stems_t = stems_t == str(file)
+        bool_stems_n = stems_n == str(file)
+        df_t.loc[bool_stems_t, "subset"] = "val"
+        df_n.loc[bool_stems_n, "subset"] = "val"
+
+    total_train = (df_t["subset"] == "train").sum() + (df_n["subset"] == "train").sum()
+    total_val = (df_t["subset"] == "val").sum() + (df_n["subset"] == "val").sum()
+    assert (len(df_t) + len(df_n)) == total_train + total_val
+    print(f"Assigned {total_train} to training, {total_val} to validation.")
+
+    df_t.to_csv(save_dir.joinpath("combined_annotations.csv"), index=False)
+    df_n.to_csv(save_dir.joinpath("explicit_noise.csv"), index=False)
 
 
 if __name__ == "__main__":
