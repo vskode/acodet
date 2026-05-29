@@ -16,7 +16,7 @@
 #!!! BE CHANGED FOR TRAINING OF NEW MODEL ESPECIALY FOR DIFFERENT SPECIES !!!#
 ## Global audio processing parameters
 # sample rate
-sample_rate: 2000
+sample_rate: 3000
 # length of context window in seconds 
 # this is the audio segment length that the model is trained on
 context_window_in_seconds: 3.9
@@ -48,17 +48,21 @@ annotation_df_fmax: 1000
 scale_fmax_with_predictions: True
 
 ########################  PATHS  #############################################
-# Dataset destination directory - save tfrecord dataset to this directory
-# Also used for generating combined annotations (option run_config: 2).
-# Change this for each new dataset/subset desired when using run_config: 2.
-annotation_destination_folder: MyNewDataset
+# dataset destination directory - save tfrecord dataset to this directory 
+# only change when really necessary
+annotation_destination_folder: 'Ilarias_testing_data'
+# annotation_destination_folder: '../Data/Ilarias_testing_data'
 # default folder to store newly created annotations
 generated_annotations_folder: ../generated_annotations
 # source path for automatically generated combined annotations 
 # Only relevant for creation of new dataset (option run_config: 2)
 annotation_destination: ../combined_annotations
 # name of current North Atlantic humpback whale song model
-model_name: 'Humpback_20221130'
+# model_name: 'Torch123'
+# model_name: 'Humpback_20221130'
+model_name: 'perch_v2'
+# model_name: 'google_whale'
+# model_name: 'naturebeats'
 # name of top level directory when annotating multiple datasets
 top_dir_name: 'main'
 # custom string to add to timestamp for directory name 
@@ -74,15 +78,19 @@ save_downsampled_files: False
 # Name of Model class, default is HumpBackNorthAtlantic, possible other classes
 # are GoogleMod for the modified ResNet-50 architecture, or KerasAppModel for 
 # any of the Keras application models (name will get specified under keras_mod_name)
-ModelClassName: 'TorchModel' 
+# ModelClassName: 'TorchModel' 
 # ModelClassName: 'HumpBackNorthAtlantic' 
-# ModelClassName: 'KerasAppModel' 
+ModelClassName: 'BacpipeModel' 
 # batch size for training and evaluating purposes
-batch_size: 32
+batch_size: 16
 # number of epochs to run the model
-epochs: 150
+epochs: 3
 # specify the path to your training checkpoint here to load a pretrained model
+# load_ckpt_path: torchmodel_2026-05-01_15-43-46
+# load_ckpt_path: naturebeats_2026-05-04_16-56-54
+# load_ckpt_path: perch_v2_2026-05-11_11-44-26
 load_ckpt_path: False
+# load_ckpt_path: humpbacknorthatlantic_2026-05-07_01-51-36
 # to run the google model, select True
 load_g_ckpt: False
 # specify the name of the keras application model that you want to run - select the
@@ -90,14 +98,15 @@ load_g_ckpt: False
 keras_mod_name: False
 # keras_mod_name: "EfficientNetB4"
 # number of steps per epoch
-steps_per_epoch: 10
+# steps_per_epoch: 500
+steps_per_epoch: 50
 # select True if you want your training data to be time shift augmented (recommended)
-time_augs: False 
+time_augs: True 
 # select True if you want your training data to be MixUp augmented (recommended)
-mixup_augs: False
+mixup_augs: True
 # select True if you want your training data to be 
 # time and frequency masked augmented (recommended)
-spec_aug: False
+spec_aug: True
 # specify a string to describe the dataset used for this model run (to later be able
 # to understand what was significant about this model training)
 data_description: 'Large active learning from false positives from Ilaria. Complete shuffling of data'
@@ -118,7 +127,9 @@ multiclass: False
 ######################## Evaluation ##########################################
 # currently only valid for TorchModel
 # for other models, use load_ckpt_path option above
-eval_model_file: None
+# eval_model_file: /home/siriussound/Code/acodet_dir/acodet/acodet/src/models/perch_v2_2026-05-11_11-44-26/perch_v2_2026-05-11_11-44-26_bacpipe_lin_clfier.pt
+eval_model_file: /home/siriussound/Code/acodet_dir/trainings/torchmodel_2026-05-01_15-43-46/torchmodel_2026-05-01_15-43-46.pt
+# eval_model_file: /home/siriussound/Code/acodet_dir/trainings/naturebeats_2026-05-04_16-56-54/naturebeats_2026-05-04_16-56-54_bacpipe_lin_clfier.pt
 
 ########################  Streamlit  #########################################
 # select True if you want to run the streamlit app
@@ -134,4 +145,4 @@ bool_lin_clfier: False
 # Specify path to the linear classifier folder
 lin_clfier_dir: ../linear_classifier
 # Specify what device to run the computations on
-device: cpu
+device: cuda

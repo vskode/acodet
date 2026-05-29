@@ -21,7 +21,7 @@ def evaluate(train_date=False, **kwargs):
     model_file = conf.LOAD_CKPT_PATH
     if not conf.LOAD_CKPT_PATH:
         model_file = conf.MODEL_NAME
-    figure_dir = Path(f'../trainings/{model_file}') / 'evaluation'
+    figure_dir = Path(f'../trainings/{model_file}') / f'evaluation_{conf.ANNOT_DESTINATION}'
     figure_dir.mkdir(exist_ok=True, parents=True)
     
     if not conf.MODELCLASSNAME in ('TorchModel', 'HumpBackNorthAtlantic', 'BacpipeModel'):

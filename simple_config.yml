@@ -38,7 +38,10 @@ run_config: 3
 #     - 0 all of the above
 # for generation of new training data, chose:
 #     - 1 generate new training data from reviewed annotations
-#     - 2 generate new training data from reviewed annotations 
+#     - 2 generate new training data from reviewed annotations
+#       that were NOT previously generate by a model (i.e. no active learning) 
+#       and fill space between annotations with noise annotations
+#     - 3 generate new training data from reviewed annotations 
 #       and fill space between annotations with noise annotations
 #     - 3 generate new training data from reviewed annotations
 #       and fill space between annotations with noise annotations
@@ -47,14 +50,17 @@ run_config: 3
 #     - 2 evaluate saved model
 #     - 3 evaluate model checkpoint
 #     - 4 save model specified in advanced config
-predefined_settings: 1
+predefined_settings: 2
 
 ####################### 2. DEFINCE YOUR PATHS  ###############################
 
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for generation of new annotations (option run_config: 1)
-sound_files_source: /mnt/swap/Work/Data/marine/marine mammals/Ilaria_annotated/testing/audio
+# sound_files_source: /home/siriussound/Code/acodet_dir/Data/more
+# sound_files_source: /home/siriussound/Code/acodet_dir/acodet/tests/test_files
+sound_files_source: /media/siriussound/Extreme SSD/Recordings/marine/marine mammals/ilaria_training_dataset/audio
+# sound_files_source: /media/siriussound/Extreme SSD/Recordings/marine/marine mammals/hbdet/final_dataset_cleaned/audio
 
 # source path for automatically generated annotations
 # relevant for generation of hourly or daily presence, or recomputing
@@ -66,7 +72,8 @@ generated_annotation_source: 'path to your generated annotations'
 # source path for annotations created or reviewed by you
 # relevant for creation of new dataset (option run_config: 2)
 #   -> might be easier to just copy annotation files to default location
-reviewed_annotation_source: /mnt/swap/Work/Data/marine/marine mammals/Ilaria_annotated/testing/annotations
+reviewed_annotation_source: /media/siriussound/Extreme SSD/Recordings/marine/marine mammals/ilaria_training_dataset/tables/Tables_testing
+# reviewed_annotation_source: /media/siriussound/Extreme SSD/Recordings/marine/marine mammals/hbdet/final_dataset_cleaned/tables_2022-11-27_02-ActiveLearning
 
 
 
