@@ -158,7 +158,7 @@ def differentiate_label_flags(df, flag=None):
     return df_std
 
 
-def get_labels(file, df, active_learning=False, inbetween_noise=False, **kwargs):
+def get_labels(file, df, active_learning=False, inbetween_noise=False, clip_duration=3.8775, **kwargs):
     if not active_learning:
         df["label"] = 1
     else:
@@ -180,27 +180,25 @@ def get_labels(file, df, active_learning=False, inbetween_noise=False, **kwargs)
                 df.loc[df_clean.index, conf.ANNOTATION_COLUMN] = "u"
                 df = differentiate_label_flags(df)
             else:
-                df = differentiate_label_flags(df, flag='calls')
-                
+                df = differentiate_label_flags(df, flag="calls")
                 
     if inbetween_noise:
-        df = df.sort_values('Begin Time (s)')
-        between_annotations_durations = df['Begin Time (s)'][1:].values - df['End Time (s)'][:-1].values
-        df_inb = df.copy()
-        prev_rows = df.iloc[:-1][between_annotations_durations > 0]
-        for (idx, row), duration in zip(
-            prev_rows.iterrows(), 
-            between_annotations_durations[between_annotations_durations > 0]
-            ):
-            for i in range(int(duration // 3.87)):
-                row['Begin Time (s)'] = row['End Time (s)']
-                row['End Time (s)'] = row['Begin Time (s)'] + 3.8775
-                row['label'] = 0
-                row['Prediction/Comments'] = 0
-                row['Selection'] = len(df_inb)
-                df_inb.loc[len(df_inb), :] = row
-        df_inb = df_inb.sort_values('Begin Time (s)')
-        df = df_inb
+        df = df.sort_values("Begin Time (s)")
+        # The 1e-5 is padding to avoid missing gaps due to rounding error.
+        between_annotations_durations = df["Begin Time (s)"][1:].values - df["End Time (s)"][:-1].values + 1e-5
+        gap_rows = (between_annotations_durations >= clip_duration)
+        prev_rows = df.iloc[:-1][gap_rows]
+        new_rows = df.to_dict("records")
+        for (idx, prev_row), duration in zip(prev_rows.iterrows(), between_annotations_durations[gap_rows]):
+            row = prev_row.to_dict()
+            for i in range(int(duration // clip_duration)):
+                row["Begin Time (s)"] = row["End Time (s)"]
+                row["End Time (s)"] = row["Begin Time (s)"] + clip_duration
+                row["label"] = 0
+                row[conf.ANNOTATION_COLUMN] = "implicit noise"
+                row["Selection"] = len(new_rows)
+                new_rows.append(row.copy())
+        df = pd.DataFrame.from_records(new_rows, columns=df.columns).sort_values("Begin Time (s)")
     return df
 
 
@@ -296,6 +294,8 @@ def generate_final_annotations(
             return_counts=True,
         )
     files.sort()
+    if not files:
+        raise ValueError(f"No files found at {conf.REV_ANNOT_SRC}")
 
     df_t, df_n = pd.DataFrame(), pd.DataFrame()
     for file in tqdm(files, 'Gathering annotations from files', len(files)):
