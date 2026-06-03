@@ -354,8 +354,8 @@ class BacpipeModel(nn.Module):
     
     def forward(self, x, y=None, noise=None, path=None, start=None, training=False, **kwargs):
         if not conf.BOOL_LIN_CLFIER:
-            self.embedder.get_embeddings_from_model(x)
-            predictions = self.embedder.model.classifier_predictions(x)
+            embeds = self.embedder.get_embeddings_from_model(x)
+            predictions = self.embedder.classifier.predictions[-len(embeds):]
             
             if (conf.MODEL_NAME == 'perch_v2'):
                 model_labels = np.array(self.embedder.model.classes)
