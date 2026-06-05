@@ -14,6 +14,7 @@ from acodet import global_config as conf
 
 from .torch_data import Loader
 
+
 def evaluate(train_date=False, **kwargs):
     logging.basicConfig(level='INFO', format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger(__name__)
@@ -316,26 +317,4 @@ def evaluate(train_date=False, **kwargs):
 
     print(f'All plots saved to {figure_dir=}')
 
-    return
-
-
-def get_tensorflow_preds():
-    import tensorflow as tf
-    import librosa as lb
-
-    from acodet.funcs import get_files, run_inference
-    from acodet.annotate import MetaData
-    from acodet import tfrec
-    tfrec_path = conf.ANNOT_DESTINATION
-    model_name = conf.MODEL_NAME
-    
-    val_data = tfrec.run_data_pipeline(tfrec_path, "test", return_spec=False)
-    
-    model = models.init_model(
-        load_from_ckpt=True,
-        model_name=model_name,
-        training_path=conf.LOAD_CKPT_PATH
-    )
-    preds = model.predict(x=models.prep_ds_4_preds(val_data))
-    labels = models.get_val_labels(val_data, len(preds))
-    
+    return 0

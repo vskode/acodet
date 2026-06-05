@@ -1,4 +1,6 @@
+import os.path
 from email import generator
+import glob
 import re
 import zipfile
 import datetime as dt
@@ -388,29 +390,36 @@ def get_pr_arrays(
 
 
 def get_files(
-    *, location: str = f"{conf.GEN_ANNOTS_DIR}", search_str: str = "*.wav"
+        location: str = f"{conf.GEN_ANNOTS_DIR}", search_str: str = "**/*.wav", follow_symlinks=True, regex=False
 ) -> list:
     """
-    Find all files corresponding to given search string within a specified
-    location.
+    Find all files corresponding to given search string within a specified location.
+    Searches subfolders recursively if the search string includes '**'.
 
     Parameters
     ----------
     location : str, optional
-        root directory of files, by default 'generated_annotations/src'
+        root directory of files, by default the configured 'generated_annotations_folder'
     search_str : str, optional
-        search string containing search pattern, for example '*.wav',
-        by default '*.wav'
+        search string containing search pattern, for example '*.wav', by default '**/*.wav'
+    follow_symlinks : bool, optional
+        whether to follow symlinks, default True. If True, then `regex` must be False.
+    regex : bool, optional
+        whether to use a regex pattern for matching. If True, then `follow_symlinks` must be False.
 
     Returns
     -------
-    generator
-        list containing pathlib.Path objects of all files fitting
-        the pattern
+    list
+        list containing pathlib.Path objects of all files fitting the pattern
     """
-    folder = Path(location)
-    # return list(folder.glob(search_str))
-    return [f for f in folder.rglob(search_str)]
+    if follow_symlinks:
+        # Note: We don't use Path.rglob here because it can't follow symlinks for Python <3.13. This is why we can't
+        #       support regext. The user promises not to have a symlink loop in this directory.
+        if regex:
+            raise NotImplementedError(f"Cannot use regex patterns when searching recursively through symlinks.")
+        return [Path(path_str) for path_str in glob.glob(os.path.join(location, search_str), recursive=True)]
+    else:
+        return list(Path(location).rglob(search_str))
 
 
 def window_data_for_prediction(audio: np.ndarray):

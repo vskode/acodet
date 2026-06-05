@@ -158,7 +158,7 @@ def differentiate_label_flags(df, flag=None):
     return df_std
 
 
-def get_labels(file, df, active_learning=False, inbetween_noise=False, clip_duration=3.8775, **kwargs):
+def get_labels(file, df, active_learning=False, inbetween_noise=False, clip_duration=3.8775):
     if not active_learning:
         df["label"] = 1
     else:
@@ -281,21 +281,10 @@ def generate_final_annotations(
     files = list(annotation_files)
     if active_learning:
         files = get_active_learning_files(files)
-    folders, counts = np.unique(
-        [f.relative_to(conf.REV_ANNOT_SRC).parent for f in files],
-        return_counts=True,
-    )
-    if len(folders) > 1:
-        folders, counts = np.unique(
-            [
-                list(f.relative_to(conf.REV_ANNOT_SRC).parents)[-2]
-                for f in files
-            ],
-            return_counts=True,
-        )
+        print(f"Filtered {len(annotation_files)} annotated files down to {len(files)} files for active learning.")
     files.sort()
     if not files:
-        raise ValueError(f"No files found at {conf.REV_ANNOT_SRC}")
+        raise ValueError(f"No .txt files found under {conf.REV_ANNOT_SRC}")
 
     df_t, df_n = pd.DataFrame(), pd.DataFrame()
     for file in tqdm(files, 'Gathering annotations from files', len(files)):
@@ -307,7 +296,6 @@ def generate_final_annotations(
             continue
         df_train, df_enoise = finalize_annotation(
             file,
-            all_noise=False,
             active_learning=active_learning,
             **kwargs,
         )

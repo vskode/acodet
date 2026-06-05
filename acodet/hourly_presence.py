@@ -167,6 +167,8 @@ def compute_hourly_pres(
             continue
         files = get_files(location=fold, search_str="**/*txt")
         files.sort()
+        if not files:
+            raise ValueError(f"No .txt files found under {fold}")
 
         try:
             annots = return_hourly_pres_df(
@@ -683,6 +685,8 @@ def calc_val_diff(
             location=path, search_str="**/*txt"
         )
         files.sort()
+        if not files:
+            raise ValueError(f"No .txt files found under {conf.REV_ANNOT_SRC}")
 
         annots = return_hourly_pres_df(
             files,
