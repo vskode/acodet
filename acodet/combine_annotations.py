@@ -341,8 +341,8 @@ def add_validation_labels(save_dir):
     stems_t = np.array([Path(f).stem for f in df_t["filename"]])
     stems_n = np.array([Path(f).stem for f in df_n["filename"]])
     for file in df_val["validation_files"].values:
-        bool_stems_t = stems_t == str(file)
-        bool_stems_n = stems_n == str(file)
+        bool_stems_t = np.char.startswith(stems_t, str(file))
+        bool_stems_n = np.char.startswith(stems_n, str(file))
         df_t.loc[bool_stems_t, "subset"] = "val"
         df_n.loc[bool_stems_n, "subset"] = "val"
 
