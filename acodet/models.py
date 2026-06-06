@@ -354,8 +354,8 @@ class BacpipeModel(nn.Module):
     
     def forward(self, x, y=None, noise=None, path=None, start=None, training=False, **kwargs):
         if not conf.BOOL_LIN_CLFIER:
-            self.embedder.get_embeddings_from_model(x)
-            predictions = self.embedder.model.classifier_predictions(x)
+            embeds = self.embedder.get_embeddings_from_model(x)
+            predictions = self.embedder.classifier.predictions[-len(embeds):]
             
             if (conf.MODEL_NAME == 'perch_v2'):
                 model_labels = np.array(self.embedder.model.classes)
@@ -370,9 +370,11 @@ class BacpipeModel(nn.Module):
             if isinstance(x, torch.Tensor):
                 from bacpipe import TF_MODELS
                 if conf.MODEL_NAME in TF_MODELS:
-                    embeds = self.embedder.model(x.cpu()).squeeze()
+                    preproc_x = self.embedder.preprocess(x.cpu())
+                    embeds = self.embedder.model(preproc_x.cpu()).squeeze()
                 else:
-                    embeds = self.embedder.model(x).squeeze()
+                    preproc_x = self.embedder.model.preprocess(x)
+                    embeds = self.embedder.model(preproc_x).squeeze()
             else:
                 with torch.no_grad():
                     embeds = self.embedder.get_embeddings_from_model(x)

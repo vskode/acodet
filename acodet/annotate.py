@@ -27,6 +27,7 @@ class MetaData:
         self.f_dt = "date from timestamp"
         self.n_pred_col = "number of predictions"
         self.avg_pred_col = "average prediction value"
+        self.n_pred_col_thresh = f"number of predictions with thresh>{conf.THRESH}"
         self.n_pred08_col = "number of predictions with thresh>0.8"
         self.n_pred09_col = "number of predictions with thresh>0.9"
         self.time_per_file = "computing time [s]"
@@ -37,6 +38,7 @@ class MetaData:
                     self.f_dt,
                     self.n_pred_col,
                     self.avg_pred_col,
+                    self.n_pred_col_thresh,
                     self.n_pred08_col,
                     self.n_pred09_col,
                 ]
@@ -84,6 +86,9 @@ class MetaData:
         df_clean = remove_str_flags_from_predictions(annot)
         self.df.loc[f_ind, self.avg_pred_col] = np.mean(
             df_clean[conf.ANNOTATION_COLUMN]
+        )
+        self.df.loc[f_ind, self.n_pred_col_thresh] = len(
+            df_clean.loc[df_clean[conf.ANNOTATION_COLUMN] > conf.THRESH]
         )
         self.df.loc[f_ind, self.n_pred08_col] = len(
             df_clean.loc[df_clean[conf.ANNOTATION_COLUMN] > 0.8]
