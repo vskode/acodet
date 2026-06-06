@@ -24,6 +24,7 @@ def make_cr_symlinks(df, split):
     regional_tables_dir = root_dir / "regional" / split / "tables"
     regional_audio_dir = root_dir / "regional" / split / "recs"
     if not regional_audio_dir.is_symlink():
+        regional_audio_dir.parent.mkdir(parents=True, exist_ok=True)
         regional_audio_dir.symlink_to(tables_dir.parent / "recs")
 
     regions = set()
