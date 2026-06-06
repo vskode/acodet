@@ -48,21 +48,23 @@ annotation_df_fmax: 1000
 scale_fmax_with_predictions: True
 
 ########################  PATHS  #############################################
-# dataset destination directory - save tfrecord dataset to this directory 
-# only change when really necessary
-annotation_destination_folder: 'Ilarias_testing_data'
-# annotation_destination_folder: '../Data/Ilarias_testing_data'
+# Dataset destination directory - save tfrecord dataset to this directory
+# Also used for generating combined annotations (option run_config: 2).
+# Change this for each new dataset/subset desired when using run_config: 2.
+annotation_destination_folder: MyNewDataset
 # default folder to store newly created annotations
 generated_annotations_folder: ../generated_annotations
 # source path for automatically generated combined annotations 
 # Only relevant for creation of new dataset (option run_config: 2)
 annotation_destination: ../combined_annotations
-# name of current North Atlantic humpback whale song model
+# Name of the model to be loaded or trained (if ModelClassName is BacpipeModel,
+# this should be one of the models available from bacpipe).
 # model_name: 'Torch123'
 # model_name: 'Humpback_20221130'
 model_name: 'perch_v2'
 # model_name: 'google_whale'
 # model_name: 'naturebeats'
+# model_name: 'birdnet'
 # name of top level directory when annotating multiple datasets
 top_dir_name: 'main'
 # custom string to add to timestamp for directory name 
@@ -78,9 +80,9 @@ save_downsampled_files: False
 # Name of Model class, default is HumpBackNorthAtlantic, possible other classes
 # are GoogleMod for the modified ResNet-50 architecture, or KerasAppModel for 
 # any of the Keras application models (name will get specified under keras_mod_name)
-# ModelClassName: 'TorchModel' 
+# ModelClassName: 'TorchModel'
 # ModelClassName: 'HumpBackNorthAtlantic' 
-ModelClassName: 'BacpipeModel' 
+ModelClassName: 'BacpipeModel'
 # batch size for training and evaluating purposes
 batch_size: 16
 # number of epochs to run the model
@@ -98,10 +100,9 @@ load_g_ckpt: False
 keras_mod_name: False
 # keras_mod_name: "EfficientNetB4"
 # number of steps per epoch
-# steps_per_epoch: 500
 steps_per_epoch: 50
 # select True if you want your training data to be time shift augmented (recommended)
-time_augs: True 
+time_augs: True
 # select True if you want your training data to be MixUp augmented (recommended)
 mixup_augs: True
 # select True if you want your training data to be 
