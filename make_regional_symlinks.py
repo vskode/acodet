@@ -48,15 +48,15 @@ make_cr_symlinks(cr_test_df, "testing")
 ## Parsing Vincent's Data
 ##########################
 
-info_df = pd.read_csv(Path("data/vkather-humpbacks/Dataset_Information.csv"))
+info_df = pd.read_csv(Path("data/vkather-humpbacks-test/Dataset_Information.csv"))
 region_map = {}
 for idx, row in info_df.iterrows():
     region_map[row["Dataset name"]] = row["Region"]
 
-tables_dir = Path("data/vkather-humpbacks/tables").resolve()
-regional_tables_dir = Path("data/vkather-humpbacks/regional/tables").resolve()
+tables_dir = Path("data/vkather-humpbacks-test/tables").resolve()
+regional_tables_dir = Path("data/vkather-humpbacks-test/regional/tables").resolve()
 regional_tables_dir.mkdir(parents=True, exist_ok=True)
-# regional_audio_dir = Path("data/vkather-humpbacks/regional/audio").resolve()
+# regional_audio_dir = Path("data/vkather-humpbacks-test/regional/audio").resolve()
 # if not regional_audio_dir.is_symlink():
 #     regional_audio_dir.symlink_to(tables_dir.parent / "audio")
 
@@ -73,3 +73,4 @@ for region, group in info_df.groupby("Region"):
 print(f"Regions in vkather test data:")
 for r in regions:
     print("    " + r)
+
