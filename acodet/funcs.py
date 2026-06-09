@@ -311,6 +311,12 @@ def save_model_results(ckpt_dir: str, result: dict):
     except AttributeError:
         result["f_1"] = [n for n in result["f_1"]]
         result["val_f_1"] = [n for n in result["val_f_1"]]
+    try:
+        for k, v in result.items():
+            if 'support' in k:
+                result[k] = [float(n.numpy()[0]) for n in result[k]]
+    except:
+        pass
     with open(f"{ckpt_dir}/results.json", "w") as f:
         json.dump(result, f)
 
@@ -555,54 +561,6 @@ def run_inference(
             predictions = torch.sigmoid(model(torch_batches)).squeeze()
             
     return np.array(predictions)
-
-def create_annotation_df(
-    audio_batches: np.ndarray,
-    model,
-    callbacks: None = None,
-    **kwargs,
-) -> pd.DataFrame:
-    """
-    Create a annotation dataframe containing all necessary information to
-    be imported into a annotation program. The loaded audio batches are
-    iterated over and used to predict labels. All information is then used
-    to fill a DataFrame. After having gone through all batches, the index
-    column is set to a increasing integers named 'Selection' (convention).
-
-    Parameters
-    ----------
-    audio_batches : np.ndarray
-        audio batches
-    model : tf.keras.Sequential
-        model instance to predict values
-
-    Returns
-    -------
-    pd.DataFrame
-        annotation dataframe
-    """
-    annots = pd.DataFrame()
-    for ind, audio in enumerate(audio_batches):
-        if callbacks is not None and ind == 0:
-            callbacks = callbacks(**kwargs)
-        if 'predict' in dir(model):
-            preds = model.predict(
-                window_data_for_prediction(audio), callbacks=callbacks
-            )
-        elif conf.MODELCLASSNAME == 'BacpipeModel':
-            import tensorflow as tf
-            frames = model.model.window_audio(np.array([audio]))
-            _, all_preds = model.model(frames, return_class_results=True)
-            if len(all_preds.squeeze().shape) > 1:
-                all_labels = model.model.classes
-                preds = tf.reduce_max(all_preds, axis=1).numpy()
-        df = create_Raven_annotation_df(preds, ind)
-        annots = pd.concat([annots, df], ignore_index=True)
-    annots['View'] = 'Spectrogram 1'
-    annots['Channel'] = '1'
-    annots.index = np.arange(1, len(annots) + 1)
-    annots.index.name = "Selection"
-    return annots
 
 
 def batch_audio(audio_flat: np.ndarray) -> np.ndarray:
