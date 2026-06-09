@@ -333,7 +333,7 @@ def add_validation_labels(save_dir):
         print("No validation_files.csv file found. Cannot assign train/validation subset labels.")
         return
 
-    df_val = pd.read_csv(val_file)
+    df_val = pd.read_csv(val_file, dtype=str)
     df_t = pd.read_csv(save_dir.joinpath("combined_annotations.csv"))
     df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
     df_t["subset"] = "train"
