@@ -291,7 +291,7 @@ def get_time(time: float) -> str:
 
 ################ Model Training helpers #####################################
 
-def extract_support_value(supp):
+def extract_value(supp):
     if isinstance(supp, float):
         return supp
     if isinstance(supp, np.ndarray):
@@ -313,21 +313,11 @@ def save_model_results(ckpt_dir: str, result: dict):
     result : dict
         training results
     """
-    # result["fbeta"] = [[float(i) for i in n] for n in result["fbeta"]]
-    # result["val_fbeta"] = [[float(i) for i in n] for n in result["val_fbeta"]]
-    try:
-        result["f_1"] = [n.item() for n in result["f_1"]]
-        result["val_f_1"] = [n.item() for n in result["val_f_1"]]
-    except AttributeError:
-        print(f"Got attribute error trying to transform F1 scores: {type(result['f_1'])}, {type(result['val_f_1'])}")
-        result["f_1"] = [n for n in result["f_1"]]
-        result["val_f_1"] = [n for n in result["val_f_1"]]
-
-    # Support metrics might be numpy or torch arrays. Need to fix that before serializing.
-    # Extract items into list for safe modification of map while iterating.
+    # Some metrics might be numpy or torch arrays. Need to fix that before serializing.
+    # First extract items into list for safe modification of map while iterating.
     for k, v in list(result.items()):
-        if 'support' in k:
-            result[k] = [extract_support_value(n) for n in v]
+        if "support" in k or "f_1" in k:
+            result[k] = [extract_value(n) for n in v]
 
     with open(f"{ckpt_dir}/results.json", "w") as f:
         json.dump(result, f)
