@@ -291,6 +291,16 @@ def get_time(time: float) -> str:
 
 ################ Model Training helpers #####################################
 
+def extract_support_value(supp):
+    if isinstance(supp, float):
+        return supp
+    if isinstance(supp, np.ndarray):
+        # I would just say supp.item() here but this is legacy code and I'm unsure if it's always a single value.
+        return float(supp[0])
+    else:
+        # Assume it's a torch.Tensor here. Raises exception if not.
+        return float(supp.numpy()[0])
+
 
 def save_model_results(ckpt_dir: str, result: dict):
     """
@@ -309,14 +319,16 @@ def save_model_results(ckpt_dir: str, result: dict):
         result["f_1"] = [n.item() for n in result["f_1"]]
         result["val_f_1"] = [n.item() for n in result["val_f_1"]]
     except AttributeError:
+        print(f"Got attribute error trying to transform F1 scores: {type(result['f_1'])}, {type(result['val_f_1'])}")
         result["f_1"] = [n for n in result["f_1"]]
         result["val_f_1"] = [n for n in result["val_f_1"]]
-    try:
-        for k, v in result.items():
-            if 'support' in k:
-                result[k] = [float(n.numpy()[0]) for n in result[k]]
-    except:
-        pass
+
+    # Support metrics might be numpy or torch arrays. Need to fix that before serializing.
+    # Extract items into list for safe modification of map while iterating.
+    for k, v in list(result.items()):
+        if 'support' in k:
+            result[k] = [extract_support_value(n) for n in v]
+
     with open(f"{ckpt_dir}/results.json", "w") as f:
         json.dump(result, f)
 
