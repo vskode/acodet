@@ -9,10 +9,13 @@ def set_seed(seed):
     import torch
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+
 
 from acodet import global_config as conf
 
 # AUTOTUNE = tf.data.AUTOTUNE
+
 
 def print_train_sizes():
     # get training set size
@@ -22,10 +25,13 @@ def print_train_sizes():
     
     ca_df = pd.read_csv(combined_annots)
     en_df = pd.read_csv(explicit_noise)
-
     df = pd.concat([ca_df, en_df], ignore_index=True)
-    print(f'\nNumber of annotations: {int(len(df)*0.8)}') # the 0.8 is from the train/val split
-    total_train_set_size = int(len(df)*0.8) * (
+    train_anno_size = int(len(df) * 0.8)  # the 0.8 is from the train/val split
+    if "subset" in df.columns:
+        train_anno_size = (df['subset'] == 'train').sum()
+    print(f'\nNumber of training examples: {train_anno_size}')
+
+    total_train_set_size = train_anno_size * (
             1 + int(conf.TIME_AUGS) + int(conf.SPEC_AUG) + int(conf.MIXUP_AUGS)
             )
     print(

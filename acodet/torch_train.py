@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from acodet import global_config as conf
 
+
 def train(model, data_loaders, output_dir, device=None):
     if not device:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -19,10 +20,11 @@ def train(model, data_loaders, output_dir, device=None):
             if torch.cuda.is_available():
                 device = 'cuda'
             else:
+                print(f"\n\n==================\nWARNING: Falling back to CPU. GPU not available.")
                 device = 'cpu'
         except:
+            print(f"\n\n==================\nWARNING: Falling back to CPU. GPU not available.")
             device = 'cpu'
-            
     
     train_loader = data_loaders.train_loader()
     val_loader = data_loaders.val_loader()

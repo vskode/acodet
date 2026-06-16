@@ -1,4 +1,3 @@
-import os
 from datetime import datetime as dt
 from pathlib import Path
 import logging
@@ -8,7 +7,6 @@ import sklearn.metrics as metrics
 from tqdm import tqdm
 
 import torch
-import torchaudio as ta
 from acodet import models
 from acodet import global_config as conf
 
@@ -24,56 +22,39 @@ def evaluate(train_date=False, **kwargs):
         model_file = conf.MODEL_NAME
     figure_dir = Path(f'../trainings/{model_file}') / f'evaluation_{conf.ANNOT_DESTINATION}'
     figure_dir.mkdir(exist_ok=True, parents=True)
-    
-    if not conf.MODELCLASSNAME in ('TorchModel', 'HumpBackNorthAtlantic', 'BacpipeModel'):
+
+    if conf.MODELCLASSNAME not in ('TorchModel', 'HumpBackNorthAtlantic', 'BacpipeModel'):
         logger.error(f"Evaluation step not yet implemented for {conf.MODELCLASSNAME}. Aborting.")
         return 1
 
     # don't import tensorflow if it's not needed
-    if not conf.MODELCLASSNAME in ('TorchModel', 'BacpipeModel'):
+    if conf.MODELCLASSNAME not in ('TorchModel', 'BacpipeModel'):
         import tensorflow as tf
 
     timestamp_foldername = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
     timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER
 
     logger.info(f"Initializing model {conf.MODELCLASSNAME}")
+    model = models.init_model()
 
-    if conf.MODELCLASSNAME == 'TorchModel':
-        # if using TorchModel, load from the appropriate path
-        model = models.init_model()
-    elif conf.MODELCLASSNAME == 'BacpipeModel':
-        model = models.init_model()
+    if conf.MODELCLASSNAME == 'BacpipeModel':
         conf.SR = model.embedder.model.sr
-        
-    # elif not train_date:
-    #     # allow user to evaluate a model that they have not trained yet
-    #     model = models.init_model(timestamp_foldername=timestamp_foldername)
-    else:
-        logger.info("initializing model")
-        model = models.init_model()
-
-
-    logger.info(f"Loading test data from {conf.ANNOT_DEST}")
 
     # load test data from advanced config ANNOTATION_DESTINATION
+    logger.info(f"Loading test data from {conf.ANNOT_DEST}")
     data_loader = Loader(conf.ANNOT_DEST)
     test_data = data_loader.test_loader()
 
-    # create two vectors: one for true labels, and one for predicted labels
-
+    # Perform inference!
     predictions = []
     class_labels = []
     all_paths = []
     all_timestamps = []
-    for idx, tuple in tqdm(
-        enumerate(test_data), 
-        'running inference on test data', 
-        total=len(data_loader.test) // conf.BATCH_SIZE
-        ):
-        audio, new_labels, paths, timestamps = tuple
+    for idx, batch in tqdm(enumerate(test_data), 'running inference on test data',
+                           total=len(data_loader.test) // conf.BATCH_SIZE):
+        audio, new_labels, paths, timestamps = batch
 
         if conf.MODELCLASSNAME == 'BacpipeModel':
-            
             # this is the case for using their own classifiers
             if not conf.BOOL_LIN_CLFIER and conf.MODEL_NAME in ['perch_v2', 'google_whale']:
                 import tensorflow as tf
@@ -82,8 +63,7 @@ def evaluate(train_date=False, **kwargs):
                 new_predictions = model.embedder.model.classifier_predictions(embedings)
                 if conf.MODEL_NAME == 'google_whale':
                     new_predictions = tf.sigmoid(new_predictions)
-                    
-            else:    
+            else:
                 audio = torch.tensor(audio)
                 with torch.inference_mode():
                     new_predictions = torch.sigmoid(model(audio.to(conf.DEVICE))).squeeze()
@@ -91,19 +71,12 @@ def evaluate(train_date=False, **kwargs):
             with torch.inference_mode():
                 new_predictions = torch.sigmoid(model(audio)).squeeze()#.detach().cpu().squeeze()
         else:
-            new_predictions = torch.tensor(model.predict(
-                    tf.convert_to_tensor(audio)
-                ).squeeze())
+            new_predictions = torch.tensor(model.predict(tf.convert_to_tensor(audio)).squeeze())
         predictions.extend(new_predictions)
         class_labels.extend(new_labels)
         all_paths.extend(paths)
         all_timestamps.extend(timestamps)
-        
-        # Uncomment this if you just want to try running it for a little data to 
-        # make sure the code runs.
-        # if idx > 100:
-        #    break
-    
+
     if not isinstance(predictions[0], torch.Tensor):
         class_labels = np.array(class_labels)
         predictions = torch.tensor(np.array(predictions[:len(class_labels)]))
@@ -111,22 +84,11 @@ def evaluate(train_date=False, **kwargs):
         predictions = torch.hstack(predictions).to('cpu')
         class_labels = torch.hstack(class_labels).to('cpu')
 
-    # I commented these two out cause at the moment, we are using the model's only as 
-    # feature extractors, we would need to add another option 
-    
-    if (
-        conf.MODEL_NAME == 'perch_v2' 
-        and conf.MODELCLASSNAME == 'BacpipeModel'
-        and not conf.BOOL_LIN_CLFIER
-        ):
+    if conf.MODEL_NAME == 'perch_v2' and conf.MODELCLASSNAME == 'BacpipeModel' and not conf.BOOL_LIN_CLFIER:
         model_labels = np.array(model.embedder.model.classes)
         humpback_label_idx = np.where(model_labels=='Megaptera novaeangliae')[0][0]
         predictions = predictions[:, humpback_label_idx]
-    elif (
-        conf.MODEL_NAME == 'google_whale' 
-        and conf.MODELCLASSNAME == 'BacpipeModel'
-        and not conf.BOOL_LIN_CLFIER
-        ):
+    elif conf.MODEL_NAME == 'google_whale' and conf.MODELCLASSNAME == 'BacpipeModel' and not conf.BOOL_LIN_CLFIER:
         model_labels = np.array(model.embedder.model.classes)
         humpback_label_idx = np.where(model_labels=='Humpback')[0][0]
         predictions = predictions[:, humpback_label_idx]
@@ -148,9 +110,10 @@ def evaluate(train_date=False, **kwargs):
     try:
         fn, true, fp = np.unique([np.round(jj)-ii for jj, ii in zip(predictions, class_labels)], return_counts=True)[-1]
         logger.info(f"{fn=}, {true=}, {fp=}")
-    except:
-        pass
-    
+    except Exception as e:
+        # I don't know what kind of exceptions these may be or why they are swallowed. --Neil
+        logger.error(f"Exception trying to compute false negatives/positives: {str(e)}")
+
     d = metrics.classification_report(
         class_labels,
         [np.round(ii) for ii in predictions],
@@ -186,8 +149,8 @@ def evaluate(train_date=False, **kwargs):
     ax.set_title(f'Precision-Recall Curve: {model_file}')
     ax.set_ylabel('Precision')
     ax.set_xlabel('Recall')
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
+    ax.set_xlim((0.0, 1.0))
+    ax.set_ylim((0.0, 1.05))
     plt.legend()
 
     # save plot
@@ -262,10 +225,10 @@ def evaluate(train_date=False, **kwargs):
     best_stats_filepath = Path(figure_dir).joinpath('best_f1_stats.csv')
     with open(best_stats_filepath, 'w') as file:
         file.write("precision,recall,threshold,f1_score\n")
-        file.write(str(precision[best_f1_index]) + ',' + \
-                str(recall[best_f1_index]) + ',' + \
-                str(thresholds[best_f1_index]) + ',' + \
-                str(f1_scores[best_f1_index]) + '\n')
+        file.write(str(precision[best_f1_index]) + ',' +
+                   str(recall[best_f1_index]) + ',' +
+                   str(thresholds[best_f1_index]) + ',' +
+                   str(f1_scores[best_f1_index]) + '\n')
 
     ###################################
     # ROC Curve
@@ -279,7 +242,7 @@ def evaluate(train_date=False, **kwargs):
     # create figure
     fig, ax = plt.subplots()
     ax.plot(false_positive_rate, true_positive_rate, color='tab:blue', label='ROC curve (area = %0.2f)' % roc_auc)
-    ax.plot([0, 1], [0, 1], 'k--') # plot straight x/y ("no skill") line for comparison
+    ax.plot([0, 1], [0, 1], 'k--')  # plot straight x/y ("no skill") line for comparison
     ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.05)
     ax.set_xlabel('False Positive Rate')

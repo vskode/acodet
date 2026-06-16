@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import torch
@@ -5,12 +6,20 @@ from torch.utils.data import DataLoader, Dataset
 import librosa as lb
 from pathlib import Path
 from acodet import global_config as conf
-import torchaudio as ta
-from multiprocessing import cpu_count
+from acodet.combine_annotations import read_annotations_from_file
 
-np.random.seed(42)
+NUM_CORES = os.cpu_count() or 10
+if hasattr(os, "sched_getaffinity"):
+    # This function is only available on certain platforms. When running with Slurm, it can tell us the true
+    # number of cores we have access to.
+    NUM_CORES = len(os.sched_getaffinity(0))
+print(f"Using {NUM_CORES} cores.")
+
 
 def collate_fn(batch):
+    # Filter examples that aren't the full size.
+    expected_sz = len(batch[0]['wave'])
+    batch = [x for x in batch if len(x['wave']) == expected_sz]
     waves = torch.stack([x['wave'] for x in batch])
     labels = torch.stack([x['labels'] for x in batch])
     starts = torch.tensor([x['start'] for x in batch], dtype=torch.float32)
@@ -23,6 +32,7 @@ def collate_fn(batch):
 
 class AudioDataset(Dataset):
     def __init__(self, df, mode: str = 'train'):
+        assert len(df) > 0
         self.mode = mode
 
         rows = []
@@ -101,77 +111,22 @@ class AudioDataset(Dataset):
             'start': self.starts[idx]
         }
 
+
 class Loader(DataLoader):
     def __init__(self, df_path):
         """
         Deals with the corresponding splitting into train and validation and initializes pre-defined
         Pytorch dataloaders.
         """
-        self.df_path = df_path
         super(DataLoader, self).__init__()
-        
-        combined_annots = Path(df_path) / 'combined_annotations.csv'
-        explicit_noise = Path(df_path) / 'explicit_noise.csv'
-        
-        ca_df = pd.read_csv(combined_annots)
-        en_df = pd.read_csv(explicit_noise)
-        
-        if not 'subset' in ca_df.columns:
-            files = ca_df.filename.unique()
-            eval_files = files[-int(len(files) * 0.2):]
-            ca_df.loc[:, 'subset'] = [''] * len(ca_df)
-            ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'test'
-        
-        if not 'subset' in en_df.columns:
-            files = en_df.filename.unique()
-            eval_files = files[-int(len(files) * 0.2):]
-            en_df.loc[:, 'subset'] = [''] * len(en_df)
-            en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'test'
-            
-        df = pd.concat([ca_df, en_df], ignore_index=True)
-        
-        df = df[df.subset != 'test']
-        
-        rand_ints = np.random.permutation(len(df))
-        border = int(len(df) * 0.8)
-        
-        train, val = df.iloc[rand_ints[:border]], df.iloc[rand_ints[border:]]
-        train.loc[:, 'subset'] = 'train'
-        val.loc[:, 'subset'] = 'val'
-        train, val = train, val
-        
-        df = pd.concat([train, val], ignore_index=True)
-            
-        if len(df) > 0:
-            self.train = AudioDataset(
-                df[
-                    df['subset'] == 'train'
-                    ], 
-                mode='train',
-                )
+        self.df_path = df_path
 
-            self.val = AudioDataset(
-                df[
-                    df['subset'] == 'val'
-                    ], 
-                mode='val',
-                )
-        else:
-            self.train = pd.DataFrame()
-            self.val = pd.DataFrame()
-        
-        eval_df = pd.concat([ca_df, en_df], ignore_index=True)
-        eval_df = eval_df[eval_df.subset == 'test']
-        
-        rand_ints = np.random.permutation(len(eval_df))
-        eval_df = eval_df.iloc[rand_ints]
-        
-        # eval_df = eval_df[:20]
-        self.test = AudioDataset(
-            eval_df,
-            mode='test',
-            )
-        
+        train_df, val_df, eval_df = read_annotations_from_file(df_path)
+
+        self.train = AudioDataset(train_df, mode='train') if len(train_df) > 0 else pd.DataFrame()
+        self.val = AudioDataset(val_df, mode='val') if len(val_df) > 0 else pd.DataFrame()
+        self.test = AudioDataset(eval_df, mode='test') if len(eval_df) > 0 else pd.DataFrame()
+
     def noise_loader(self):
         # Filter strictly for Explicit Noise
         en_df = pd.read_csv(Path(self.df_path) / 'explicit_noise.csv')
@@ -182,7 +137,7 @@ class Loader(DataLoader):
             noise_dataset,
             batch_size=conf.BATCH_SIZE,
             shuffle=True,
-            num_workers=16,#cpu_count(),
+            num_workers=NUM_CORES,
             prefetch_factor=4,
             persistent_workers=True, 
             pin_memory=True,
@@ -196,7 +151,7 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=True, 
             pin_memory=True,
-            num_workers=16,#cpu_count(),
+            num_workers=NUM_CORES,
             prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
@@ -208,7 +163,7 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=16,#cpu_count(),
+            num_workers=NUM_CORES,
             prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn
@@ -220,7 +175,7 @@ class Loader(DataLoader):
             batch_size=conf.BATCH_SIZE,
             shuffle=False, 
             pin_memory=True,
-            num_workers=16,#cpu_count(),
+            num_workers=NUM_CORES,
             prefetch_factor=4,
             persistent_workers=True, 
             collate_fn=collate_fn

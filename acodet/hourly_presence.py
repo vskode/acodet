@@ -195,14 +195,14 @@ def compute_hourly_pres(
 
         annots.df.to_csv(get_path(top_dir_path, conf.HR_PRS_SL))
         annots.df_counts.to_csv(get_path(top_dir_path, conf.HR_CNTS_SL))
-        if not "dont_save_plot" in kwargs.keys():
+        if not dont_save_plot:
             for metric in (conf.HR_CNTS_SL, conf.HR_PRS_SL):
                 plot_hp(top_dir_path, lim, thresh, metric)
 
         if sc:
             annots.df_sc.to_csv(get_path(top_dir_path, conf.HR_PRS_SC))
             annots.df_sc_cnt.to_csv(get_path(top_dir_path, conf.HR_CNTS_SC))
-            if not "dont_save_plot" in kwargs.keys():
+            if not dont_save_plot:
                 for metric in (conf.HR_CNTS_SC, conf.HR_PRS_SC):
                     plot_hp(top_dir_path, lim_sc, thresh_sc, metric)
         print("\n")
@@ -369,14 +369,17 @@ class ProcessLimits:
         """
         annot = annot.loc[annot[conf.ANNOTATION_COLUMN] >= self.thresh_sc]
         for i, row in annot.iterrows():
+            # prec_anns = all the rows that are before now, but still within the context window.
+            # These are already filtered to be above the threshold, so simply counting these rows tells us if we exceed
+            # the threshold.
             bool1 = 0 <= (row["Begin Time (s)"] - annot["Begin Time (s)"])
             bool2 = (
                 row["Begin Time (s)"] - annot["Begin Time (s)"]
             ) < self.n_prec_preds * conf.CONTEXT_WIN / conf.SR
-            self.prec_anns = annot.loc[bool1 * bool2]
-            if len(self.prec_anns) > self.n_exceed_thresh:
+            prec_anns = annot.loc[bool1 * bool2]
+            if len(prec_anns) > self.n_exceed_thresh:
                 self.filtered_annots = pd.concat(
-                    [self.filtered_annots, self.prec_anns]
+                    [self.filtered_annots, prec_anns]
                 )
                 # this stops the function as soon as the limit is met once
                 if not self.return_counts:

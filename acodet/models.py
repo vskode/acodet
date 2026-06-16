@@ -72,7 +72,7 @@ class HumpBackNorthAtlantic(ModelHelper):
             
 
     def load_model(self, **kwargs):
-        from .humpback_model_dir.leaf_pcen import FBetaScore
+        from .humpback_model_dir.leaf_pcen import FBetaScore, Support
         import tensorflow as tf
         if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
             self.download_model()
@@ -115,7 +115,8 @@ class HumpBackNorthAtlantic(ModelHelper):
                         "Block": Block,
                         "ResidualPath": ResidualPath,
                         "MainPath": MainPath,
-                        "FBetaScore": FBetaScore
+                        "FBetaScore": FBetaScore,
+                        "Support": Support,
                         }
                     )
                 print(f'Successfully loaded {self.ckpt}')
@@ -370,11 +371,13 @@ class BacpipeModel(nn.Module):
             if isinstance(x, torch.Tensor):
                 from bacpipe import TF_MODELS
                 if conf.MODEL_NAME in TF_MODELS:
-                    preproc_x = self.embedder.preprocess(x.cpu())
-                    embeds = self.embedder.model(preproc_x.cpu()).squeeze()
+                    if hasattr(self.embedder.model, "preprocess"):
+                        x = self.embedder.model.preprocess(x.cpu())
+                    embeds = self.embedder.model(x.cpu()).squeeze()
                 else:
-                    preproc_x = self.embedder.model.preprocess(x)
-                    embeds = self.embedder.model(preproc_x).squeeze()
+                    if hasattr(self.embedder.model, "preprocess"):
+                        x = self.embedder.model.preprocess(x)
+                    embeds = self.embedder.model(x).squeeze()
             else:
                 with torch.no_grad():
                     embeds = self.embedder.get_embeddings_from_model(x)

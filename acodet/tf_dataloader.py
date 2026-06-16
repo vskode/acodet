@@ -6,8 +6,9 @@ import torchaudio as ta
 if "set_audio_backend" in dir(ta):  # Removed from recent versions of torchaudio
     ta.set_audio_backend("soundfile")  # Avoid torchcodec
 import librosa as lb
-import torch
 import acodet.global_config as conf
+from acodet.combine_annotations import read_annotations_from_file
+
 
 def load_and_preprocess(filename, start, end, label):
     # 1. Read file bytes
@@ -134,42 +135,9 @@ class TFLoader:
     """TensorFlow equivalent of your PyTorch Loader"""
     def __init__(self, df_path):
         self.df_path = df_path
-        
-        combined_annots = Path(df_path) / 'combined_annotations.csv'
-        explicit_noise = Path(df_path) / 'explicit_noise.csv'
-        
-        ca_df = pd.read_csv(combined_annots)
-        en_df = pd.read_csv(explicit_noise)
-        
-        # Add subset column if missing
-        if 'subset' not in ca_df.columns:
-            files = ca_df.filename.unique()
-            eval_files = files[-int(len(files) * 0.2):]
-            ca_df['subset'] = ''
-            ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'test'
-        
-        if 'subset' not in en_df.columns:
-            files = en_df.filename.unique()
-            eval_files = files[-int(len(files) * 0.2):]
-            en_df['subset'] = ''
-            en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'test'
-        
-        df = pd.concat([ca_df, en_df], ignore_index=True)
-        df = df[df.subset != 'test']
-        
-        # Split train/val
-        rand_ints = np.random.permutation(len(df))
-        border = int(len(df) * 0.8)
-        
-        train_df = df.iloc[rand_ints[:border]].copy()
-        val_df = df.iloc[rand_ints[border:]].copy()
-        train_df['subset'] = 'train'
-        val_df['subset'] = 'val'
-        
-        # Eval set
-        eval_df = pd.concat([ca_df, en_df], ignore_index=True)
-        eval_df = eval_df[eval_df.subset == 'test']
-        
+
+        train_df, val_df, eval_df = read_annotations_from_file(df_path)
+
         # Create datasets
         self.train = TFAudioDataset(train_df, mode='train')
         self.val = TFAudioDataset(val_df, mode='val')
@@ -179,8 +147,8 @@ class TFLoader:
         self.n_train = len(train_df)
         self.n_val = len(val_df)
         self.n_eval = len(eval_df)
-        self.n_noise = len(df[df.label==0])
-            
+        self.n_noise = len(train_df[train_df.label == 0])
+
     def train_loader(self, batch_size=None):
         dataset = self.train.get_dataset()
         # This is the key: parallelize the generator execution
