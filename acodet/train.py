@@ -316,15 +316,16 @@ def run_training(
             for layer in model.layers[pre_blocks:-unfreeze]:
                 layer.trainable = False
 
-        earlystopping_callback = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss',
-            min_delta=0.01,
-            patience=3,
-            verbose=1,
-            mode='auto',
-            baseline=0.15,
-            start_from_epoch=65
-        )
+        # FIXME: Disable early stopping for now, as the torch training doesn't have this implemented.
+        #        In any case, it should be made configurable.
+        # earlystopping_callback = tf.keras.callbacks.EarlyStopping(
+        #     monitor='val_loss',
+        #     min_delta=0.001,
+        #     patience=10,
+        #     verbose=1,
+        #     mode='min',
+        #     start_from_epoch=65
+        # )
 
 
         modelsaving_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -353,7 +354,7 @@ def run_training(
             steps_per_epoch=steps_per_epoch,
             validation_data=val_data,
             validation_steps=steps_per_epoch,  
-            callbacks=[earlystopping_callback, modelsaving_callback, trainstats_callback],
+            callbacks=[modelsaving_callback, trainstats_callback],  # , earlystopping_callback],
         )
         result = hist.history      
         save_model_results(checkpoint_dir, result)
