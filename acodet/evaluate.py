@@ -101,35 +101,29 @@ def evaluate(train_date=False, **kwargs):
     ####################################
     ### Precision, recall, and f1 score 
     ####################################
-    logger.info("Calculating precision, recall, and f1 scores")
-
-    # calculate precision and recall
-    precision, recall, thresholds = metrics.precision_recall_curve(class_labels, predictions)
-    fig_filepath = Path(figure_dir).joinpath('precision_recall_stats.csv')
-
-    try:
-        fn, true, fp = np.unique([np.round(jj)-ii for jj, ii in zip(predictions, class_labels)], return_counts=True)[-1]
-        logger.info(f"{fn=}, {true=}, {fp=}")
-    except Exception as e:
-        # I don't know what kind of exceptions these may be or why they are swallowed. --Neil
-        logger.error(f"Exception trying to compute false negatives/positives: {str(e)}")
+    logger.info("Calculating precision, recall, and F1 scores")
 
     d = metrics.classification_report(
         class_labels,
         [np.round(ii) for ii in predictions],
         output_dict=True
     )
-    logger.info(d)
+    logger.info(f"Classification Report: {d}")
+
+    # calculate precision and recall
+    precision, recall, thresholds = metrics.precision_recall_curve(class_labels, predictions)
+    fig_filepath = Path(figure_dir).joinpath('precision_recall_stats.csv')
+
     # iterate through thresholds
     # and write precision, recall, and f1 score to a text file
     f1_scores = []
 
     with open(fig_filepath, 'w') as file:
         file.write("precision,recall,threshold,f1_score\n")
-        for i, t in enumerate(thresholds):
-            f1_score = 2 * (precision[i] * recall[i]) / (precision[i] + recall[i])
+        for p, r, t in zip(precision, recall, thresholds):
+            f1_score = 2 * (p * r) / (p + r) if (p + r) != 0.0 else 0.0
             f1_scores.append(f1_score)
-            line = f"{precision[i]},{recall[i]},{t},{f1_score}\n"
+            line = f"{p},{r},{t},{f1_score}\n"
             file.write(line)
     auc_pr = metrics.auc(recall, precision)
 
@@ -152,8 +146,6 @@ def evaluate(train_date=False, **kwargs):
     ax.set_xlim((0.0, 1.0))
     ax.set_ylim((0.0, 1.05))
     plt.legend()
-
-    # save plot
     fig_filepath = Path(figure_dir).joinpath('precision_recall_curve.png')
     fig.savefig(fig_filepath)
 
@@ -198,7 +190,7 @@ def evaluate(train_date=False, **kwargs):
     # so use the best f1 score calculated above
     # to mask the continuous values into class predictions
 
-    best_f1_index = np.argmax(f1_scores)
+    best_f1_index = np.nanargmax(f1_scores)
     best_threshold = thresholds[best_f1_index]
 
     # if the predicted value is greater than the threshold,
