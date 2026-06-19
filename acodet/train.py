@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime as dt
 from pathlib import Path
 import numpy as np
@@ -344,6 +345,7 @@ def run_training(
 
         model.save_weights(checkpoint_path)
 
+        is_tty = sys.stdout.isatty()
         model_file_name = model_id
         if int(tf.__version__.split('.')[1]) > 15:
             model_file_name += '.keras'
@@ -353,8 +355,9 @@ def run_training(
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             validation_data=val_data,
-            validation_steps=steps_per_epoch,  
+            validation_steps=steps_per_epoch,
             callbacks=[modelsaving_callback, trainstats_callback],  # , earlystopping_callback],
+            verbose=(1 if is_tty else 2),
         )
         result = hist.history      
         save_model_results(checkpoint_dir, result)
