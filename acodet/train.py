@@ -1,7 +1,10 @@
+import datetime
 import os
 import sys
 from datetime import datetime as dt
 from pathlib import Path
+from time import time
+
 import numpy as np
 # import tensorflow_addons as tfa
 
@@ -113,15 +116,16 @@ def run_training(
     #     data_dir = [data_dir[0].parent]
 
     ########### INIT TRAINING RUN AND DIRECTORIES ###############################
-    time_start = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
+    start_time = time()
+    timestamp = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
     if load_ckpt_path:
-        time_start = load_ckpt_path
+        timestamp = load_ckpt_path
     
     # make a directory within '../trainings' to save all training outputs 
     if conf.MODELCLASSNAME == 'BacpipeModel':
-        model_id = conf.MODEL_NAME.lower() + '_' + time_start
+        model_id = conf.MODEL_NAME.lower() + '_' + timestamp
     else:
-        model_id = conf.MODELCLASSNAME.lower() + '_' + time_start
+        model_id = conf.MODELCLASSNAME.lower() + '_' + timestamp
 
     # make a directory in '../trainings' to save training info in
     model_output_dir = Path(f"../trainings").joinpath(model_id)
@@ -131,9 +135,13 @@ def run_training(
     # save the global config constants to model directory for later reference
     global_config_constants = dir(conf)
     cleaned_constants = [i for i in global_config_constants if i.isupper()]  # filter for just uppercase constants
-    with open(model_output_dir.joinpath('global_config.txt'), 'w') as file:
+    cfg_path = model_output_dir.joinpath('global_config.txt')
+    with open(cfg_path, 'w') as file:
+        print(f"Writing config to {cfg_path}:")
         for constant in cleaned_constants:
-            file.write(constant + ',' + str(getattr(conf, constant)) + '\n')
+            cfg_line = constant + ',' + str(getattr(conf, constant))
+            print("    " + cfg_line)
+            file.write(cfg_line + '\n')
 
     print_train_sizes()
 
@@ -200,7 +208,7 @@ def run_training(
             mixup_augs,
             seed,
             spec_aug=spec_aug,
-            time_start=time_start,
+            time_start=timestamp,
             plot=False,
             random=False,
         )
@@ -373,7 +381,7 @@ def run_training(
         #     ModelClassName,
         #     data_dir,
         #     batch_size,
-        #     time_start,
+        #     timestamp,
         #     plot_cm=True,
         #     data=data_description,
         #     keras_mod_name=keras_mod_name,
@@ -415,6 +423,10 @@ def run_training(
             model.lin_classifier.state_dict(), 
             model_output_dir.joinpath(model_file_name)
             )
+
+    total_time_str = str(datetime.timedelta(seconds=int(time() - start_time)))
+    print(f"Training Complete. Time: {total_time_str}")
+    # End of train() function.
 
 
 def save_model(
