@@ -82,7 +82,8 @@ def train(model, data_loaders, output_dir, device=None):
         # define progressbar
         pbar = tqdm(train_loader, 
                     total=total_steps, 
-                    desc=f"Epoch {epoch+1}/{conf.EPOCHS}")
+                    desc=f"Epoch {epoch+1}/{conf.EPOCHS}",
+                    disable=None)
         
 
         for i, batch in enumerate(pbar):
@@ -176,12 +177,6 @@ def train(model, data_loaders, output_dir, device=None):
         
         with torch.no_grad():
             for v_idx, batch in enumerate(val_loader):
-                # A. Check Step Limit
-                if (
-                    conf.STEPS_PER_EPOCH is not None 
-                    and v_idx >= (conf.STEPS_PER_EPOCH / 5)
-                    ):
-                    break
                 inputs = batch[0].to(device)
                 labels = batch[1].to(device)
                 
