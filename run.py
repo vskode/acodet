@@ -29,6 +29,7 @@ def main(sc=True, **kwargs):
     else:
         preset = conf.PRESET
 
+    print("====== CONFIG LOADED ======")
     if conf.RUN_CONFIG == 1:
         from acodet.hourly_presence import compute_hourly_pres, calc_val_diff
         from acodet.annotate import run_annotation, filter_annots_by_thresh
