@@ -98,7 +98,7 @@ TOP_DIR_NAME = session["top_dir_name"]
 THRESH_LABEL = session["thresh_label"]
 
 #############  ANNOTATIONS  #####################################
-DEFAULT_THRESH = session["default_thresh"]
+DEFAULT_THRESH = session.get("default_thresh", session.get("default_threshold", 0.5))
 ANNOTATION_DF_FMIN = session["annotation_df_fmin"]
 ANNOTATION_DF_FMAX = session["annotation_df_fmax"]
 SCALE_FMAX_WITH_PREDICTIONS = session["scale_fmax_with_predictions"]

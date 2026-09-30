@@ -81,15 +81,17 @@ class HumpBackNorthAtlantic(ModelHelper):
         pass
 
     def load_model(self, **kwargs):
-        if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
+        keras_file, weights_file = self._resolve_model_files()
+        if keras_file is None or weights_file is None:
             self.download_model()
-            # for model_path in Path(conf.MODEL_DIR).iterdir():
-            for model_path in list((Path(conf.MODEL_DIR)/ conf.MODEL_NAME ).glob(conf.MODEL_NAME+'*')):
-                if not model_path.suffix == ".zip":
-                    continue
-                else:
-                    with zipfile.ZipFile(model_path, "r") as model_zip:
-                        model_zip.extractall(Path(conf.MODEL_DIR)/ conf.MODEL_NAME)
+            keras_file, weights_file = self._resolve_model_files()
+
+        if keras_file is None or weights_file is None:
+            raise FileNotFoundError(
+                "Could not locate the model files (.keras and "
+                "original_model_weights.npz). Please download the model manually "
+                "from https://huggingface.co/datasets/vskode/bacpipe_models"
+            )
         
         if '2.15' in tf.__version__: # NO longer supported
             print(
@@ -104,7 +106,7 @@ class HumpBackNorthAtlantic(ModelHelper):
             from acodet.transfer_weights import inject_weights
             from acodet.tf220 import PCEN, Block, ResidualPath, MainPath
             self.model = tf.keras.models.load_model(
-                Path(conf.MODEL_DIR) / conf.MODEL_NAME / (conf.MODEL_NAME+'.keras'),
+                keras_file,
                 custom_objects={
                     "PCEN": PCEN,
                     "Block": Block,
@@ -114,31 +116,48 @@ class HumpBackNorthAtlantic(ModelHelper):
             )
             inject_weights(
                 self.model, 
-                Path(conf.MODEL_DIR) / conf.MODEL_NAME / 'original_model_weights.npz'
+                weights_file
                 )
 
                 
     
+    def _resolve_model_files(self):
+        """Locate the Keras 3 model architecture (.keras) and its pretrained
+        weights (original_model_weights.npz). Files may live flat in
+        MODEL_DIR or in a subdirectory (MODEL_NAME or 'hbdet' after a fresh
+        download from Hugging Face)."""
+        model_dir = Path(conf.MODEL_DIR)
+        keras_candidates = []
+        weights_candidates = []
+
+        for search_dir in (model_dir, model_dir / conf.MODEL_NAME, model_dir / 'hbdet'):
+            if not search_dir.exists():
+                continue
+            keras_candidates.extend(sorted(search_dir.glob('*.keras')))
+            weights_candidates.extend(sorted(search_dir.glob('original_model_weights.npz')))
+
+        keras_file = None
+        if keras_candidates:
+            named = [p for p in keras_candidates if conf.MODEL_NAME in p.stem]
+            keras_file = (named or keras_candidates)[0]
+        weights_file = weights_candidates[0] if weights_candidates else None
+        return keras_file, weights_file
+
+
     def download_model(self):
-        # import gdown
-        # g_drive_link = (
-        #     'https://drive.google.com/uc?id=1wYiv9SHnP9JkLnPOBcchWNHRh5CCQ82B'
-        #     # 'https://drive.google.com/uc?id=1qAqAy_REaIqgVM1O5qsNQIBNB8Hb0spz'
-        #     )
         Path(conf.MODEL_DIR).mkdir(parents=True, exist_ok=True)
-        # output = Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME + '.zip')  # Change this to your preferred filename
-        # gdown.download(g_drive_link, str(output), quiet=False)
         from huggingface_hub import hf_hub_download
-        hf_hub_download(
-                    repo_id='vskode/bacpipe_models',
-                    filename='hbdet/hbdet.zip',
-                    local_dir=Path(conf.MODEL_DIR),
-                    repo_type="dataset",
-                )
-        # import shutil
-        # shutil.move(Path(conf.MODEL_DIR) / 'hbdet/hbdet.zip', Path(conf.MODEL_DIR) / 'hbdet.zip')
-        # (Path(conf.MODEL_DIR) / 'hbdet').rmdir()
-        print(f"File downloaded as hbdet/hbdet.zip")
+        local_zip = hf_hub_download(
+            repo_id='vskode/bacpipe_models',
+            filename='hbdet/hbdet.zip',
+            local_dir=Path(conf.MODEL_DIR),
+            repo_type="dataset",
+        )
+        # The zip contains 'hbdet.keras' (architecture) and
+        # 'original_model_weights.npz' (weights); extract both into MODEL_DIR.
+        with zipfile.ZipFile(local_zip, "r") as model_zip:
+            model_zip.extractall(Path(conf.MODEL_DIR))
+        print(f"Model downloaded and extracted to {Path(conf.MODEL_DIR)}")
 
 
 class GoogleMod(ModelHelper):  # TODO change name
