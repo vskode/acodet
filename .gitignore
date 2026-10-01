@@ -23,3 +23,8 @@ generated*
 acodet/src/tmp_*
 acodet/src/models/Humpback_20221130/
 acodet/src/models
+
+# Ignore local progress notes
+progress.md
+.cline*
+acodet/src*

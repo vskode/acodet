@@ -1,3 +1,5 @@
+from . import device_guard  # noqa: F401  (must run before TensorFlow import)
+
 from email import generator
 import re
 import zipfile
@@ -141,8 +143,14 @@ def load_audio(file,
     """
     try:
         if conf.MODELCLASSNAME == 'BacpipeModel':
-            import bacpipe.embedding_generation_pipelines.feature_extractors as fe
-            model_module = getattr(fe, conf.MODEL_NAME)
+            # bacpipe >= 1.3 moved its feature extractors into
+            # ``bacpipe.model_pipelines.feature_extractors``. They are not
+            # re-exported in the package ``__init__``, so import the module
+            # for the selected model explicitly.
+            import importlib
+            model_module = importlib.import_module(
+                f"bacpipe.model_pipelines.feature_extractors.{conf.MODEL_NAME}"
+            )
             sr = model_module.SAMPLE_RATE
             conf.CONTEXT_WIN = model_module.LENGTH_IN_SAMPLES
             
@@ -692,7 +700,7 @@ def create_annotation_df(
             if len(all_preds.squeeze().shape) > 1:
                 all_labels = model.model.classes
                 preds = tf.reduce_max(all_preds, axis=1).numpy()
-        df = create_Raven_annotation_df(preds, ind)
+        df = create_Raven_annotation_df(preds)
         annots = pd.concat([annots, df], ignore_index=True)
 
     annots.index = np.arange(1, len(annots) + 1)
@@ -843,7 +851,8 @@ def gen_annotations(
 
 
 def save_multiclass_dfs(file, model, save_path_func, mod_label, predictions):
-    df_preds = model.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
+    from bacpipe.model_pipelines.runner import Classifier
+    df_preds = Classifier.make_classification_dict(predictions, model.model.classes, conf.DEFAULT_THRESH)
     head = df_preds.pop('head')
     filtered_labels = list(df_preds.keys())
     max_time_bins = head['Time bins in this file']

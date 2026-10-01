@@ -132,7 +132,7 @@ class MetaData:
         multi_df['labels_by_occurrence'] = [len(label_dict[l]['all_preds']) for l in label_dict.keys()]
         multi_df['most_active_file'] = [Path(label_dict[l]['most_active']).relative_to(self.save_dir) for l in label_dict.keys()]
         multi_df = multi_df.sort_values('labels_by_occurrence', ascending=False)
-        multi_df.to_csv(self.save_dir.joinpath('mutliclass_df.csv'))
+        multi_df.to_csv(self.save_dir.joinpath('multiclass_df.csv'))
             
 
 def run_annotation(train_date=None, **kwargs):

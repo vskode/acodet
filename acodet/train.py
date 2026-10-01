@@ -9,7 +9,6 @@ from acodet.funcs import save_model_results, get_train_set_size
 from acodet import models
 from acodet.plot_utils import plot_model_results, create_and_save_figure
 from acodet.tfrec import run_data_pipeline, prepare
-from acodet.augmentation import run_augment_pipeline
 from acodet import global_config as conf
 
 AUTOTUNE = tf.data.AUTOTUNE
@@ -65,6 +64,7 @@ def run_training(
     #############################################################################
     #############################  RUN  #########################################
     #############################################################################
+    from acodet.augmentation import run_augment_pipeline
     data_dir = list(Path(data_dir).iterdir())
     if 'dataset_meta_train' in [d.stem for d in data_dir]:
         data_dir = [data_dir[0].parent]

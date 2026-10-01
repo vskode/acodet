@@ -1,3 +1,5 @@
+from acodet import device_guard  # noqa: F401  (must run before Keras import)
+
 import streamlit as st
 from pathlib import Path
 from acodet import create_session_file
