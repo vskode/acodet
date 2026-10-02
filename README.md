@@ -83,7 +83,7 @@ The corresponding paper to acodet can be found here:
 
 - Install required packages:
 
-`uv pip install -r pyproject.toml`
+`uv pip install -r requirements.txt`
 
 
 --------------------------------------------
@@ -125,7 +125,7 @@ The corresponding paper to acodet can be found here:
 
 - Install required packages:
 
-    `uv pip install -r pyproject.toml`
+    `uv pip install -r requirements.txt`
     
 
 - Once the repository is installed, I would recommend running the inbuilt tests. That way if all tests run successfully, it is ensured that everything behaves as it should. To run the tests, run the following:
@@ -239,7 +239,7 @@ To start the program:
 
 - run the run.py script:
 
-`python acodet/run.py`
+`python run.py`
 
 ### Output
 
@@ -276,7 +276,7 @@ To start the program:
 
 - run the run.py script:
 
-`python acodet/run.py`
+`python run.py`
 
 ### Usecase 3: training
 
@@ -296,7 +296,7 @@ To start the program:
 
 - run the run.py script:
 
-`python acodet/run.py`
+`python run.py`
 
 # Explanation of Sequence limit
 Besides a simple thresholding (simple limit) the sequence limit can be used to distinguish repeating vocalizations from other noise sources. For humpback whales this vastly reduces the number of generated false positives.

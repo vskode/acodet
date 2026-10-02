@@ -1,3 +1,5 @@
+from . import device_guard  # noqa: F401  (must run before TensorFlow import)
+
 import tensorflow as tf
 # from tensorflow_addons import metrics
 from pathlib import Path
@@ -12,6 +14,36 @@ from . import global_config as conf
 from .humpback_model_dir import humpback_model
 from .humpback_model_dir import front_end
 from .humpback_model_dir import leaf_pcen
+
+
+def tf_minor_version() -> int:
+    """Return the minor version number of the installed TensorFlow.
+
+    TensorFlow versions follow the ``major.minor.patch`` scheme (for example
+    ``2.20.0``). The minor version determines which model format must be used:
+    TensorFlow 2.15 is the last release that can be installed on Windows and
+    ships Keras 2 (legacy SavedModel format), whereas TensorFlow >= 2.16 ships
+    Keras 3 (``.keras`` + weights archive).
+
+    Returns
+    -------
+    int
+        The minor version number, or ``0`` if it cannot be determined.
+    """
+    try:
+        return int(tf.version.VERSION.split(".")[1])
+    except (IndexError, ValueError):
+        return 0
+
+
+def uses_legacy_saved_model() -> bool:
+    """Return ``True`` when the legacy Keras SavedModel format must be used.
+
+    Windows cannot install TensorFlow >= 2.16, so users on Windows run
+    TensorFlow 2.15 (Keras 2). Keras 2 stores models as SavedModel directories
+    rather than the Keras 3 ``.keras`` + ``.npz`` pair used on Linux/macOS.
+    """
+    return tf_minor_version() < 16
 
 
 class ModelHelper:
@@ -81,64 +113,150 @@ class HumpBackNorthAtlantic(ModelHelper):
         pass
 
     def load_model(self, **kwargs):
-        if not Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME).exists():
-            self.download_model()
-            # for model_path in Path(conf.MODEL_DIR).iterdir():
-            for model_path in list((Path(conf.MODEL_DIR)/ conf.MODEL_NAME ).glob(conf.MODEL_NAME+'*')):
-                if not model_path.suffix == ".zip":
-                    continue
-                else:
-                    with zipfile.ZipFile(model_path, "r") as model_zip:
-                        model_zip.extractall(Path(conf.MODEL_DIR)/ conf.MODEL_NAME)
-        
-        if '2.15' in tf.__version__: # NO longer supported
-            print(
-                "Please download the model manually from here: "
-                "https://huggingface.co/datasets/vskode/bacpipe_models/resolve/main/hbdet/hbdet.tar.xz?download=true"
-            )
-            self.model = tf.keras.models.load_model(
-                Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME),
-                custom_objects={"Addons>FBetaScore": FBetaScore},
-            )
-        elif int(tf.__version__.split('.')[1]) > 15:
-            from acodet.transfer_weights import inject_weights
-            from acodet.tf220 import PCEN, Block, ResidualPath, MainPath
-            self.model = tf.keras.models.load_model(
-                Path(conf.MODEL_DIR) / conf.MODEL_NAME / (conf.MODEL_NAME+'.keras'),
-                custom_objects={
-                    "PCEN": PCEN,
-                    "Block": Block,
-                    "ResidualPath": ResidualPath,
-                    "MainPath": MainPath
-                }
-            )
-            inject_weights(
-                self.model, 
-                Path(conf.MODEL_DIR) / conf.MODEL_NAME / 'original_model_weights.npz'
-                )
+        """Load the pretrained humpback-whale detection model.
 
-                
-    
+        The on-disk format depends on the installed TensorFlow version (see
+        :func:`uses_legacy_saved_model`): Windows users run TensorFlow 2.15 and
+        therefore need the legacy Keras SavedModel, whereas Linux/macOS users
+        run TensorFlow >= 2.16 and use the Keras 3 ``.keras`` + ``.npz`` pair.
+        Missing files are downloaded from Hugging Face first.
+        """
+        if uses_legacy_saved_model():
+            self._load_legacy_saved_model()
+        else:
+            self._load_keras3_model()
+
+    def _load_keras3_model(self):
+        """Load the Keras 3 architecture and inject its pretrained weights."""
+        keras_file, weights_file = self._resolve_model_files()
+        if keras_file is None or weights_file is None:
+            self.download_model()
+            keras_file, weights_file = self._resolve_model_files()
+
+        if keras_file is None or weights_file is None:
+            raise FileNotFoundError(
+                "Could not locate the model files (.keras and "
+                "original_model_weights.npz). Please download the model manually "
+                "from https://huggingface.co/datasets/vskode/bacpipe_models"
+            )
+
+        from acodet.transfer_weights import inject_weights
+        from acodet.tf220 import PCEN, Block, ResidualPath, MainPath
+
+        self.model = tf.keras.models.load_model(
+            keras_file,
+            custom_objects={
+                "PCEN": PCEN,
+                "Block": Block,
+                "ResidualPath": ResidualPath,
+                "MainPath": MainPath,
+            },
+        )
+        inject_weights(self.model, weights_file)
+
+    def _load_legacy_saved_model(self):
+        """Load the TensorFlow 2.15 (Keras 2) SavedModel."""
+        saved_model_dir = self._resolve_saved_model_dir()
+        if saved_model_dir is None:
+            self.download_model()
+            saved_model_dir = self._resolve_saved_model_dir()
+
+        if saved_model_dir is None:
+            raise FileNotFoundError(
+                "Could not locate a TensorFlow 2.15 SavedModel directory. Please "
+                "download the model manually from "
+                "https://huggingface.co/datasets/vskode/bacpipe_models"
+            )
+
+        self.model = tf.keras.models.load_model(
+            saved_model_dir,
+            custom_objects={"Addons>FBetaScore": FBetaScore},
+        )
+
+    def _resolve_model_files(self):
+        """Locate the Keras 3 model architecture (``.keras``) and its pretrained
+        weights (``original_model_weights.npz``).
+
+        Files may live flat in ``MODEL_DIR`` or in a subdirectory
+        (``MODEL_NAME`` or ``hbdet`` after a fresh download from Hugging Face).
+        """
+        model_dir = Path(conf.MODEL_DIR)
+        keras_candidates = []
+        weights_candidates = []
+
+        for search_dir in (model_dir, model_dir / conf.MODEL_NAME, model_dir / "hbdet"):
+            if not search_dir.exists():
+                continue
+            keras_candidates.extend(sorted(search_dir.glob("*.keras")))
+            weights_candidates.extend(
+                sorted(search_dir.glob("original_model_weights.npz"))
+            )
+
+        keras_file = None
+        if keras_candidates:
+            named = [p for p in keras_candidates if conf.MODEL_NAME in p.stem]
+            keras_file = (named or keras_candidates)[0]
+        weights_file = weights_candidates[0] if weights_candidates else None
+        return keras_file, weights_file
+
+    def _resolve_saved_model_dir(self):
+        """Locate a TensorFlow 2.15 (Keras 2) SavedModel directory.
+
+        The directory is identified by the presence of a ``saved_model.pb``
+        file. Candidate names are checked in order of preference, followed by a
+        one-level deep scan as a fallback.
+        """
+        model_dir = Path(conf.MODEL_DIR)
+        candidates = (
+            model_dir / conf.MODEL_NAME,
+            model_dir / "hbdet_tf215_acodet",
+            model_dir / "hbdet",
+        )
+        for candidate in candidates:
+            if (candidate / "saved_model.pb").exists():
+                return candidate
+        for saved_model_pb in sorted(model_dir.glob("*/saved_model.pb")):
+            return saved_model_pb.parent
+        return None
+
     def download_model(self):
-        # import gdown
-        # g_drive_link = (
-        #     'https://drive.google.com/uc?id=1wYiv9SHnP9JkLnPOBcchWNHRh5CCQ82B'
-        #     # 'https://drive.google.com/uc?id=1qAqAy_REaIqgVM1O5qsNQIBNB8Hb0spz'
-        #     )
-        Path(conf.MODEL_DIR).mkdir(parents=True, exist_ok=True)
-        # output = Path(conf.MODEL_DIR).joinpath(conf.MODEL_NAME + '.zip')  # Change this to your preferred filename
-        # gdown.download(g_drive_link, str(output), quiet=False)
+        """Download and extract the model matching the installed TensorFlow.
+
+        TensorFlow 2.15 (Windows) downloads the legacy SavedModel from
+        ``hbdet_tf215_acodet/hbdet.zip``, while TensorFlow >= 2.16
+        (Linux/macOS) downloads the Keras 3 ``.keras`` + weights archive from
+        ``hbdet_4_acodet/hbdet.zip``.
+        """
         from huggingface_hub import hf_hub_download
-        hf_hub_download(
-                    repo_id='vskode/bacpipe_models',
-                    filename='hbdet/hbdet.zip',
-                    local_dir=Path(conf.MODEL_DIR),
-                    repo_type="dataset",
-                )
-        # import shutil
-        # shutil.move(Path(conf.MODEL_DIR) / 'hbdet/hbdet.zip', Path(conf.MODEL_DIR) / 'hbdet.zip')
-        # (Path(conf.MODEL_DIR) / 'hbdet').rmdir()
-        print(f"File downloaded as hbdet/hbdet.zip")
+
+        model_dir = Path(conf.MODEL_DIR)
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        if uses_legacy_saved_model():
+            filename = "hbdet_tf215_acodet/hbdet.zip"
+        else:
+            filename = "hbdet_4_acodet/hbdet.zip"
+
+        local_archive = hf_hub_download(
+            repo_id="vskode/bacpipe_models",
+            filename=filename,
+            local_dir=model_dir,
+            repo_type="dataset",
+        )
+
+        with zipfile.ZipFile(local_archive, "r") as model_zip:
+            model_zip.extractall(model_dir)
+
+        # The legacy archive stores the SavedModel in a top-level ``hbdet/``
+        # directory. Relocate it to ``MODEL_NAME`` so ``_resolve_saved_model_dir``
+        # finds it unambiguously.
+        if uses_legacy_saved_model():
+            extracted = model_dir / "hbdet"
+            target = model_dir / conf.MODEL_NAME
+            if extracted.exists() and not target.exists():
+                extracted.rename(target)
+
+        print(f"Model downloaded and extracted to {model_dir}")
 
 
 class GoogleMod(ModelHelper):  # TODO change name
@@ -292,60 +410,113 @@ class KerasAppModel(ModelHelper):
 
 
 class BacpipeModel:
+    """Adapter that exposes a bacpipe embedding model to acodet's pipeline.
+
+    ``BacpipeModel`` is used when the user selects a bacpipe feature extractor
+    other than ``hbdet`` (the default acodet model). bacpipe >= 1.3 moved
+    several internal modules, so this adapter imports ``Embedder`` and
+    ``ensure_models_exist`` from the public ``bacpipe`` API and the linear
+    classifier from ``bacpipe.embedding_evaluation.probing``.
+    """
+
     def __init__(self, **kwargs):
         import torch
-        from bacpipe import config, settings
-        from bacpipe.embedding_evaluation.classification.train_classifier import LinearClassifier
-        from bacpipe.generate_embeddings import Embedder
-        from bacpipe import ensure_std_models
-        ensure_std_models(Path('bacpipe/model_checkpoints'))
+        from bacpipe import config, settings, Embedder, ensure_models_exist
+
+        if conf.BOOL_BACPIPE_CHCKPTS:
+            settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
+        ensure_models_exist(settings.model_base_path, [conf.MODEL_NAME])
+
         config.models = [conf.MODEL_NAME]
         settings.global_batch_size = conf.BATCH_SIZE
         if conf.DEVICE == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         else:
             device = conf.DEVICE
-        if conf.BOOL_BACPIPE_CHCKPTS:
-            settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
-            
         settings.device = device
-        self.device = 'cpu'
+        self.device = device
         self.model = Embedder(model_name=conf.MODEL_NAME, **vars(settings))
-        
+
         conf.SR = self.model.model.sr
         conf.CONTEXT_WIN = self.model.model.segment_length
-        
+
         if conf.BOOL_LIN_CLFIER:
-            
-            clfier = torch.load(Path(conf.LIN_CLFIER_DIR) / 'linear_classifier.pt')
-            with open(Path(conf.LIN_CLFIER_DIR) / 'label2index.json', 'r') as f:
-                label2index = json.load(f)
-            self.clfier = LinearClassifier(clfier['clfier.weight'].shape[-1], len(label2index))
-            self.clfier.load_state_dict(clfier)
-            self.clfier.to(self.device)
-            self.model.model.classes = list(label2index.keys())
+            self._load_linear_probe()
         else:
-            self.model.model.bool_classifier = True
+            self.model.model.bool_classifier = hasattr(
+                self.model.model, "classifier_predictions"
+            )
 
         self.model.classify = self.classify
-            
+
+    def _load_linear_probe(self):
+        """Load a linear probe saved by an older bacpipe version.
+
+        Older bacpipe versions pickled the probe under the class name
+        ``LinearClassifier``; bacpipe >= 1.3 renamed it to ``LinearProbe``.
+        Both store the linear layer under ``probe``. Depending on the bacpipe
+        version the checkpoint may contain a plain state dict (with ``clfier.*``
+        or ``probe.*`` keys), a bound ``state_dict`` method, or a full module.
+        """
+        import torch
+        import bacpipe.embedding_evaluation.probing.train_probe as train_probe
+        from bacpipe.embedding_evaluation.probing.train_probe import LinearProbe
+
+        if not hasattr(train_probe, "LinearClassifier"):
+            train_probe.LinearClassifier = LinearProbe
+
+        loaded = torch.load(
+            Path(conf.LIN_CLFIER_DIR) / "linear_classifier.pt",
+            map_location=self.device,
+            weights_only=False,
+        )
+
+        if callable(loaded) and not isinstance(loaded, torch.nn.Module):
+            state_dict = loaded()
+        elif isinstance(loaded, dict):
+            state_dict = loaded
+        else:
+            state_dict = loaded.state_dict()
+
+        if "clfier.weight" in state_dict:
+            state_dict = {
+                "probe.weight": state_dict.pop("clfier.weight"),
+                "probe.bias": state_dict.pop("clfier.bias"),
+            }
+
+        in_dim = state_dict["probe.weight"].shape[-1]
+        out_dim = state_dict["probe.weight"].shape[0]
+
+        self.clfier = LinearProbe(in_dim, out_dim, device=self.device)
+        self.clfier.load_state_dict(state_dict)
+        self.clfier.to(self.device)
+
+        with open(Path(conf.LIN_CLFIER_DIR) / "label2index.json", "r") as f:
+            label2index = json.load(f)
+        self.model.model.classes = list(label2index.keys())
+
     def classify(self, file, **kwargs):
+        callback = None
         if 'progbar1' in kwargs:
             callback = (lambda frac: (kwargs['progbar1']
                                       .progress(frac, text='Current File')))
             
         import torch
-        frames = self.model.prepare_audio(file)
-        batched_frames = self.model.model.init_dataloader(frames)
-        embeds = self.model.model.batch_inference(batched_frames, callback=callback)
+        frames = self.model.prepare_audio(Path(file))
+        batched_frames = self.model.init_dataloader(frames)
+        embeds = self.model.batch_inference(batched_frames, callback=callback)
         
         if conf.BOOL_LIN_CLFIER:
+            if not isinstance(embeds, torch.Tensor):
+                embeds = torch.from_numpy(np.asarray(embeds))
             logits = self.clfier(embeds.to(self.device))
-            predictions = torch.nn.functional.softmax(logits, dim=0)
+            predictions = torch.nn.functional.softmax(logits, dim=-1)
         else:
-            predictions = self.model.model.classifier_outputs[-embeds.shape[0]:]
+            predictions = self.model.classifier.predictions[-embeds.shape[0]:]
             
-        return predictions.detach().numpy()
+        if isinstance(predictions, torch.Tensor):
+            return predictions.detach().cpu().numpy()
+        return np.array(predictions)
         
 
 def init_model(
