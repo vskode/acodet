@@ -52,7 +52,7 @@ predefined_settings: 0
 ## Paths
 # source path for your sound files (top most directory)
 # relevant for generation of new annotations (option run_config: 1)
-sound_files_source: 'path to your sound files'
+sound_files_source: 'tests/test_files/test_audio_files'
 
 # source path for automatically generated annotations
 # relevant for generation of hourly or daily presence, or recomputing

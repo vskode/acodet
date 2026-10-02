@@ -65,6 +65,7 @@ def model_dropdown(key):
     rad = True if rad == 'Yes' else False
     utils.write_to_session_file('bool_bacpipe_chckpts', rad)
     if model and not model == 'hbdet':
+        print(f'#################### {model} ################')
         utils.write_to_session_file('ModelClassName', 'BacpipeModel')
         utils.write_to_session_file('multiclass', True)
     return model
@@ -203,7 +204,7 @@ class PresetInterfaceSettings:
         if st.session_state.bool_bacpipe_chckpts:
             bacpipe_chckpt_dir = utils.user_input(
                 'Folder containing the model checkpoint', 
-                'bacpipe/model_checkpoints',
+                'bacpipe_model_checkpoints',
                 key='b_chck',
                 help=help_strings.BACPIPE_CHCKPT_DIR
                 )

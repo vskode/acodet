@@ -55,7 +55,7 @@ The corresponding paper to acodet can be found here:
 
 ## Windows
 ### Preliminary software installations
-- Install [Python 3.11.9](https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe) – standard install, no admin privileges needed
+- Install [Python 3.11](https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe) – standard install, no admin privileges needed
 - Install [Git Bash](https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/Git-2.51.0-64-bit.exe) – default install
 
 ### Installation instructions
@@ -75,15 +75,15 @@ The corresponding paper to acodet can be found here:
 
 - Create a new virtual environment (default name .env_acodet can be changed):
 
- `uv venv --python 3.11 .env_acodet`
+ `uv venv --python 3.11`
 
 - activate newly created virtual environment (change .env_acodet if necessary):
 
-`source .env_acodet/Scripts/activate`
+`source .venv/Scripts/activate`
 
 - Install required packages:
 
-`uv pip install -r requirements.txt`
+`uv pip install -r pyproject.toml`
 
 
 --------------------------------------------
@@ -117,15 +117,15 @@ The corresponding paper to acodet can be found here:
 
 - Create a new virtual environment (default name .env_acodet can be changed):
 
-    `uv venv --python 3.11 .env_acodet`
+    `uv venv --python 3.11`
 
 - activate newly created virtual environment (change .env_acodet if necessary):
 
-    `source .env_acodet/bin/activate`
+    `source .venv/bin/activate`
 
 - Install required packages:
 
-    `uv pip install -r requirements.txt`
+    `uv pip install -r pyproject.toml`
     
 
 - Once the repository is installed, I would recommend running the inbuilt tests. That way if all tests run successfully, it is ensured that everything behaves as it should. To run the tests, run the following:

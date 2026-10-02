@@ -136,7 +136,10 @@ class MetaData:
             
 
 def run_annotation(train_date=None, **kwargs):
-    files = get_files(location=conf.SOUND_FILES_SOURCE)#, search_str="*.[wW][aA][vV]")
+    import bacpipe
+    files = bacpipe.get_audio_files(conf.SOUND_FILES_SOURCE)
+    if len(files) == 0:
+        raise FileNotFoundError('No audio files have been found in ', conf.SOUND_FILES_SOURCE)
     if not "timestamp_folder" in conf.session:
         timestamp_foldername = dt.strftime(dt.now(), "%Y-%m-%d_%H-%M-%S")
         timestamp_foldername += conf.ANNOTS_TIMESTAMP_FOLDER

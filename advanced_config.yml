@@ -120,7 +120,7 @@ streamlit: False
 # Select True if you are using a model that requires a checkpoint to be loaded
 bool_bacpipe_chckpts: False
 # Specify path to the checkpoints
-bacpipe_chckpt_dir: ../model_checkpoints
+bacpipe_chckpt_dir: bacpipe_model_checkpoints
 # Select True if you are using a linear classifier on top of a frozen features
 # extractor to generate class predictions
 bool_lin_clfier: False
