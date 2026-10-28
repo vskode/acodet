@@ -57,8 +57,11 @@ def evaluate(train_date=False, **kwargs):
         if conf.MODELCLASSNAME == 'BacpipeModel':
             # this is the case for using their own classifiers
             if not conf.BOOL_LIN_CLFIER and conf.MODEL_NAME in ['perch_v2', 'google_whale']:
-                import tensorflow as tf
-                audio = tf.convert_to_tensor(audio, dtype=tf.float32)
+                if conf.MODEL_NAME == 'perch_v2':
+                    audio = torch.tensor(audio)
+                else:
+                    import tensorflow as tf
+                    audio = tf.convert_to_tensor(audio, dtype=tf.float32)
                 embedings = model.embedder.model(audio).squeeze()
                 new_predictions = model.embedder.model.classifier_predictions(embedings)
                 if conf.MODEL_NAME == 'google_whale':
@@ -81,7 +84,8 @@ def evaluate(train_date=False, **kwargs):
         class_labels = np.array(class_labels)
         predictions = torch.tensor(np.array(predictions[:len(class_labels)]))
     else:
-        predictions = torch.hstack(predictions).to('cpu')
+        # stack (not hstack) so per-sample class vectors (e.g. perch_v2's) stay 2D
+        predictions = torch.stack(predictions).to('cpu')
         class_labels = torch.hstack(class_labels).to('cpu')
 
     if conf.MODEL_NAME == 'perch_v2' and conf.MODELCLASSNAME == 'BacpipeModel' and not conf.BOOL_LIN_CLFIER:
