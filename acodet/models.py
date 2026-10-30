@@ -290,7 +290,7 @@ class BacpipeModel(nn.Module):
         import bacpipe
         from bacpipe import ensure_models_exist
         config.models = [conf.MODEL_NAME]
-        ensure_models_exist(Path('bacpipe/model_checkpoints'), config.models)
+        ensure_models_exist(Path(conf.BACPIPE_CHCKPT_DIR), config.models)
         settings.global_batch_size = conf.BATCH_SIZE / 2
         if conf.DEVICE == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
