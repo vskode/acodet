@@ -1,22 +1,63 @@
+import glob
+import json
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
+from tqdm import tqdm
+
+import acodet.global_config as conf
+from acodet.funcs import get_files, get_bacpipe_model_constants
 
 pd.options.mode.chained_assignment = None  # default='warn'
-import glob
-from pathlib import Path
-from acodet.funcs import remove_str_flags_from_predictions, get_files
-import os
-import numpy as np
-import acodet.global_config as conf
-import json
-from tqdm import tqdm
 
 with open("acodet/annotation_mappers.json", "r") as m:
     mappers = json.load(m)
 
+# Label values used while building the dataset. Explicit noise (hard
+# negatives) is stored separately in explicit_noise.csv with label 0.
+# Annotations that are undefined ('u') or were never reviewed get the label
+# NaN and are dropped once all labels (and the noise in between annotations)
+# have been assigned.
+CALL = 1
+NOISE = 0
+EXPLICIT_NOISE = -1
 
-# TODO aufraeumen
-# annotation_files = Path(r'/mnt/f/Daten/20221019-Benoit/').glob('**/*.txt')
-# annotation_files = Path(r'generated_annotations/2022-11-04_12/').glob('ch*.txt')
+# Audio file endings that are accepted when searching for the sound file
+# corresponding to an annotation file.
+SOUND_FILE_SUFFIXES = (".wav", ".flac", ".aif", ".aiff", ".mp3")
+
+# Temporary column with the end time of the original annotation, which is kept
+# when an annotation is split into windows.
+ANNOTATION_END_COLUMN = "Annotation End (s)"
+
+
+def _assign_default_test_subset(dfs):
+    """
+    If no subset was assigned while generating the annotations, use the last
+    20% of the sound files as test set. The same files are used for all
+    dataframes so that the calls and the noise of one file always end up in
+    the same subset.
+    """
+    files = np.unique(
+        np.concatenate([df.filename.astype(str).unique() for df in dfs])
+    )
+    n_eval_files = int(len(files) * 0.2)
+    eval_files = files[len(files) - n_eval_files:] if n_eval_files > 0 else []
+    for df in dfs:
+        if "subset" not in df.columns:
+            df["subset"] = ""
+            df.loc[df.filename.isin(eval_files), "subset"] = "test"
+    return dfs
+
+
+def _read_annotation_csv(path):
+    df = pd.read_csv(path)
+    if "filename" not in df.columns:
+        # empty file written without columns
+        df = pd.DataFrame(columns=["filename", "Selection", "label", "start", "end"])
+    return df
+
 
 def read_annotations_from_file(comb_anno_folder):
     """
@@ -27,27 +68,23 @@ def read_annotations_from_file(comb_anno_folder):
         train_df: dataframe of training examples
         val_df: dataframe of validation examples
         eval_df: dataframe of test examples
+        All dataframes contain the column `source`, which is either
+        'combined' or 'explicit_noise', depending on the file the
+        annotation was read from.
     """
     combined_annots = Path(comb_anno_folder) / 'combined_annotations.csv'
     explicit_noise = Path(comb_anno_folder) / 'explicit_noise.csv'
 
-    ca_df = pd.read_csv(combined_annots)
-    en_df = pd.read_csv(explicit_noise)
+    ca_df = _read_annotation_csv(combined_annots)
+    en_df = _read_annotation_csv(explicit_noise)
+    ca_df["source"] = "combined"
+    en_df["source"] = "explicit_noise"
 
     # Add subset column if missing
-    if 'subset' not in ca_df.columns:
-        files = ca_df.filename.unique()
-        eval_files = files[-int(len(files) * 0.2):]
-        ca_df['subset'] = ''
-        ca_df.loc[ca_df.filename.isin(eval_files), 'subset'] = 'test'
-
-    if 'subset' not in en_df.columns:
-        files = en_df.filename.unique()
-        eval_files = files[-int(len(files) * 0.2):]
-        en_df['subset'] = ''
-        en_df.loc[en_df.filename.isin(eval_files), 'subset'] = 'test'
+    ca_df, en_df = _assign_default_test_subset([ca_df, en_df])
 
     df = pd.concat([ca_df, en_df], ignore_index=True)
+    df["subset"] = df["subset"].fillna("")
     trainval_df = df[df.subset != 'test']
     eval_df = df[df.subset == 'test']
 
@@ -65,187 +102,399 @@ def read_annotations_from_file(comb_anno_folder):
     return train_df, val_df, eval_df
 
 
+def get_train_noise_df(train_df):
+    """
+    Return the noise annotations of the training set that are used for the
+    noise (mixup) augmentation. Only training data is used so that no audio
+    of the validation or test set leaks into training. Explicit noise is
+    preferred, if the training set contains none, all noise annotations of
+    the training set are used.
+    """
+    noise_df = train_df[train_df.source == "explicit_noise"]
+    if len(noise_df) == 0:
+        noise_df = train_df[train_df.label == NOISE]
+        print(
+            "No explicit noise found in the training set, using all "
+            f"{len(noise_df)} noise annotations of the training set for "
+            "the noise augmentation."
+        )
+    if len(noise_df) == 0:
+        raise ValueError(
+            "The training set does not contain any noise annotations, "
+            "which are required for the noise augmentation."
+        )
+    return noise_df
+
+
 def compensate_for_naming_inconsistencies(hard_drive_path, file):
     split_file = file.stem.split("Table")[0]
-    file_path = glob.glob(
-        f"{hard_drive_path}/**/{split_file}*wav", recursive=True
-    )
+    file_path = _find_sound_files(hard_drive_path, f"{split_file}*wav")
 
     if not file_path:
         file_tolsta = "336097327." + split_file[6:].replace(
             "_000", ""
         ).replace("_", "")
-        file_path = glob.glob(
-            f"{hard_drive_path}/**/{file_tolsta}*wav", recursive=True
-        )
+        file_path = _find_sound_files(hard_drive_path, f"{file_tolsta}*wav")
 
     if not file_path:
         file_tolsta = "335564853." + split_file[6:].replace(
             "5_000", "4"
         ).replace("_", "")
-        file_path = glob.glob(
-            f"{hard_drive_path}/**/{file_tolsta}*wav", recursive=True
-        )
+        file_path = _find_sound_files(hard_drive_path, f"{file_tolsta}*wav")
 
     if not file_path:
         file_new_annot = file.stem.split("_annot")[0]
-        file_path = glob.glob(
-            f"{hard_drive_path}/**/{file_new_annot}*", recursive=True
-        )
+        file_path = _find_sound_files(hard_drive_path, f"{file_new_annot}*")
 
     if not file_path:
         split_file_underscore = file.stem.split("_")[0]
-        file_path = glob.glob(
-            f"{hard_drive_path}/**/{file_new_annot}*wav", recursive=True
+        file_path = _find_sound_files(
+            hard_drive_path, f"{split_file_underscore}*wav"
         )
         if not file_path:
             file_new_annot = split_file_underscore.split(".")[-1]
-            file_path = glob.glob(
-                f"{hard_drive_path}/**/*{file_new_annot}*wav", recursive=True
+            file_path = _find_sound_files(
+                hard_drive_path, f"*{file_new_annot}*wav"
             )
 
-    if not file_path:
-        print(f"Unable to find sound file for {file.stem} under sound directory {hard_drive_path}.")
-        return False
     return file_path
 
 
-def get_corresponding_sound_file(file):
-    hard_drive_path = conf.SOUND_FILES_SOURCE
-    file_path = glob.glob(
-        f"{hard_drive_path}/**/{file.stem}*wav", recursive=True
+def _find_sound_files(hard_drive_path, pattern):
+    """
+    Recursively search for sound files matching the pattern. Only files with
+    an audio file ending are returned, so that for example annotation files
+    lying next to the sound files can never be mistaken for sound files.
+    """
+    paths = glob.glob(
+        f"{glob.escape(str(hard_drive_path))}/**/{pattern}", recursive=True
     )
+    return sorted(
+        p for p in set(paths) if Path(p).suffix.lower() in SOUND_FILE_SUFFIXES
+    )
+
+
+def _candidate_base_names(file):
+    """
+    Names the sound file of an annotation file is expected to have, e.g.
+    `<sound file>_annot_<timestamp>_allcalls.txt` or
+    `<sound file>.Table.1.selections.txt`.
+    """
+    stem = file.stem
+    return {
+        stem,
+        stem.split("_annot")[0],
+        stem.split("Table")[0].rstrip("._ "),
+    }
+
+
+def _pick_sound_file(candidates, file):
+    """
+    Choose the sound file belonging to the annotation file from a list of
+    candidates. Because the search patterns end with a wildcard, an annotation
+    file for `rec_1` would also find `rec_10.wav`, so files whose name exactly
+    corresponds to the annotation file are always preferred.
+    """
+    if len(candidates) == 1:
+        return candidates[0]
+
+    exact = [c for c in candidates if Path(c).stem in _candidate_base_names(file)]
+    if exact:
+        candidates = exact
+    if len(candidates) == 1:
+        return candidates[0]
+
+    # try to resolve the ambiguity using the name of the top level directory
+    # of the annotation file (relative to the reviewed annotations source)
+    try:
+        rel_parents = list(Path(file).relative_to(conf.REV_ANNOT_SRC).parents)
+    except ValueError:
+        rel_parents = []
+    if len(rel_parents) >= 2:
+        p_dir_main = str(rel_parents[-2]).split("_")[0]
+        matching = [c for c in candidates if p_dir_main in c]
+        if matching:
+            candidates = matching
+
+    if len(candidates) > 1:
+        print(
+            "WARNING: Multiple sound files for annotations file found."
+            " Because pattern could not be resolved, first file is chosen."
+            f"\nannotations file name: \n{file}\n"
+            f"sound file name: \n{candidates[0]}\n"
+            f"other candidates: \n{candidates[1:]}\n"
+        )
+    return candidates[0]
+
+
+def get_corresponding_sound_file(file):
+    """
+    Return the path of the sound file corresponding to the annotation file
+    or None if no sound file could be found.
+    """
+    hard_drive_path = conf.SOUND_FILES_SOURCE
+    file_path = _find_sound_files(hard_drive_path, f"{file.stem}*wav")
     if not file_path:
         file_path = compensate_for_naming_inconsistencies(
             hard_drive_path, file
         )
 
     if not file_path:
-        # TODO fehler raisen, dass bringt so einfach nichts
-        return "empty"
-
-    if len(file_path) > 1:
-        p_dir = list(file.relative_to(conf.REV_ANNOT_SRC).parents)[-2]
-        p_dir_main = str(p_dir).split("_")[0]
-        for path in file_path:
-            if p_dir_main in path:
-                file_path = path
-    else:
-        file_path = file_path[0]
-
-    if isinstance(file_path, list) and len(file_path) > 1:
-        file_path = file_path[0]
         print(
-            "WARNING: Multiple sound files for annotations file found."
-            " Because pattern could not be resolved, first file is chosen."
-            f"\nannotations file name: \n{file}\n"
-            f"sound file name: \n{file_path}\n"
+            f"Unable to find sound file for {file.stem} under sound "
+            f"directory {hard_drive_path}."
         )
+        return None
 
-    return file_path
+    return _pick_sound_file(file_path, file)
 
 
-def seperate_long_annotations(df):
-    bool_long_annot = df["End Time (s)"] - df["Begin Time (s)"] > round(
-        conf.CONTEXT_WIN / conf.SR
+def get_window_duration_s():
+    """
+    Return the duration in seconds of the context window of the model that
+    the dataset is generated for. This is used to split long annotations
+    and to fill the gaps between annotations with noise windows, so that the
+    windows have the same length as the windows that the model is trained on.
+    """
+    if conf.MODELCLASSNAME == "BacpipeModel":
+        try:
+            sr, segment_length = get_bacpipe_model_constants(conf.MODEL_NAME)
+            return segment_length / sr
+        except Exception as e:
+            print(
+                "WARNING: Could not determine the context window of the "
+                f"bacpipe model {conf.MODEL_NAME} ({e}). Falling back to the "
+                "context window from the advanced config."
+            )
+    return conf.CONTEXT_WIN / conf.SR
+
+
+def _comment_flags(df):
+    """
+    Return the normalized ('c', 'n', 'u', ...) review flags of the comment
+    column. Every value is checked individually, so the flags are found
+    independently of the dtype of the column or the type of its first value.
+    """
+    if conf.ANNOTATION_COLUMN not in df.columns:
+        return pd.Series("", index=df.index)
+    return df[conf.ANNOTATION_COLUMN].astype(str).str.strip().str.lower()
+
+
+def seperate_long_annotations(df, window_s=None):
+    """
+    Split annotations that are longer than the context window into
+    consecutive windows. If the remainder is at least half of a window, an
+    additional window aligned with the end of the annotation is added, so
+    that the end of the annotation is also covered. All windows stay within
+    the original annotation, therefore they keep its label.
+    """
+    if window_s is None:
+        window_s = get_window_duration_s()
+    if len(df) == 0:
+        return df.reset_index(drop=True)
+
+    has_offset = "File Offset (s)" in df.columns
+    rows = []
+    for row in df.to_dict("records"):
+        begin, end = row["Begin Time (s)"], row["End Time (s)"]
+        row[ANNOTATION_END_COLUMN] = end
+        duration = end - begin
+        n_full = int(duration // window_s)
+        begins = list(begin + np.arange(n_full) * window_s)
+        if n_full >= 1 and duration - n_full * window_s >= window_s / 2:
+            begins.append(end - window_s)
+
+        if len(begins) <= 1:
+            rows.append(row)
+            continue
+
+        for new_begin in begins:
+            new_row = row.copy()
+            new_row["Begin Time (s)"] = new_begin
+            new_row["End Time (s)"] = new_begin + window_s
+            if has_offset:
+                new_row["File Offset (s)"] = row["File Offset (s)"] + (
+                    new_begin - begin
+                )
+            rows.append(new_row)
+
+    return pd.DataFrame.from_records(
+        rows, columns=[*df.columns, ANNOTATION_END_COLUMN]
     )
-    for i, row in df.loc[bool_long_annot].iterrows():
-        n_new_annots = int(
-            (row["End Time (s)"] - row["Begin Time (s)"])
-            / (conf.CONTEXT_WIN / conf.SR)
-        )
-        begins = row["Begin Time (s)"] + np.arange(n_new_annots) * (
-            conf.CONTEXT_WIN / conf.SR
-        )
-        ends = begins + (conf.CONTEXT_WIN / conf.SR)
-        n_df = pd.DataFrame()
-        for col in row.keys():
-            n_df[col] = [row[col]] * n_new_annots
-        n_df["Begin Time (s)"] = begins
-        n_df["End Time (s)"] = ends
-        n_df["Selection"] = np.arange(n_new_annots) + row["Selection"]
-        df = pd.concat(
-            [df.drop(row.name), n_df]
-        )  # delete long annotation from df
-    return df
 
 
 def label_explicit_noise(df):
     # This is a noise file, so everything that got a numeric prediction score of > 0.9 should be
     # considered a "hard negative" (a.k.a. explicit noise).
-    expl_noise_crit_idx = np.where(pd.to_numeric(df[conf.ANNOTATION_COLUMN], errors="coerce") > 0.9)[0]
-    df.loc[expl_noise_crit_idx, "label"] = -1
+    if conf.ANNOTATION_COLUMN not in df.columns:
+        return df
+    scores = pd.to_numeric(df[conf.ANNOTATION_COLUMN], errors="coerce")
+    df.loc[(scores > 0.9) & (df["label"] == NOISE), "label"] = EXPLICIT_NOISE
     return df
 
 
-def differentiate_label_flags(df, flag=None):
-    # df.loc[:, conf.ANNOTATION_COLUMN].fillna(value="c", inplace=True)
+def differentiate_label_flags(df, flag=None, window_s=None):
+    """
+    Assign labels based on the review flags in the comment column:
+    'c' -> call, 'n' -> explicit noise, 'u' -> undefined (dropped later).
+    Unflagged annotations are calls for flag='calls', noise for flag='noise'
+    and undefined (i.e. dropped) otherwise (`_annotated` files).
+    """
     if flag == "calls":
         if conf.ANNOTATION_COLUMN not in df.columns:
             df.loc[:, conf.ANNOTATION_COLUMN] = 'c'
+        df["label"] = CALL
     elif flag == "noise":
         if conf.ANNOTATION_COLUMN not in df.columns:
             df.loc[:, conf.ANNOTATION_COLUMN] = 'n'
-    if isinstance(df[conf.ANNOTATION_COLUMN][0], str):
-        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c", "label"] = 1
-        df.loc[df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n", "label"] = -1
+        df["label"] = NOISE
+    else:
+        df["label"] = np.nan
 
-    df_std = seperate_long_annotations(df)
+    flags = _comment_flags(df)
+    df.loc[flags == "c", "label"] = CALL
+    df.loc[flags == "n", "label"] = EXPLICIT_NOISE
+    df.loc[flags == "u", "label"] = np.nan
 
-    if isinstance(df[conf.ANNOTATION_COLUMN][0], str):
-        df_std = df_std.drop(
-            df_std.loc[df_std[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "u"].index
-        )
-        
-    df_std.index = pd.RangeIndex(0, len(df_std))
+    df = seperate_long_annotations(df, window_s)
+
     if flag == "noise":
-        df_std = label_explicit_noise(df_std)
+        df = label_explicit_noise(df)
 
-    return df_std
+    return df
 
 
-def get_labels(file, df, active_learning=False, inbetween_noise=False, clip_duration=3.8775):
+def label_manual_annotations(df, file, window_s=None):
+    """
+    Label manually created annotations. All annotations are calls, unless
+    they are explicitly flagged as noise ('n') or undefined ('u') in the
+    comment column.
+    """
+    df["label"] = CALL
+    flags = _comment_flags(df)
+    df.loc[flags == "n", "label"] = EXPLICIT_NOISE
+    df.loc[flags == "u", "label"] = np.nan
+    n_noise, n_undefined = (flags == "n").sum(), (flags == "u").sum()
+    if n_noise or n_undefined:
+        print(
+            f"{file.name}: {n_noise} annotations flagged 'n' are used as "
+            f"explicit noise, {n_undefined} annotations flagged 'u' are dropped."
+        )
+    return seperate_long_annotations(df, window_s)
+
+
+def add_inbetween_noise(df, clip_duration):
+    """
+    Fill the gaps between annotations with noise windows of length
+    clip_duration. All annotations (including undefined ones) count as
+    occupied, and the gaps start at the latest end time of all previous
+    annotations, so that noise windows never overlap with any annotation.
+    No noise is added before the first or after the last annotation.
+    """
+    if len(df) < 2:
+        return df
+
+    df = df.sort_values("Begin Time (s)").reset_index(drop=True)
+    begins = df["Begin Time (s)"].values
+    # The windows of a split annotation can end before the annotation does.
+    # That last part of the annotation must not be interpreted as a gap.
+    end_column = (
+        ANNOTATION_END_COLUMN
+        if ANNOTATION_END_COLUMN in df.columns
+        else "End Time (s)"
+    )
+    occupied_until = np.maximum.accumulate(df[end_column].values)
+    has_offset = "File Offset (s)" in df.columns
+    has_begin_file = "Begin File" in df.columns
+
+    new_rows = []
+    for i in range(len(df) - 1):
+        if (
+            has_begin_file
+            and df["Begin File"].iloc[i] != df["Begin File"].iloc[i + 1]
+        ):
+            # never fill gaps across the boundary of two sound files
+            continue
+        gap_start, gap_end = occupied_until[i], begins[i + 1]
+        # The 1e-5 is padding to avoid missing gaps due to rounding error.
+        n_windows = int((gap_end - gap_start + 1e-5) // clip_duration)
+        if n_windows < 1:
+            continue
+
+        template = df.iloc[i].to_dict()
+        for k in range(n_windows):
+            row = template.copy()
+            row["Begin Time (s)"] = gap_start + k * clip_duration
+            row["End Time (s)"] = row["Begin Time (s)"] + clip_duration
+            if has_offset:
+                # keep the file offset consistent with the begin time
+                row["File Offset (s)"] = template["File Offset (s)"] + (
+                    row["Begin Time (s)"] - template["Begin Time (s)"]
+                )
+            row["label"] = NOISE
+            row[conf.ANNOTATION_COLUMN] = "implicit noise"
+            new_rows.append(row)
+
+    if not new_rows:
+        return df
+
+    noise_df = pd.DataFrame.from_records(new_rows, columns=df.columns)
+    if "Selection" in df.columns:
+        max_selection = pd.to_numeric(df["Selection"], errors="coerce").max()
+        noise_df["Selection"] = max_selection + 1 + np.arange(len(noise_df))
+    return (
+        pd.concat([df, noise_df], ignore_index=True)
+        .sort_values("Begin Time (s)")
+        .reset_index(drop=True)
+    )
+
+
+def get_labels(
+    file,
+    df,
+    active_learning=False,
+    inbetween_noise=False,
+    clip_duration=None,
+    **kwargs,
+):
+    if clip_duration is None:
+        clip_duration = get_window_duration_s()
+
+    if "Selection" in df.columns:
+        # Raven saves one row per view (e.g. Waveform and Spectrogram) for
+        # every selection, keep only one row per selection
+        df = df.drop_duplicates(subset="Selection").reset_index(drop=True)
+
     if not active_learning:
-        df["label"] = 1
+        df = label_manual_annotations(df, file, clip_duration)
     else:
         noise_flag, annotated_flag, calls_flag = [
             "_allnoise",
             "_annotated",
             "_allcalls",
         ]
-        df = df.iloc[df.Selection.drop_duplicates().index]
         if calls_flag in file.stem:
-            df["label"] = 1
-            df = differentiate_label_flags(df, flag="calls")
+            df = differentiate_label_flags(df, flag="calls", window_s=clip_duration)
         elif noise_flag in file.stem:
-            df["label"] = 0
-            df = differentiate_label_flags(df, flag="noise")
+            df = differentiate_label_flags(df, flag="noise", window_s=clip_duration)
         elif annotated_flag in file.stem:
             if conf.ANNOTATION_COLUMN in df.columns:
-                df_clean = remove_str_flags_from_predictions(df)
-                df.loc[df_clean.index, conf.ANNOTATION_COLUMN] = "u"
-                df = differentiate_label_flags(df)
+                df = differentiate_label_flags(df, window_s=clip_duration)
             else:
-                df = differentiate_label_flags(df, flag="calls")
-                
+                df = differentiate_label_flags(df, flag="calls", window_s=clip_duration)
+        else:
+            print(
+                f"{file.name} has none of the suffixes {noise_flag}, "
+                f"{annotated_flag} or {calls_flag} and is skipped."
+            )
+            df["label"] = np.nan
+
     if inbetween_noise:
-        df = df.sort_values("Begin Time (s)")
-        # The 1e-5 is padding to avoid missing gaps due to rounding error.
-        between_annotations_durations = df["Begin Time (s)"][1:].values - df["End Time (s)"][:-1].values + 1e-5
-        gap_rows = (between_annotations_durations >= clip_duration)
-        prev_rows = df.iloc[:-1][gap_rows]
-        new_rows = df.to_dict("records")
-        for (idx, prev_row), duration in zip(prev_rows.iterrows(), between_annotations_durations[gap_rows]):
-            row = prev_row.to_dict()
-            for i in range(int(duration // clip_duration)):
-                row["Begin Time (s)"] = row["End Time (s)"]
-                row["End Time (s)"] = row["Begin Time (s)"] + clip_duration
-                row["label"] = 0
-                row[conf.ANNOTATION_COLUMN] = "implicit noise"
-                row["Selection"] = len(new_rows)
-                new_rows.append(row.copy())
-        df = pd.DataFrame.from_records(new_rows, columns=df.columns).sort_values("Begin Time (s)")
-    return df
+        df = add_inbetween_noise(df, clip_duration)
+
+    # Drop undefined and unreviewed annotations. This is done after filling
+    # the gaps with noise, so that undefined sections are never labeled noise.
+    return df.dropna(subset=["label"]).reset_index(drop=True)
 
 
 def standardize(
@@ -262,6 +511,16 @@ def standardize(
     return out_df.astype(dtype=np.float64)
 
 
+def _empty_standardized_df():
+    empty = pd.DataFrame(
+        columns=[
+            "filename", "Selection", "label", "Begin Time (s)",
+            "End Time (s)", "Low Freq (Hz)", "High Freq (Hz)",
+        ]
+    )
+    return standardize(empty, mapper=mappers["default_mapper"])
+
+
 def filter_out_high_freq_and_high_transient(df):
     df = df.loc[df["High Freq (Hz)"] <= 2000]
     df = df.loc[df["End Time (s)"] - df["Begin Time (s)"] >= 0.4]
@@ -273,15 +532,17 @@ def finalize_annotation(file, freq_time_crit=False, **kwargs):
         ann = pd.read_csv(file, sep="\t")
     except pd.errors.EmptyDataError as e:
         print(f"Empty file {file}: {e}")
-        return pd.DataFrame(), pd.DataFrame()
+        return _empty_standardized_df(), _empty_standardized_df()
 
     if ann.empty:
         print(f"Empty dataframe from file {file}")
-        return pd.DataFrame(), pd.DataFrame()
+        return _empty_standardized_df(), _empty_standardized_df()
 
-    ann["filename"] = get_corresponding_sound_file(file)
-    # if not ann['filename']:
-    #     print(f'corresponding sound file for annotations file: {file} not found')
+    sound_file = get_corresponding_sound_file(file)
+    if sound_file is None:
+        print(f"Skipping {file} because no corresponding sound file was found.")
+        return _empty_standardized_df(), _empty_standardized_df()
+    ann["filename"] = sound_file
 
     ann = get_labels(file, ann, **kwargs)
     if "File Offset (s)" in ann.columns:
@@ -292,9 +553,10 @@ def finalize_annotation(file, freq_time_crit=False, **kwargs):
     if freq_time_crit:
         ann = filter_out_high_freq_and_high_transient(ann)
 
-    ann_explicit_noise = ann.loc[ann["label"] == -1, :]
-    ann_explicit_noise["label"] = 0
-    ann = ann.drop(ann.loc[ann["label"] == -1].index)
+    is_explicit_noise = ann["label"] == EXPLICIT_NOISE
+    ann_explicit_noise = ann.loc[is_explicit_noise].copy()
+    ann_explicit_noise["label"] = NOISE
+    ann = ann.loc[~is_explicit_noise]
     std_annot_train = standardize(ann, mapper=mapper)
     std_annot_enoise = standardize(ann_explicit_noise, mapper=mapper)
 
@@ -317,6 +579,28 @@ def get_active_learning_files(files):
     return final_cleanup
 
 
+def get_dataset_subset_from_path(path):
+    """
+    Determine from the reviewed annotations path whether the annotations are
+    a test or a train set. The directory closest to the annotations decides,
+    so that for example `.../my_training_data/tables_test` is a test set.
+    If a directory name contains both, test is chosen to prevent test data
+    from leaking into the training set.
+
+    Returns
+    -------
+    str or None
+        'test', 'train' or None if the path does not indicate a subset
+    """
+    for part in reversed(Path(path).parts):
+        part = part.lower()
+        if "test" in part:
+            return "test"
+        if "train" in part:
+            return "train"
+    return None
+
+
 def generate_final_annotations(
     annotation_files=None, active_learning=True, **kwargs
 ):
@@ -326,13 +610,19 @@ def generate_final_annotations(
         )
     files = list(annotation_files)
     if active_learning:
+        n_files = len(files)
         files = get_active_learning_files(files)
-        print(f"Filtered {len(annotation_files)} annotated files down to {len(files)} files for active learning.")
+        print(f"Filtered {n_files} annotated files down to {len(files)} files for active learning.")
     files.sort()
     if not files:
         raise ValueError(f"No .txt files found under {conf.REV_ANNOT_SRC}")
 
-    df_t, df_n = pd.DataFrame(), pd.DataFrame()
+    if kwargs.get("clip_duration") is None:
+        kwargs["clip_duration"] = get_window_duration_s()
+    print(f"Using windows of {kwargs['clip_duration']:.4f} s to split long annotations"
+          + (" and to fill the space between annotations with noise." if kwargs.get("inbetween_noise") else "."))
+
+    train_dfs, noise_dfs = [], []
     for file in tqdm(files, 'Gathering annotations from files', len(files)):
         if leading_underscore_in_parent_dirs(file):
             print(
@@ -345,16 +635,23 @@ def generate_final_annotations(
             active_learning=active_learning,
             **kwargs,
         )
-        df_t = pd.concat([df_t, df_train])
-        df_n = pd.concat([df_n, df_enoise])
+        train_dfs.append(df_train)
+        noise_dfs.append(df_enoise)
 
-    total_pos = (df_t["label"] == 1).sum() + (df_n["label"] == 1).sum()
-    total_neg = (df_t["label"] == 0).sum() + (df_n["label"] == 0).sum()
+    df_t = pd.concat(train_dfs) if train_dfs else _empty_standardized_df()
+    df_n = pd.concat(noise_dfs) if noise_dfs else _empty_standardized_df()
+
+    total_pos = (df_t["label"] == CALL).sum() + (df_n["label"] == CALL).sum()
+    total_neg = (df_t["label"] == NOISE).sum() + (df_n["label"] == NOISE).sum()
     assert (len(df_t) + len(df_n)) == total_pos + total_neg
-    print(f"Total annotations: {total_pos + total_neg} ({total_pos} positive, {total_neg} negative)")
+    if total_pos + total_neg == 0:
+        raise ValueError(f"No usable annotations found under {conf.REV_ANNOT_SRC}")
+    print(f"Total annotations: {total_pos + total_neg} ({total_pos} positive, {total_neg} negative, "
+          f"of which {len(df_n)} explicit noise)")
 
     # Assign to test set automatically if the name indicates it.
-    if 'test' in conf.REV_ANNOT_SRC:
+    subset = get_dataset_subset_from_path(conf.REV_ANNOT_SRC)
+    if subset == 'test':
         df_t.loc[:, 'subset'] = 'test'
         df_n.loc[:, 'subset'] = 'test'
 
@@ -365,7 +662,7 @@ def generate_final_annotations(
     print(f"Annotations saved to {save_dir}")
 
     # If this is a train set, mark the train/validation split, if provided.
-    if 'train' in conf.REV_ANNOT_SRC:
+    if subset == 'train':
         add_validation_labels(save_dir)
 
 
@@ -384,8 +681,8 @@ def add_validation_labels(save_dir):
     df_n = pd.read_csv(save_dir.joinpath("explicit_noise.csv"))
     df_t["subset"] = "train"
     df_n["subset"] = "train"
-    stems_t = np.array([Path(f).stem for f in df_t["filename"]])
-    stems_n = np.array([Path(f).stem for f in df_n["filename"]])
+    stems_t = np.array([Path(f).stem for f in df_t["filename"]], dtype=str)
+    stems_n = np.array([Path(f).stem for f in df_n["filename"]], dtype=str)
     for file in df_val["validation_files"].values:
         bool_stems_t = np.char.startswith(stems_t, str(file))
         bool_stems_n = np.char.startswith(stems_n, str(file))

@@ -53,14 +53,6 @@ CONTEXT_WIN_S_CORRECTED = CONTEXT_WIN / SR
 DOWNSAMPLE_SR = False
 SAVE_DOWNSAMPLED_FILES = session['save_downsampled_files']
 
-## Settings for Creation of Tfrecord Dataset
-# limit of context windows in a tfrecords file
-TFRECS_LIM = session["tfrecs_limit_per_file"]
-# train/test split
-TRAIN_RATIO = session["train_ratio"]
-# test/val split
-TEST_VAL_RATIO = session["test_val_ratio"]
-
 ## Model Parameters
 # threshold for predictions
 THRESH = session["thresh"]

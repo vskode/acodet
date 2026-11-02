@@ -4,41 +4,11 @@ version = "0.1.0"
 description = "Automatic detection of vocalizing animals in acoustic datasets."
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
+# bacpipe pins the whole stack acodet uses (tensorflow, keras, torch, torchaudio,
+# numpy, pandas, librosa, scipy, scikit-learn, matplotlib, seaborn, plotly, timm,
+# tqdm, pyyaml, pytest, ...), so only packages it doesn't provide are listed here.
 dependencies = [
-    "apache-beam",
-    # "bacpipe",
-    "einops",
-    "flax",
+    "bacpipe==1.3.5",
     "gdown",
-    "httpx",
-    "importlib-resources",
-    "kagglehub",
-    "keras-cv",
-    "librosa",
-    "ml-collections",
-    "numba",
-    "numpy<2",
-    "panel",
-    "plotly",
-    "pysocks",
-    "pytest",
-    "seaborn",
-    "sounddevice",
     "streamlit",
-    "tensorflow; sys_platform != 'linux' and sys_platform != 'darwin'",
-    "tensorflow[and-cuda]<2.21; sys_platform == 'linux'",  # GPU is only supported on Linux.
-    "tensorflow<=2.19.1; sys_platform == 'darwin'",  # Apple has a custom TF plugin, but is broken in TF 2.20.
-    "tensorflow-metal; sys_platform == 'darwin'",
-    "tensorflow-hub",
-    "tensorflow-io",
-    "timm",
-    "torch<2.11",
-    "torchaudio<2.11",
-    "torchcodec",
-    "torchvision",
-    "transformers",
-    "umap-learn",
-    "uvicorn",
-    "uvloop; sys_platform != 'win32'",
-    "zipp",
 ]

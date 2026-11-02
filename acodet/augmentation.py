@@ -1,16 +1,13 @@
 import tensorflow as tf
-from keras_cv.layers import BaseImageAugmentationLayer
 from acodet.plot_utils import plot_sample_spectrograms
-import tensorflow_io as tfio
 
 AUTOTUNE = tf.data.AUTOTUNE
 
 
-class CropAndFill(BaseImageAugmentationLayer):
+class CropAndFill(tf.keras.layers.Layer):
     def __init__(self, height: int, width: int, seed: int = None) -> None:
         """
-        Augmentation class inheriting from keras' Augmentation Base class.
-        This class takes images, cuts them at a random x position and then
+        Augmentation layer. This class takes images, cuts them at a random x position and then
         appends the first section to the second section. It is intended for
         spectrograms of labelled bioacoustics data. This way the vocalization
         in the spectrogram is time shifted and potentially cut. All of which
@@ -50,6 +47,9 @@ class CropAndFill(BaseImageAugmentationLayer):
 
         return tf.roll(audio, shift=[beg], axis=[0])
 
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
 
 def time_shift():
     return tf.keras.Sequential([CropAndFill(64, 128)])
@@ -82,16 +82,6 @@ def freq_mask(x, y, spec_param=10):
         mask = tf.concat([tf.ones([128, pos]), tf.zeros([128, width]), tf.ones([128, 64-pos-width])], axis=1)
         x = x * tf.cast(mask, x.dtype)
     return x, y
-
-# def time_mask(x, y, spec_param=10):
-#     # tf.print('performing time_mask')
-#     return (tfio.audio.time_mask(x, param=spec_param), y)
-
-
-# def freq_mask(x, y, spec_param=10):
-#     # tf.print('performing freq_mask')
-#     return (tfio.audio.freq_mask(x, param=spec_param), y)
-
 
 ##############################################################################
 ##############################################################################

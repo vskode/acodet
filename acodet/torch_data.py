@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 import librosa as lb
 from pathlib import Path
 from acodet import global_config as conf
-from acodet.combine_annotations import read_annotations_from_file
+from acodet.combine_annotations import read_annotations_from_file, get_train_noise_df
 
 NUM_CORES = os.cpu_count() or 10
 if hasattr(os, "sched_getaffinity"):
@@ -44,7 +44,12 @@ class AudioDataset(Dataset):
             if clip_duration < 0.5:  # adjust threshold to your needs
                 continue
             
-            num_frames = max(1, int(np.ceil(clip_duration / frame_duration)))
+            # Round before np.ceil: `end - start` of a clip of exactly one window
+            # can be a tiny bit too long due to floating point precision, which
+            # would otherwise load the same window twice.
+            num_frames = max(
+                1, int(np.ceil(round(clip_duration / frame_duration, 6)))
+            )
             
             for i in range(num_frames):
                 frame_start = row['start'] + i * frame_duration
@@ -62,7 +67,9 @@ class AudioDataset(Dataset):
         self.filepaths = expanded_df['filename'].values
         self.starts = expanded_df['start'].values
         self.durations = expanded_df['duration'].values
-        self.labels = torch.tensor(expanded_df['label'].values)
+        self.labels = torch.tensor(
+            expanded_df['label'].values, dtype=torch.float32
+        )
 
     def __len__(self):
         return len(self.filepaths)
@@ -86,16 +93,10 @@ class AudioDataset(Dataset):
                     raise
                 time.sleep(random.uniform(0.1, 0.5))
         
-        # wave, sr = lb.load(
-        #     path=self.filepaths[idx],
-        #     sr=conf.SR,
-        #     offset=self.starts[idx],
-        #     duration=self.durations[idx]
-        # )
-        # wave = torch.tensor(wave).squeeze()
-
-        # Only the last frame of a long clip may be short
-        if len(wave) < conf.CONTEXT_WIN:
+        # Only the last frame of a long clip may be short. Due to rounding
+        # the loaded frame can also be a sample too long, so always fix the
+        # length, otherwise collate_fn would drop the frame from the batch.
+        if len(wave) != conf.CONTEXT_WIN:
             wave = torch.tensor(
                 lb.util.fix_length(
                     wave.numpy(), 
@@ -122,17 +123,18 @@ class Loader(DataLoader):
         self.df_path = df_path
 
         train_df, val_df, eval_df = read_annotations_from_file(df_path)
+        self.train_df = train_df
 
         self.train = AudioDataset(train_df, mode='train') if len(train_df) > 0 else pd.DataFrame()
         self.val = AudioDataset(val_df, mode='val') if len(val_df) > 0 else pd.DataFrame()
         self.test = AudioDataset(eval_df, mode='test') if len(eval_df) > 0 else pd.DataFrame()
 
     def noise_loader(self):
-        # Filter strictly for Explicit Noise
-        en_df = pd.read_csv(Path(self.df_path) / 'explicit_noise.csv')
-        
-        noise_dataset = AudioDataset(en_df, mode='train')
-        
+        # Noise for the noise (mixup) augmentation. Only noise from the
+        # training set is used so that no validation or test audio leaks
+        # into training.
+        noise_dataset = AudioDataset(get_train_noise_df(self.train_df), mode='train')
+
         return DataLoader(
             noise_dataset,
             batch_size=conf.BATCH_SIZE,

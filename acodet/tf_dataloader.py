@@ -1,83 +1,10 @@
 import tensorflow as tf
 import numpy as np
-import pandas as pd
-from pathlib import Path
-import torchaudio as ta
-if "set_audio_backend" in dir(ta):  # Removed from recent versions of torchaudio
-    ta.set_audio_backend("soundfile")  # Avoid torchcodec
 import librosa as lb
 import acodet.global_config as conf
-from acodet.combine_annotations import read_annotations_from_file
+from acodet.combine_annotations import read_annotations_from_file, get_train_noise_df
+from acodet.humpback_model_dir import front_end
 
-
-def load_and_preprocess(filename, start, end, label):
-    # 1. Read file bytes
-    file_contents = tf.io.read_file(filename)
-    # 2. Decode (Assuming WAV files)
-    audio, sample_rate = tf.audio.decode_wav(file_contents)
-    
-    # 3. Slice the audio (TensorFlow slicing is fast)
-    # start/end are in seconds, convert to samples
-    start_samp = tf.cast(start * conf.SR, tf.int32)
-    end_samp = tf.cast(end * conf.SR, tf.int32)
-    audio_slice = audio[start_samp:end_samp, :]
-    
-    return audio_slice, label
-# class TFAudioDataset:
-#     def __init__(self, df, mode='train'):
-#         """TensorFlow equivalent of your PyTorch AudioDataset"""
-#         self.df = df.reset_index(drop=True)  # Important for iteration
-#         self.mode = mode
-#         self.nr_loaded = 0
-        
-#     def audio_generator(self):
-#         for idx, row in self.df.iterrows():
-#             wave, sr = lb.load(
-#                 path=row['filename'],
-#                 sr=conf.SR,
-#                 offset=row['start'], 
-#                 duration=row['end'] - row['start']
-#             )
-            
-#             # Always chunk into frames, this way longer segments get 
-#             # separated into chunks
-#             num_frames = max(1, int(np.ceil(len(wave) / conf.CONTEXT_WIN)))
-#             wave = lb.util.fix_length(
-#                 wave,
-#                 size=num_frames * conf.CONTEXT_WIN,
-#                 mode='constant'
-#             )
-            
-#             frames = wave.reshape(num_frames, conf.CONTEXT_WIN)
-            
-#             for frame in frames:
-#                 yield frame.astype(np.float32), np.int32(row['label'])
-                
-
-#     # In your TFLoader:
-#     def get_dataset(self):
-#         # Create a dataset of the filenames and metadata first
-#         ds = tf.data.Dataset.from_tensor_slices((
-#             self.df['filename'].values,
-#             self.df['start'].values,
-#             self.df['end'].values,
-#             self.df['label'].values
-#         ))
-        
-#         # Parallelize the loading! 
-#         ds = ds.map(self.audio_generator, num_parallel_calls=tf.data.AUTOTUNE)
-#         return ds
-        
-#     # def get_dataset(self):
-#     #     """Create tf.data.Dataset from generator"""
-#     #     dataset = tf.data.Dataset.from_generator(
-#     #         self.audio_generator,
-#     #         output_signature=(
-#     #             tf.TensorSpec(shape=(conf.CONTEXT_WIN,), dtype=tf.float32),
-#     #             tf.TensorSpec(shape=(), dtype=tf.int32)
-#     #         )
-#     #     )
-#     #     return dataset
 
 class TFAudioDataset:
     def __init__(self, df, mode='train'):
@@ -91,29 +18,29 @@ class TFAudioDataset:
         start_val = float(start.numpy())
         end_val = float(end.numpy())
         label_val = int(label.numpy())
-        
+
         # 2. Now Librosa will be happy with plain Python types
         wave, sr = lb.load(
             path=path_str,
             sr=conf.SR,
-            offset=start_val, 
+            offset=start_val,
             duration=end_val - start_val
         )
-        
-        # 3. Ensure consistent length (7755)
+
+        # 3. Ensure consistent length (conf.CONTEXT_WIN)
         wave = lb.util.fix_length(wave, size=conf.CONTEXT_WIN)
-        
+
         return wave.astype(np.float32), np.int32(label_val)
 
     def get_dataset(self):
         # 1. Create a dataset of metadata
         ds = tf.data.Dataset.from_tensor_slices((
-            self.df['filename'].values,
+            self.df['filename'].values.astype(str),
             self.df['start'].values,
             self.df['end'].values,
-            self.df['label'].values
+            self.df['label'].values.astype(np.int32)
         ))
-        
+
         # 2. Use py_function to run Librosa in parallel
         def py_map_fn(f, s, e, l):
             audio, label = tf.py_function(
@@ -137,56 +64,79 @@ class TFLoader:
         self.df_path = df_path
 
         train_df, val_df, eval_df = read_annotations_from_file(df_path)
+        # noise used for the noise (mixup) augmentation, only from the
+        # training set so that no validation or test audio leaks into training
+        noise_df = get_train_noise_df(train_df)
 
         # Create datasets
         self.train = TFAudioDataset(train_df, mode='train')
         self.val = TFAudioDataset(val_df, mode='val')
         self.test = TFAudioDataset(eval_df, mode='test')
-        
+        self.noise = TFAudioDataset(noise_df, mode='train')
+
         # get sizes
         self.n_train = len(train_df)
         self.n_val = len(val_df)
         self.n_eval = len(eval_df)
-        self.n_noise = len(train_df[train_df.label == 0])
+        self.n_noise = len(noise_df)
 
     def train_loader(self, batch_size=None):
         dataset = self.train.get_dataset()
         # This is the key: parallelize the generator execution
         dataset = dataset.map(lambda x, y: (x, y), num_parallel_calls=tf.data.AUTOTUNE)
         return dataset
-    
-    # def train_loader(self, batch_size=None):
-    #     batch_size = batch_size or conf.BATCH_SIZE
-    #     dataset = self.train.get_dataset()
-    #     # dataset = dataset.shuffle(
-    #     #     buffer_size=1000, 
-    #     #     reshuffle_each_iteration=True
-    #     # )
-    #     # dataset = dataset.batch(batch_size, drop_remainder=True)
-    #     # dataset = dataset.prefetch(tf.data.AUTOTUNE)
-    #     return dataset
-    
+
     def val_loader(self, batch_size=None):
-        batch_size = batch_size or conf.BATCH_SIZE
-        dataset = self.val.get_dataset()
-        # dataset = dataset.batch(batch_size)
-        # dataset = dataset.prefetch(tf.data.AUTOTUNE)
-        return dataset
-    
+        return self.val.get_dataset()
+
     def test_loader(self, batch_size=None):
-        batch_size = batch_size or conf.BATCH_SIZE
-        dataset = self.test.get_dataset()
-        # dataset = dataset.batch(batch_size)
-        # dataset = dataset.prefetch(tf.data.AUTOTUNE)
-        return dataset
-    
+        return self.test.get_dataset()
+
     def noise_loader(self, batch_size=None):
-        batch_size = batch_size or conf.BATCH_SIZE
-        en_df = pd.read_csv(Path(self.df_path) / 'explicit_noise.csv')
-        noise_dataset = TFAudioDataset(en_df, mode='train')
-        
-        dataset = noise_dataset.get_dataset()
-        # dataset = dataset.shuffle(buffer_size=1000)
-        # dataset = dataset.batch(batch_size, drop_remainder=True)
-        # dataset = dataset.prefetch(tf.data.AUTOTUNE)
-        return dataset
+        return self.noise.get_dataset()
+
+
+def spec():
+    return tf.keras.Sequential(
+        [
+            tf.keras.layers.Input([conf.CONTEXT_WIN]),
+            tf.keras.layers.Lambda(lambda t: tf.expand_dims(t, -1)),
+            front_end.MelSpectrogram(),
+        ]
+    )
+
+
+_spec_model = None
+
+
+def get_spec():
+    global _spec_model
+    if _spec_model is None:
+        _spec_model = spec()
+    return _spec_model
+
+
+def prepare(ds, batch_size, shuffle=False, shuffle_buffer=750, seed=None, AUTOTUNE=None):
+    if shuffle:
+        ds = ds.shuffle(shuffle_buffer, seed=seed)
+
+    # This is the "magic" line for generators:
+    # It tells TF to run the generator in multiple background threads
+    ds = ds.map(lambda x, y: (x, y), num_parallel_calls=AUTOTUNE)
+
+    ds = ds.batch(batch_size)
+    return ds.prefetch(buffer_size=AUTOTUNE)
+
+
+def make_spec_tensor(ds, AUTOTUNE=None, batch_size=32):
+    spec_model = get_spec()
+    ds = ds.batch(batch_size)
+
+    def apply_spec(x, *y):
+        # Force the shape to (Batch Size, context window length)
+        # -1 allows the last batch to be smaller than batch_size
+        x = tf.reshape(x, [-1, conf.CONTEXT_WIN])
+        return (spec_model(x, training=False), *y)
+
+    ds = ds.map(apply_spec, num_parallel_calls=AUTOTUNE)
+    return ds.unbatch()

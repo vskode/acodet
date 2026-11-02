@@ -156,17 +156,15 @@ def run_training(
     if not torch_model:
         
 
-        from acodet.funcs import save_model_results, get_train_set_size
-        from acodet.plot_utils import plot_model_results, create_and_save_figure
-        from acodet.tfrec import run_data_pipeline, prepare, make_spec_tensor
+        from acodet.funcs import save_model_results
+        from acodet.plot_utils import plot_model_results
         from acodet.augmentation import run_augment_pipeline
-        from acodet.humpback_model_dir.leaf_pcen import FBetaScore, TPositives, Support
+        from acodet.humpback_model_dir.leaf_pcen import FBetaScore, Support
         import tensorflow as tf
-        
-        from .tf_dataloader import TFLoader
-        
+
+        from .tf_dataloader import TFLoader, prepare, make_spec_tensor
+
         tfl_obj = TFLoader(conf.ANNOT_DEST)
-        # n_train, n_noise = get_train_set_size(data_dir)
         n_train_set = tfl_obj.n_train * (
             1 + time_augs + mixup_augs + spec_aug * 2
         )  # // batch_size
@@ -188,13 +186,6 @@ def run_training(
 
         ###################### DATA PREPROC PIPELINE ################################
 
-        # train_data = run_data_pipeline(
-        #     data_dir, data_dir="train"
-        # )
-        # test_data = run_data_pipeline(data_dir, data_dir="test")
-        # noise_data = run_data_pipeline(
-        #     data_dir, data_dir="noise"
-        # )
         train_data = make_spec_tensor(tfl_obj.train_loader())
         noise_data = make_spec_tensor(tfl_obj.noise_loader())
         val_data = make_spec_tensor(tfl_obj.val_loader())
@@ -376,17 +367,7 @@ def run_training(
         plot_model_results(
             model_id, data=data_description, init_lr=init_lr, final_lr=final_lr
         )
-        
-        # create_and_save_figure(
-        #     ModelClassName,
-        #     data_dir,
-        #     batch_size,
-        #     timestamp,
-        #     plot_cm=True,
-        #     data=data_description,
-        #     keras_mod_name=keras_mod_name,
-        # )
-        
+
     elif conf.MODELCLASSNAME == 'TorchModel':
         set_seed(42)
         from .torch_train import train, test

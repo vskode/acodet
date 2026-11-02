@@ -28,15 +28,6 @@ stft_frame_len: 1024
 number_of_time_bins: 128
 
 
-###################  TFRECORD CREATION PARAMETERS  ###########################
-## Settings for Creation of Tfrecord Dataset
-# limit of context windows in a tfrecords file
-tfrecs_limit_per_file: 600
-# train/test split
-train_ratio: 0.7
-# test/val split
-test_val_ratio: 0.7
-
 ########################  ANNOTATIONS ########################################
 default_threshold: 0.5
 # minimum frequency of annotation boxes
@@ -48,8 +39,9 @@ annotation_df_fmax: 1000
 scale_fmax_with_predictions: True
 
 ########################  PATHS  #############################################
-# Dataset destination directory - save tfrecord dataset to this directory
-# Also used for generating combined annotations (option run_config: 2).
+# Dataset name - the combined annotations (option run_config: 2) are saved
+# to annotation_destination/<annotation_destination_folder> and loaded from
+# there for training and evaluation (option run_config: 3).
 # Change this for each new dataset/subset desired when using run_config: 2.
 annotation_destination_folder: MyNewDataset
 # default folder to store newly created annotations

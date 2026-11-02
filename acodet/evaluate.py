@@ -1,6 +1,7 @@
 from datetime import datetime as dt
 from pathlib import Path
 import logging
+import re
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as metrics
@@ -11,6 +12,23 @@ from acodet import models
 from acodet import global_config as conf
 
 from .torch_data import Loader
+
+
+def audio_id_from_path(path):
+    """
+    File name without extension. The paths come from the annotation csv, which
+    might have been written on a different operating system, so both kinds of
+    separators are handled.
+    """
+    return Path(re.split(r"[\\/]", str(path))[-1]).stem
+
+
+def per_window(predictions, n_windows):
+    """
+    Remove single dimensions but keep one row per window, a plain squeeze()
+    would also remove the batch axis of a batch with only one window.
+    """
+    return predictions.reshape(n_windows, -1).squeeze(-1)
 
 
 def evaluate(train_date=False, **kwargs):
@@ -43,6 +61,9 @@ def evaluate(train_date=False, **kwargs):
     # load test data from advanced config ANNOTATION_DESTINATION
     logger.info(f"Loading test data from {conf.ANNOT_DEST}")
     data_loader = Loader(conf.ANNOT_DEST)
+    if len(data_loader.test) == 0:
+        logger.error(f"No test windows found in {conf.ANNOT_DEST}. Aborting.")
+        return 1
     test_data = data_loader.test_loader()
 
     # Perform inference!
@@ -53,6 +74,7 @@ def evaluate(train_date=False, **kwargs):
     for idx, batch in tqdm(enumerate(test_data), 'running inference on test data',
                            total=len(data_loader.test) // conf.BATCH_SIZE):
         audio, new_labels, paths, timestamps = batch
+        n_windows = len(audio)
 
         if conf.MODELCLASSNAME == 'BacpipeModel':
             # this is the case for using their own classifiers
@@ -63,18 +85,25 @@ def evaluate(train_date=False, **kwargs):
                     import tensorflow as tf
                     audio = tf.convert_to_tensor(audio, dtype=tf.float32)
                 embedings = model.embedder.model(audio).squeeze()
+                if n_windows == 1:
+                    # squeeze also removed the batch axis
+                    embedings = embedings[None]
                 new_predictions = model.embedder.model.classifier_predictions(embedings)
                 if conf.MODEL_NAME == 'google_whale':
                     new_predictions = tf.sigmoid(new_predictions)
             else:
                 audio = torch.tensor(audio)
                 with torch.inference_mode():
-                    new_predictions = torch.sigmoid(model(audio.to(conf.DEVICE))).squeeze()
+                    new_predictions = per_window(
+                        torch.sigmoid(model(audio.to(conf.DEVICE))), n_windows
+                    )
         elif conf.MODELCLASSNAME == 'TorchModel':
             with torch.inference_mode():
-                new_predictions = torch.sigmoid(model(audio)).squeeze()#.detach().cpu().squeeze()
+                new_predictions = per_window(torch.sigmoid(model(audio)), n_windows)
         else:
-            new_predictions = torch.tensor(model.predict(tf.convert_to_tensor(audio)).squeeze())
+            new_predictions = per_window(
+                torch.tensor(model.predict(tf.convert_to_tensor(audio))), n_windows
+            )
         predictions.extend(new_predictions)
         class_labels.extend(new_labels)
         all_paths.extend(paths)
@@ -256,12 +285,14 @@ def evaluate(train_date=False, **kwargs):
 
     example_dir = Path(figure_dir).joinpath('example_predictions')
     example_dir.mkdir(exist_ok=True)
-    sample_indices = np.random.choice(len(predictions), size=10, replace=False)
+    sample_indices = np.random.choice(
+        len(predictions), size=min(10, len(predictions)), replace=False
+    )
     min_freq = conf.ANNOTATION_DF_FMIN
     max_freq = conf.ANNOTATION_DF_FMAX
     
     for sample_index in sample_indices:
-        audio_id = all_paths[sample_index].split('/')[-1][:-5]
+        audio_id = audio_id_from_path(all_paths[sample_index])
         filename = example_dir.joinpath(f'{audio_id}_prediction.txt')
         start_timestamp = all_timestamps[sample_index].item()
         end_timestamp = start_timestamp + conf.CONTEXT_WIN_S_CORRECTED

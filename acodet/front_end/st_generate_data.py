@@ -55,18 +55,6 @@ def generate_data_options(key="gen_data"):
             config["number_of_time_bins"] = utils.validate_int(
                 utils.user_input("number of time bins", "128")
             )
-            st.markdown("#### TFRecord creationg settings")
-            config["tfrecs_limit_per_file"] = utils.validate_int(
-                utils.user_input(
-                    "limit of context windows per tfrecord file", "600"
-                )
-            )
-            config["train_ratio"] = utils.validate_float(
-                utils.user_input("trainratio", "0.7")
-            )
-            config["test_val_ratio"] = utils.validate_float(
-                utils.user_input("test validation ratio", "0.7")
-            )
 
         elif preset_option == 2:
             path1_sound = st.text_input(
@@ -96,18 +84,6 @@ def generate_data_options(key="gen_data"):
             )
             config["number_of_time_bins"] = utils.validate_int(
                 utils.user_input("number of time bins", "128")
-            )
-            st.markdown("#### TFRecord creationg settings")
-            config["tfrecs_limit_per_file"] = utils.validate_int(
-                utils.user_input(
-                    "limit of context windows per tfrecord file", "600"
-                )
-            )
-            config["train_ratio"] = utils.validate_float(
-                utils.user_input("trainratio", "0.7")
-            )
-            config["test_val_ratio"] = utils.validate_float(
-                utils.user_input("test validation ratio", "0.7")
             )
 
         for k, v in config.items():
