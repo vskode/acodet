@@ -125,7 +125,9 @@ def train(model, data_loaders, output_dir, device=None):
             if not outputs.shape[0] == labels.shape[0]:
                 nr_of_repeats = outputs.shape[0] / labels.shape[0]
                 labels = labels.repeat(int(nr_of_repeats))
-            loss = criterion(outputs.squeeze(), labels)
+            # flatten instead of squeeze, so a last batch of one window
+            # keeps the same shape as its labels
+            loss = criterion(outputs.flatten(), labels)
 
             loss.backward()
             optimizer.step()
@@ -185,7 +187,7 @@ def train(model, data_loaders, output_dir, device=None):
                     labels = labels.to(model.probe_device)
 
                 outputs = model(inputs)
-                val_loss = criterion(outputs.squeeze(), labels)
+                val_loss = criterion(outputs.flatten(), labels)
                 val_running_loss += val_loss.item() * inputs.size(0)
                 
                 probs = torch.sigmoid(outputs)

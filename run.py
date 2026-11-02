@@ -52,19 +52,29 @@ def main(sc=True, **kwargs):
             return timestamp_foldername
 
     elif conf.RUN_CONFIG == 2:
-        from acodet.tfrec import write_tfrec_dataset
         from acodet.combine_annotations import generate_final_annotations
         if preset == 1:
-            generate_final_annotations(**kwargs)
-            # write_tfrec_dataset(**kwargs)
+            # reviewed annotations (active learning)
+            generate_final_annotations(active_learning=True, **kwargs)
         elif preset == 2:
-            generate_final_annotations(active_learning=False, **kwargs)
+            # manually created annotations, the space in between
+            # annotations is interpreted as noise
+            generate_final_annotations(
+                active_learning=False, inbetween_noise=True, **kwargs
+            )
         elif preset == 3:
-            generate_final_annotations(active_learning=True, inbetween_noise=True, **kwargs)
-            # write_tfrec_dataset(active_learning=False, **kwargs)
+            # reviewed annotations (active learning), the space in between
+            # annotations is interpreted as noise
+            generate_final_annotations(
+                active_learning=True, inbetween_noise=True, **kwargs
+            )
         elif preset == 4:
-            write_tfrec_dataset(**kwargs)
-        
+            raise ValueError(
+                "RUN_CONFIG 2 preset 4 (writing tfrecords) has been removed, "
+                "training now reads the audio files directly. Use preset 1, 2 "
+                "or 3 to generate the annotation dataset."
+            )
+
 
     elif conf.RUN_CONFIG == 3:
         from acodet.evaluate import evaluate

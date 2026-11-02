@@ -41,10 +41,10 @@ run_config: 3
 #     - 2 generate new training data from reviewed annotations
 #       that were NOT previously generate by a model (i.e. no active learning) 
 #       and fill space between annotations with noise annotations
-#     - 3 generate new training data from reviewed annotations 
-#       and fill space between annotations with noise annotations
 #     - 3 generate new training data from reviewed annotations
 #       and fill space between annotations with noise annotations
+#       (only use this if the space between the reviewed annotations
+#       really contains no calls)
 # for training, chose:
 #     - 1 continue training on existing model and save model in the end
 #     - 2 evaluate saved model

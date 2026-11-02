@@ -71,8 +71,8 @@ class TorchAugment(nn.Module):
     def __init__(self, n_mels, n_tbins):
         super().__init__()
         self.do_timeshift = conf.TIME_AUGS
-        self.do_specaug = conf.MIXUP_AUGS
-        self.do_noiseaug = conf.SPEC_AUG
+        self.do_specaug = conf.SPEC_AUG
+        self.do_noiseaug = conf.MIXUP_AUGS
         self.specaug = T.SpecAugment(
             # nr of time/freq masks
             n_time_masks=1,
@@ -98,22 +98,29 @@ class TorchAugment(nn.Module):
         if x.dim() == 4:
             x = x.squeeze(1)
 
-        if self.do_timeshift:
-            x_ts = self.timeshift(x)
-            if plot and 1 in y:
-                self.plot_augmented(x_ts, augmented='timeshift')
-        
+        # The augmented copies are stacked behind the original batch. Every
+        # copy has the same order as the batch, which is why the training
+        # loop can simply repeat the labels for every copy.
+        augmented = [x]
         if self.do_specaug:
             x_sa = self.specaug(x)
             if plot and 1 in y:
                 self.plot_augmented(x_sa, augmented='specaug')
-            
+            augmented.append(x_sa)
+
         if self.do_noiseaug:
             x_na = self.noiseaug(x, noise)
             if plot and 1 in y:
                 self.plot_augmented(x_na, augmented='noise')
-        
-        x = torch.vstack([x, x_sa, x_na, x_ts])
+            augmented.append(x_na)
+
+        if self.do_timeshift:
+            x_ts = self.timeshift(x)
+            if plot and 1 in y:
+                self.plot_augmented(x_ts, augmented='timeshift')
+            augmented.append(x_ts)
+
+        x = torch.vstack(augmented)
         # Restore Channel dimension for CNN: (Batch, 1, Freq, Time)
         return x.unsqueeze(1)
         

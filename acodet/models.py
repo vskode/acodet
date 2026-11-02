@@ -3,12 +3,10 @@ import zipfile
 import sys
 import torch
 import torch.nn as nn
-import torchaudio as ta
 from .torchmodels import TorchModel
 
 import numpy as np
 
-from acodet.funcs import get_val_labels
 from . import global_config as conf
 
 
@@ -280,60 +278,128 @@ class KerasAppModel(ModelHelper):
 
 
 
+def _get_linear_probe_class():
+    """
+    Return the linear probe class of bacpipe. In bacpipe >= 1.3.2 the class
+    is called LinearProbe (with the linear layer `probe`), before it was called
+    LinearClassifier (with the linear layer `clfier`). An alias is registered
+    for the old name, so that probes that were pickled as complete objects
+    with older bacpipe versions can still be unpickled.
+    """
+    from bacpipe.embedding_evaluation.probing import train_probe
+
+    if hasattr(train_probe, "LinearProbe"):
+        if not hasattr(train_probe, "LinearClassifier"):
+            train_probe.LinearClassifier = train_probe.LinearProbe
+        return train_probe.LinearProbe
+    return train_probe.LinearClassifier
+
+
+def _probe_state_dict_from_checkpoint(checkpoint, target_keys):
+    """
+    Turn the content of a linear probe checkpoint into a state dict that fits
+    the probe of the installed bacpipe version. Checkpoints can be a state
+    dict, a bound `state_dict` method or the complete module (depending on
+    which acodet/bacpipe version saved them), and their keys can use the old
+    `clfier.` or the new `probe.` prefix.
+    """
+    if isinstance(checkpoint, nn.Module):
+        state_dict = checkpoint.state_dict()
+    elif callable(checkpoint):
+        state_dict = checkpoint()
+    else:
+        state_dict = checkpoint
+
+    target_prefixes = {k.split(".")[0] for k in target_keys}
+    if len(target_prefixes) != 1:
+        return state_dict
+    target_prefix = next(iter(target_prefixes))
+
+    renamed = {}
+    for key, value in state_dict.items():
+        prefix, sep, rest = key.partition(".")
+        if not sep:
+            # state dict of a bare linear layer, e.g. 'weight' and 'bias'
+            key = f"{target_prefix}.{key}"
+        elif prefix != target_prefix:
+            # e.g. 'clfier.weight' (old bacpipe) -> 'probe.weight'
+            key = f"{target_prefix}.{rest}"
+        renamed[key] = value
+    return renamed
+
+
 class BacpipeModel(nn.Module):
+    """
+    Wrapper around the bacpipe (>= 1.3.5) Embedder. Either the classifier
+    that ships with the bacpipe model is used (bool_lin_clfier: False) or a
+    linear classifier that is trained on top of the frozen embeddings
+    (bool_lin_clfier: True).
+    """
+
     def __init__(self, num_classes=1, **kwargs):
         super(BacpipeModel, self).__init__()
-        
-        import torch
-        from bacpipe import config, settings
-        from bacpipe import Embedder
+
         import bacpipe
-        from bacpipe import ensure_models_exist
-        config.models = [conf.MODEL_NAME]
-        ensure_models_exist(Path(conf.BACPIPE_CHCKPT_DIR), config.models)
-        settings.global_batch_size = conf.BATCH_SIZE / 2
+        from bacpipe import settings, Embedder, ensure_models_exist
+
         if conf.DEVICE == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         else:
             device = conf.DEVICE
+
+        # The checkpoints have to be downloaded to the same directory that
+        # the Embedder loads them from.
         if conf.BOOL_BACPIPE_CHCKPTS:
-            settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
-            
-        settings.device = device 
-        
+            settings.model_base_path = str(conf.BACPIPE_CHCKPT_DIR)
+        ensure_models_exist(
+            model_base_path=Path(settings.model_base_path),
+            model_names=[conf.MODEL_NAME],
+        )
+
+        # bacpipe uses the global batch size to compute the model specific
+        # batch size, it has to be an integer
+        settings.global_batch_size = max(1, int(conf.BATCH_SIZE // 2))
+        settings.device = device
+        # Only run the classifier that ships with the bacpipe model if it is
+        # used for the predictions. Otherwise its predictions would pile up
+        # in the Embedder for every processed file.
+        settings.run_pretrained_classifier = not conf.BOOL_LIN_CLFIER
+
         self.embedder = Embedder(
-            model_name=conf.MODEL_NAME, 
+            model_name=conf.MODEL_NAME,
             **vars(settings)
             )
-        
+
         conf.SR = self.embedder.model.sr
         conf.CONTEXT_WIN = self.embedder.model.segment_length
-        try:
-            from bacpipe.embedding_evaluation.probing.train_probe import LinearClassifier as head
-        except:
-            # starting from version 1.3.2 I changed this to LinearProbe 
-            # to prevent disambiguation between probe and classifier
-            from bacpipe.embedding_evaluation.probing.train_probe import LinearProbe as head
-        
+
+        if not conf.BOOL_LIN_CLFIER and not self.embedder.model.bool_classifier:
+            raise ValueError(
+                f"The bacpipe model {conf.MODEL_NAME} has no classifier. "
+                "Set `bool_lin_clfier: True` in the advanced config to use "
+                "a linear classifier on top of its embeddings."
+            )
+
         if conf.BOOL_LIN_CLFIER:
-            self.lin_classifier = head(in_dim=bacpipe.EMBEDDING_DIMENSIONS[conf.MODEL_NAME], out_dim=1)
-            
+            head = _get_linear_probe_class()
+            self.lin_classifier = head(
+                in_dim=bacpipe.EMBEDDING_DIMENSIONS[conf.MODEL_NAME], out_dim=1
+            )
+
             if conf.MODEL_NAME in bacpipe.TF_MODELS:
                 # we need to do this so that the tensorflow model can use
                 # the gpu. it will not leave any vram available for torch.
                 # therefore we are putting the classifier on the cpu.
-                self.lin_classifier.to('cpu')
                 self.probe_device = 'cpu'
             else:
-                self.lin_classifier.to(device)
                 self.probe_device = device
-                
+            self.lin_classifier.to(self.probe_device)
+
     def load_model(self, training_path):
         if not training_path:
             print(f'\nSuccessfully loaded {conf.MODEL_NAME} without linear classifier\n')
             return
-        
-        from pathlib import Path
+
         if Path(f'../trainings/{training_path}/{training_path}_bacpipe_lin_clfier.pt').exists():
             checkpoint_path = Path(f'../trainings/{training_path}/{training_path}_bacpipe_lin_clfier.pt')
         elif Path(f'acodet/src/models/{training_path}/{training_path}_bacpipe_lin_clfier.pt').exists():
@@ -341,59 +407,82 @@ class BacpipeModel(nn.Module):
         else:
             print(f"Model file {training_path} not found. Please check path.")
             return 1
-        
+
+        if not conf.BOOL_LIN_CLFIER:
+            print(
+                f"Found linear classifier {checkpoint_path}, but "
+                "`bool_lin_clfier` is False in the advanced config, so it is "
+                f"not used. Using the classifier of {conf.MODEL_NAME} instead."
+            )
+            return
+
+        # make sure the old class name exists before unpickling old probes
+        _get_linear_probe_class()
+        map_location = torch.device(self.probe_device)
         try:
-            checkpoint = torch.load(checkpoint_path, map_location=torch.device(conf.DEVICE))
-        except:
-            checkpoint = torch.load(checkpoint_path, weights_only=False, map_location=torch.device(conf.DEVICE))
-            
-        try:
-            self.lin_classifier.load_state_dict(checkpoint)
-        except TypeError:
-            self.lin_classifier.load_state_dict(checkpoint())
+            checkpoint = torch.load(checkpoint_path, map_location=map_location)
+        except Exception:
+            # older checkpoints contain pickled python objects
+            checkpoint = torch.load(
+                checkpoint_path, weights_only=False, map_location=map_location
+            )
+
+        self.lin_classifier.load_state_dict(
+            _probe_state_dict_from_checkpoint(
+                checkpoint, self.lin_classifier.state_dict().keys()
+            )
+        )
         print(f'\nSuccessfully loaded {checkpoint_path}\n')
-    
+
+    def _select_humpback_predictions(self, predictions):
+        """Return only the humpback class of the multiclass classifiers."""
+        humpback_labels = {
+            'perch_v2': 'Megaptera novaeangliae',
+            'google_whale': 'Humpback',
+        }
+        if conf.MODEL_NAME in humpback_labels:
+            model_labels = np.array(self.embedder.model.classes)
+            humpback_label_idx = np.where(
+                model_labels == humpback_labels[conf.MODEL_NAME]
+            )[0][0]
+            predictions = predictions[:, humpback_label_idx]
+        return predictions
+
+    def _embed_tensor(self, x):
+        """Compute embeddings for a batch of audio frames (no gradients)."""
+        from bacpipe import TF_MODELS
+
+        with torch.no_grad():
+            if conf.MODEL_NAME in TF_MODELS:
+                x = x.cpu()
+            if hasattr(self.embedder.model, "preprocess"):
+                x = self.embedder.model.preprocess(x)
+            embeds = self.embedder.model(x)
+        if not isinstance(embeds, torch.Tensor):
+            embeds = torch.as_tensor(np.asarray(embeds))
+        embeds = embeds.reshape(len(x), -1) if embeds.dim() > 1 else embeds.unsqueeze(0)
+        return embeds
+
     def forward(self, x, y=None, noise=None, path=None, start=None, training=False, **kwargs):
         if not conf.BOOL_LIN_CLFIER:
-            embeds = self.embedder.get_embeddings_from_model(x)
-            predictions = self.embedder.classifier.predictions[-len(embeds):]
-            
-            if (conf.MODEL_NAME == 'perch_v2'):
-                model_labels = np.array(self.embedder.model.classes)
-                humpback_label_idx = np.where(model_labels=='Megaptera novaeangliae')[0][0]
-                predictions = predictions[:, humpback_label_idx]
-            elif (conf.MODEL_NAME == 'google_whale'):
-                model_labels = np.array(self.embedder.model.classes)
-                humpback_label_idx = np.where(model_labels=='Humpback')[0][0]
-                predictions = predictions[:, humpback_label_idx]
-            return predictions
+            self.embedder.get_embeddings_from_model(x)
+            predictions = self.embedder.classifier.predictions
+            # the Embedder accumulates the predictions of the built-in
+            # classifier, reset them so that the next file starts empty
+            self.embedder.classifier.predictions = torch.tensor([])
+            return self._select_humpback_predictions(predictions)
         else:
             if isinstance(x, torch.Tensor):
-                from bacpipe import TF_MODELS
-                if conf.MODEL_NAME in TF_MODELS:
-                    if hasattr(self.embedder.model, "preprocess"):
-                        x = self.embedder.model.preprocess(x.cpu())
-                    embeds = self.embedder.model(x.cpu()).squeeze()
-                else:
-                    if hasattr(self.embedder.model, "preprocess"):
-                        x = self.embedder.model.preprocess(x)
-                    embeds = self.embedder.model(x).squeeze()
+                embeds = self._embed_tensor(x)
             else:
                 with torch.no_grad():
                     embeds = self.embedder.get_embeddings_from_model(x)
-            
-            self.lin_classifier.to(self.probe_device)
-            embeds = torch.tensor(embeds).to(self.probe_device)
+                embeds = torch.as_tensor(np.asarray(embeds))
+
+            embeds = embeds.to(self.probe_device, dtype=torch.float32)
             logits = self.lin_classifier(embeds)
             return logits
-        
-            # NOTE: this is if i want all class results, but right now
-            # we're only interested in humpback results
-            # else:
-            #     predictions = self.embedder.model.classifier_outputs[-embeds.shape[0]:]
-            #     return predictions
 
-        
 
 def init_model(
     model_name: str = conf.MODELCLASSNAME,
@@ -430,61 +519,3 @@ def init_model(
         return mod_obj.model
     else:
         return mod_obj
-
-
-def get_labels_and_preds(
-    model_name: str, training_path: str, val_data, **kwArgs
-) -> tuple:
-    """
-    Retrieve labels and predictions of validation set and given model
-    checkpoint.
-
-    Parameters
-    ----------
-    model_instance : type
-        model class
-    training_path : str
-        path to checkpoint
-    val_data : tf.data.Dataset
-        validation dataset
-
-    Returns
-    -------
-    labels: np.ndarray
-        labels
-    preds: mp.ndarray
-        predictions
-    """
-    model = init_model(
-        load_from_ckpt=True,
-        model_name=model_name,
-        training_path=training_path,
-        **kwArgs,
-    )
-    preds = model.predict(x=prep_ds_4_preds(val_data))
-    labels = get_val_labels(val_data, len(preds))
-    return labels, preds
-
-
-def prep_ds_4_preds(dataset):
-    """
-    Prepare dataset for prediction, by batching and ensuring that only
-    arrays and corresponding labels are passed (necessary because if
-    data about the origin of the array is passed, i.e. the file path and
-    start time of the array within that file, model.predict fails.).
-
-    Parameters
-    ----------
-    dataset : TfRecordDataset
-        dataset
-
-    Returns
-    -------
-    TFRecordDataset
-        prepared dataset
-    """
-    if len(list(dataset.take(1))[0]) > 2:
-        return dataset.map(lambda x, y, z, w: (x, y)).batch(batch_size=32)
-    else:
-        return dataset.batch(batch_size=32)
-

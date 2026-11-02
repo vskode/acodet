@@ -101,4 +101,6 @@ class PCEN(nn.Module):
             inputs / (self._floor + ema_smoother).pow(alpha) + self.delta
         ).pow(one_over_root) - self.delta.pow(one_over_root)
         
-        return output.squeeze()
+        # remove the channel axes but keep the batch axis, which a plain
+        # squeeze() would also remove for a batch of one window
+        return output.reshape(len(inputs), *output.shape[-2:])

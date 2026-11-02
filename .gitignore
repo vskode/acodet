@@ -7,12 +7,27 @@ bacpipe*
 # Ignore vscode settings
 .vscode/*
 
+# Ignore virtual environments
+.venv/
+.env*/
+env_acodet/
+
+# Ignore local agent / assistant files
+.cline/
+.claude
+.clinerules/
+progress.md
+
+# Ignore test and tool caches
+.pytest_cache/
+
 # Ignore test files
 tests/test_files/analysi*
 tests/test_files/test_annoted_files/thresh_0.5/N1/analysi*
 tests/test_files/test_gen*
 tests/test_files/test_com*
 tests/test_files/test_tfr*
+tests/test_files/test_dataset*
 tests/test_datasets/resampled*
 
 # Ignore generated annotation files
@@ -22,5 +37,7 @@ generated*
 acodet/src/tmp_*
 acodet/src/models/Humpback_20221130/
 acodet/src/models
+acodet/src/old_models/
+testing_keras3/
 
 *.png

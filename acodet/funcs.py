@@ -1,11 +1,8 @@
 import os.path
-from email import generator
 import glob
 import re
-import zipfile
 import datetime as dt
 import json
-# import tensorflow as tf
 import numpy as np
 import librosa as lb
 from pathlib import Path
@@ -16,48 +13,55 @@ from . import global_config as conf
 
 
 def remove_str_flags_from_predictions(df):
+    """
+    Remove all annotations that were flagged as noise ('n'), undefined ('u')
+    or call ('c') and return the remaining annotations with numeric
+    prediction values. Every value is checked individually, so the flags are
+    found independently of the type of the first value in the column.
+    Values that are neither a flag nor a number are converted to NaN.
+    """
     if len(df) == 0:
         return df
-    if type(df.loc[:, conf.ANNOTATION_COLUMN].values[0]) == str:
-        n = df.loc[
-            df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "n"
-            ].index
-        u = df.loc[
-            df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "u"
-            ].index
-        c = df.loc[
-            df[conf.ANNOTATION_COLUMN].str.strip().str.lower() == "c"
-            ].index
-
-        clean = df.drop([*n, *u, *c])
-    else:
-        clean = df.copy()
-        
-    clean.loc[:, conf.ANNOTATION_COLUMN] = clean[
-        conf.ANNOTATION_COLUMN
-    ].astype(float)
+    flags = df[conf.ANNOTATION_COLUMN].astype(str).str.strip().str.lower()
+    clean = df.loc[~flags.isin(["n", "u", "c"])].copy()
+    clean[conf.ANNOTATION_COLUMN] = pd.to_numeric(
+        clean[conf.ANNOTATION_COLUMN], errors="coerce"
+    )
     return clean
 
 
-############# TFRECORDS helpers #############################################
-def get_annots_for_file(annots: pd.DataFrame, file: str) -> pd.DataFrame:
+def get_bacpipe_model_constants(model_name):
     """
-    Get annotations for a file and sort by the start time of the annotated
-    call.
+    Return the sample rate and the segment length (in samples) of a bacpipe
+    model without loading the model weights.
 
     Parameters
     ----------
-    annots : pd.DataFrame
-        global annotations dataframe
-    file : str
-        file path
+    model_name : str
+        name of a model supported by bacpipe
 
     Returns
     -------
-    pd.DataFrame
-        filtered annotations dataframe
+    tuple
+        (sample rate, segment length in samples)
     """
-    return annots[annots.filename == file].sort_values("start")
+    try:
+        # available from bacpipe 1.3.5, also resolves models that inherit
+        # their constants from the module of another model
+        from bacpipe.core.audio_processor import _get_model_constants
+    except ImportError:
+        _get_model_constants = None
+
+    if _get_model_constants is not None:
+        _, sr, segment_length = _get_model_constants(model_name)
+        return sr, segment_length
+
+    import importlib
+
+    model_module = importlib.import_module(
+        f"bacpipe.model_pipelines.feature_extractors.{model_name}"
+    )
+    return model_module.SAMPLE_RATE, model_module.LENGTH_IN_SAMPLES
 
 
 def get_dt_filename(file):
@@ -141,11 +145,7 @@ def load_audio(file,
     """
     try:
         if conf.MODELCLASSNAME == 'BacpipeModel':
-            import bacpipe.embedding_generation_pipelines.feature_extractors as fe
-            model_module = getattr(fe, conf.MODEL_NAME)
-            sr = model_module.SAMPLE_RATE
-            conf.CONTEXT_WIN = model_module.LENGTH_IN_SAMPLES
-            
+            sr, conf.CONTEXT_WIN = get_bacpipe_model_constants(conf.MODEL_NAME)
             conf.SR = sr
             with open(file, 'rb') as f:
                 audio_flat, _ = lb.load(
@@ -185,88 +185,6 @@ def load_audio(file,
     except Exception as e:
         print("File is corrputed and can't be loaded.", e)
         return
-
-
-def return_windowed_file(file) -> tuple:
-    """
-    Load audio file and turn the 1D array into a 2D array. The rows length
-    corresponds to the window length specified by the config file. The
-    number of columns results from the division of the 1D array length
-    by the context window length. The incomplete remainder is discarded.
-    Along with the window, a 1D array of times is returned, corresponding
-    to the beginning in seconds of each context window within the original
-    file.
-
-    Parameters
-    ----------
-    file : str or pathlib.Path
-        file path
-
-    Returns
-    -------
-    audio_arr: np.ndarray
-        2D audio array
-    times: np.ndarray
-        start times of the context windows
-    """
-    audio = load_audio(file)
-    audio = audio[: len(audio) // conf.CONTEXT_WIN * conf.CONTEXT_WIN]
-    audio_arr = audio.reshape(
-        [len(audio) // conf.CONTEXT_WIN, conf.CONTEXT_WIN]
-    )
-
-    times = np.arange(
-        0,
-        audio_arr.shape[0] * conf.CONTEXT_WIN / conf.SR,
-        conf.CONTEXT_WIN / conf.SR,
-    )
-    return audio_arr, times
-
-
-
-def wins_bet_calls(annotations: pd.DataFrame) -> list:
-    """
-    Returns a list of ints, corresponding to the number of context windows
-    that fit between calls. The indexing is crucial, so that each start time
-    is subtracted from the previous end time, thereby yielding the gap length.
-
-    Parameters
-    ----------
-    annotations : pd.DataFrame
-        annotations
-
-    Returns
-    -------
-    list
-        number of context windows that fit between the start of one and the end of
-        the previous annotation
-    """
-    beg_min_start = annotations.start[1:].values - annotations.end[:-1].values
-    return (beg_min_start // (conf.CONTEXT_WIN / conf.SR)).astype(int)
-
-
-
-def get_train_set_size(tfrec_path):
-    if not isinstance(tfrec_path, list):
-        tfrec_path = [tfrec_path]
-    train_set_size, noise_set_size = 0, 0
-    for dataset_dir in tfrec_path:
-        try:
-            for dic in Path(dataset_dir).glob("**/*dataset*.json"):
-                with open(dic, "r") as f:
-                    data_dict = json.load(f)
-                    if "noise" in str(dic):
-                        noise_set_size += data_dict["dataset"]["size"]["train"]
-                    elif "train" in data_dict["dataset"]["size"]:
-                        train_set_size += data_dict["dataset"]["size"]["train"]
-        except:
-            print(
-                "No dataset dictionary found, estimating dataset size."
-                "WARNING: This might lead to incorrect learning rates!"
-            )
-            train_set_size += 5000
-            noise_set_size += 100
-    return train_set_size, noise_set_size
 
 
 ################ Plotting helpers ###########################################
@@ -321,77 +239,6 @@ def save_model_results(ckpt_dir: str, result: dict):
 
     with open(f"{ckpt_dir}/results.json", "w") as f:
         json.dump(result, f)
-
-
-def get_val_labels(
-    val_data, num_of_samples: int
-) -> np.ndarray:
-    """
-    Return all validation set labels. The dataset is batched with the dataset
-    size, thus creating one batch from the entire dataset. This batched
-    dataset is then converted to a list and its numpy attribute is returned.
-
-    Parameters
-    ----------
-    val_data : tf.data.Dataset
-        validation set
-    num_of_samples : int
-        length of dataset
-
-    Returns
-    -------
-    np.ndarray
-        array of all validation set labels
-    """
-    return list(val_data.batch(num_of_samples))[0][1].numpy()
-
-
-############### Model Evaluation helpers ####################################
-
-
-def print_evaluation(
-    val_data, model, batch_size: int
-):
-    """
-    Print evaluation results.
-
-    Parameters
-    ----------
-    val_data : tf.data.Dataset
-        validation data set
-    model : tf.keras.Sequential
-        keras model
-    batch_size : int
-        batch size
-    """
-    model.evaluate(val_data, batch_size=batch_size, verbose=2)
-
-
-def get_pr_arrays(
-    labels: np.ndarray, preds: np.ndarray, metric: str, **kwargs
-) -> np.ndarray:
-    """
-    Compute Precision or Recall on given set of labels and predictions.
-    Threshold values are created with 0.01 increments.
-
-    Parameters
-    ----------
-    labels : np.ndarray
-        labels
-    preds : np.ndarray
-        predictions
-    metric : str
-        Metric to calculate i.e. Recall or Precision
-
-    Returns
-    -------
-    np.ndarray
-        resulting values
-    """
-    import tensorflow as tf
-    r = getattr(tf.keras.metrics, metric)(**kwargs)
-    r.update_state(labels, preds.reshape(len(preds)))
-    return r.result().numpy()
 
 
 ############## Generate Model Annotations helpers ############################
@@ -527,11 +374,12 @@ def run_inference(
             if callbacks is not None and ind == 0:
                 callbacks = callbacks(**kwargs)
             preds = model(
-                window_data_for_prediction(batch), 
-                training=False, 
+                window_data_for_prediction(batch),
+                training=False,
                 callbacks=callbacks
             )
-        predictions.extend(preds)
+            # collect the predictions of every batch, not only the last one
+            predictions.extend(preds)
     elif conf.MODELCLASSNAME == 'BacpipeModel':
         if conf.BOOL_LIN_CLFIER:
             import torch
@@ -560,8 +408,10 @@ def run_inference(
         torch_batches = torch.vstack(torch_batches).unsqueeze(1)
         
         with torch.inference_mode():
-            predictions = torch.sigmoid(model(torch_batches)).squeeze()
-            
+            predictions = torch.sigmoid(model(torch_batches))
+            # one row per window, also if the file only has one window
+            predictions = predictions.reshape(len(torch_batches), -1).squeeze(-1)
+
     return np.array(predictions)
 
 
@@ -630,7 +480,7 @@ def manage_dir_structure(file):
 
 
 def get_top_dir(parent_dirs):
-    return str(parent_dirs).split("/")[0]
+    return Path(parent_dirs).parts[0]
 
 
 def gen_annotations(
@@ -660,17 +510,10 @@ def gen_annotations(
         computed
     """
     parent_dirs = manage_dir_structure(file)
-    
-    bacpipe_path = '/home/siriussound/Code/bacpipe/results/D2C/evaluations/birdnet/classification/original_classifier_outputs'
-    existing_file = Path(bacpipe_path) / (Path(parent_dirs).stem + '/' + file.stem + '_birdnet.json')
-    if existing_file.exists():
-        with open(existing_file, 'r') as f:
-            predictions = json.load(f)
-    else:
-        channel = get_channel(get_top_dir(parent_dirs))
-        
-        predictions = run_inference(file, model, channel, **kwargs)
-       
+
+    channel = get_channel(get_top_dir(parent_dirs))
+    predictions = run_inference(file, model, channel, **kwargs)
+
     save_path_func = lambda x: (
         Path(conf.GEN_ANNOTS_DIR)
         .joinpath(timestamp_foldername)
@@ -708,10 +551,14 @@ def gen_annotations(
 
 
 def save_multiclass_dfs(file, model, save_path_func, mod_label, predictions):
-    df_preds = model.model.make_classification_dict(
-        predictions, 
-        model.model.model.classes, 
-        conf.DEFAULT_THRESH
+    # since bacpipe 1.3.5 make_classification_dict is a static method of the
+    # Classifier class and the classes are an attribute of the bacpipe model
+    from bacpipe.model_pipelines.runner import Classifier
+
+    df_preds = Classifier.make_classification_dict(
+        np.asarray(predictions),
+        model.embedder.model.classes,
+        conf.DEFAULT_THRESH,
         )
     head = df_preds.pop('head')
     filtered_labels = list(df_preds.keys())
@@ -749,8 +596,8 @@ def save_combined_and_multiclass_dfs(predictions,
                                      labels, 
                                      save_path_func, 
                                      file, mod_label):
-    import tensorflow as tf
-    max_preds = tf.reduce_max(predictions, axis=0).numpy()
+    # predictions has the shape (number of classes, number of time bins)
+    max_preds = np.max(predictions, axis=0)
     cls_idxes = np.argmax(predictions, axis=0)
     _, tmp_idxes = np.where(predictions > conf.DEFAULT_THRESH)
     single_maxes = np.unique(tmp_idxes)
@@ -774,8 +621,15 @@ def save_combined_and_multiclass_dfs(predictions,
     all_combined_df = create_Raven_annotation_df(max_preds)
     all_combined_df.pop(conf.ANNOTATION_COLUMN)
     
-    results_df = pd.DataFrame(predictions).iloc[all_combined_df.index.values[:-1], range(len(labels))]
-    results_df.columns = labels
+    # The index of the annotation dataframe is the 1-based Raven selection
+    # number, i.e. the time bin index + 1. Select the per class predictions
+    # of exactly these time bins, so every row gets its own predictions.
+    time_bin_idxs = all_combined_df.index.values - 1
+    results_df = pd.DataFrame(
+        predictions.T[time_bin_idxs],
+        index=all_combined_df.index,
+        columns=labels,
+    )
     all_combined_df = pd.concat([all_combined_df, results_df], axis=1)
         
     save_paths['All_Combined'].mkdir(exist_ok=True, parents=True)
