@@ -48,7 +48,7 @@ dependencies = [
 [tool.uv.sources]
 onnxruntime-gpu = { index = "ort-cuda-12" }
 
-[[tool.uv.indexes]]
+[[tool.uv.index]]
 name = "ort-cuda-12"
 url = "https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"
 
