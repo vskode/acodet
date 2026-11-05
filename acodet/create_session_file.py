@@ -3,11 +3,17 @@ import json
 import streamlit as st
 
 
-def create_session_file():
-    with open("simple_config.yml", "r") as f:
+def create_session_file(simple_config_file=None, advanced_config_file=None):
+    if not simple_config_file:
+        simple_config_file = "simple_config.yml"
+
+    if not advanced_config_file:
+        advanced_config_file = "advanced_config.yml"
+
+    with open(simple_config_file, "r") as f:
         simple = yaml.safe_load(f)
 
-    with open("advanced_config.yml", "r") as f:
+    with open(advanced_config_file, "r") as f:
         advanced = yaml.safe_load(f)
 
     session = {**simple, **advanced}
