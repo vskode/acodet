@@ -54,27 +54,41 @@ def evaluate(train_date=False, **kwargs):
                            total=len(data_loader.test) // conf.BATCH_SIZE):
         audio, new_labels, paths, timestamps = batch
 
+        ################ Bacpipe Models ########################################
         if conf.MODELCLASSNAME == 'BacpipeModel':
-            # this is the case for using their own classifiers
-            if not conf.BOOL_LIN_CLFIER and conf.MODEL_NAME in ['perch_v2', 'google_whale']:
-                if conf.MODEL_NAME == 'perch_v2':
-                    audio = torch.tensor(audio)
-                else:
-                    import tensorflow as tf
-                    audio = tf.convert_to_tensor(audio, dtype=tf.float32)
-                embedings = model.embedder.model(audio).squeeze()
-                new_predictions = model.embedder.model.classifier_predictions(embedings)
-                if conf.MODEL_NAME == 'google_whale':
-                    new_predictions = tf.sigmoid(new_predictions)
+            if conf.MODEL_NAME == 'perch_v2' and not conf.BOOL_LIN_CLFIER:
+                # perch_v2 out-of-the-box
+                audio = torch.tensor(audio)
+                embeddings = model.embedder.model(audio).squeeze()
+                new_predictions = model.embedder.model.classifier_predictions(embeddings)
+            elif conf.MODEL_NAME == 'google_whale' and not conf.BOOL_LIN_CLFIER:
+                # google whale out-of-the-box
+                import tensorflow as tf
+                audio = tf.convert_to_tensor(audio, dtype=tf.float32)
+                embeddings = model.embedder.model(audio).squeeze()
+                new_predictions = model.embedder.model.classifier_predictions(embeddings)
+                new_predictions = tf.sigmoid(new_predictions)
+            elif conf.MODEL_NAME == 'birdnet_v3' and not conf.BOOL_LIN_CLFIER:
+                import tensorflow as tf
+                audio = tf.convert_to_tensor(audio, dtype=tf.float32)
+                embeddings = model.embedder.model(audio).squeeze()
+                new_predictions = model.embedder.model.classifier_predictions(embeddings)
+                new_predictions = tf.sigmoid(new_predictions)
             else:
+                # other Bacpipe models
                 audio = torch.tensor(audio)
                 with torch.inference_mode():
                     new_predictions = torch.sigmoid(model(audio.to(conf.DEVICE))).squeeze()
+
+        ################ TorchModel ###############################################
         elif conf.MODELCLASSNAME == 'TorchModel':
             with torch.inference_mode():
                 new_predictions = torch.sigmoid(model(audio)).squeeze()#.detach().cpu().squeeze()
+
+        ############### Other model classes #######################################
         else:
             new_predictions = torch.tensor(model.predict(tf.convert_to_tensor(audio)).squeeze())
+
         predictions.extend(new_predictions)
         class_labels.extend(new_labels)
         all_paths.extend(paths)
@@ -95,6 +109,10 @@ def evaluate(train_date=False, **kwargs):
     elif conf.MODEL_NAME == 'google_whale' and conf.MODELCLASSNAME == 'BacpipeModel' and not conf.BOOL_LIN_CLFIER:
         model_labels = np.array(model.embedder.model.classes)
         humpback_label_idx = np.where(model_labels=='Humpback')[0][0]
+        predictions = predictions[:, humpback_label_idx]
+    elif conf.MODEL_NAME == 'birdnet_v3' and conf.MODELCLASSNAME == 'BacpipeModel' and not conf.BOOL_LIN_CLFIER:
+        model_labels = np.array(model.embedder.model.classes)
+        humpback_label_idx = np.where(model_labels=='Humpback Whale')[0][0]
         predictions = predictions[:, humpback_label_idx]
 
     logger.info("All predictions collected; flattening")
