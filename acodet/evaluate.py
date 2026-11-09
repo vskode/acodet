@@ -4,7 +4,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as metrics
-from tqdm import tqdm
+from acodet.progress import progress
 
 import torch
 from acodet import models
@@ -50,8 +50,8 @@ def evaluate(train_date=False, **kwargs):
     class_labels = []
     all_paths = []
     all_timestamps = []
-    for idx, batch in tqdm(enumerate(test_data), 'running inference on test data',
-                           total=len(data_loader.test) // conf.BATCH_SIZE):
+    for idx, batch in progress(enumerate(test_data), 'running inference on test data',
+                               total=len(data_loader.test) // conf.BATCH_SIZE):
         audio, new_labels, paths, timestamps = batch
 
         ################ Bacpipe Models ########################################

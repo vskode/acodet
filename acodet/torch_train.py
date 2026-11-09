@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from itertools import cycle
 
-from tqdm import tqdm
+from acodet.progress import progress
 
 from acodet import global_config as conf
 
@@ -80,10 +80,9 @@ def train(model, data_loaders, output_dir, device=None):
             total_steps = min(total_steps, conf.STEPS_PER_EPOCH)
 
         # define progressbar
-        pbar = tqdm(train_loader, 
-                    total=total_steps, 
-                    desc=f"Epoch {epoch+1}/{conf.EPOCHS}",
-                    disable=None)
+        pbar = progress(train_loader,
+                        total=total_steps,
+                        desc=f"Epoch {epoch+1}/{conf.EPOCHS}")
         
 
         for i, batch in enumerate(pbar):
@@ -150,7 +149,7 @@ def train(model, data_loaders, output_dir, device=None):
                 'loss': f'{loss.item():.4f}', 
                 'acc': f'{train_correct/train_total:.3f}',
                 'lr': f'{current_lr:.1e}'
-            })
+            }, refresh=False)
 
         if train_FP == 0:
             train_FP = 0.001
@@ -176,7 +175,8 @@ def train(model, data_loaders, output_dir, device=None):
         val_support = {'0': 0, '1': 0}
         
         with torch.no_grad():
-            for v_idx, batch in enumerate(val_loader):
+            val_pbar = progress(val_loader, desc=f"Validation {epoch+1}/{conf.EPOCHS}")
+            for v_idx, batch in enumerate(val_pbar):
                 inputs = batch[0].to(device)
                 labels = batch[1].to(device)
                 

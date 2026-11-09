@@ -4,7 +4,7 @@ from glob import glob
 import torch
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from acodet.progress import progress
 from sklearn import metrics
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -45,7 +45,7 @@ def inference_k_random(net, state_dict_path, test_dl, test_metadata_df, k=1):
     for _ in range(k):
         with torch.no_grad():
             _preds = []
-            for batch in tqdm(test_dl):
+            for batch in progress(test_dl):
                 batch = batch_to_device(batch, device)
                 out = model(batch['wave']).cpu().numpy()
                 if np.isnan(out).any():
@@ -93,7 +93,7 @@ def inference_all(net, state_dict_path, test_metadata_df, cfg, data_path):
     # Performance could be increased here when
     # more files are batched together instead of
     # initializing a Dataloader for single audio files.
-    for i in tqdm(range(len(test_metadata_df))):
+    for i in progress(range(len(test_metadata_df))):
         name = ntpath.basename(test_metadata_df.iloc[i]['path'][:-4])
         data = glob(f'{data_path}/{name}_*.wav')
         df = pd.DataFrame(data, columns=['path'])
