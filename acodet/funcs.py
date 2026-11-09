@@ -141,8 +141,10 @@ def load_audio(file,
     """
     try:
         if conf.MODELCLASSNAME == 'BacpipeModel':
-            import bacpipe.embedding_generation_pipelines.feature_extractors as fe
-            model_module = getattr(fe, conf.MODEL_NAME)
+            import importlib
+            model_module = importlib.import_module(
+                f"bacpipe.model_pipelines.feature_extractors.{conf.MODEL_NAME}"
+            )
             sr = model_module.SAMPLE_RATE
             conf.CONTEXT_WIN = model_module.LENGTH_IN_SAMPLES
             
