@@ -80,7 +80,28 @@ def main(sc=True, **kwargs):
 
 
 if __name__ == "__main__":
+    import argparse
     from acodet.create_session_file import create_session_file
 
-    create_session_file()
+    parser = argparse.ArgumentParser(
+    description="run.py"
+)
+
+    parser.add_argument(
+        "--advanced_config_file",
+        type=str,
+        default=None,
+        help="Path to an optional advanced configuration file"
+)
+
+    parser.add_argument(
+        "--simple_config_file",
+        type=str,
+        default=None,
+        help="Path to an optional simple configuration file"
+)
+
+    args = parser.parse_args()
+
+    create_session_file(simple_config_file=args.simple_config_file, advanced_config_file=args.advanced_config_file)
     main()

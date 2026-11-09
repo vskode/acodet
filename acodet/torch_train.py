@@ -173,7 +173,7 @@ def train(model, data_loaders, output_dir, device=None):
         val_FP = 0
         val_FN = 0
         val_running_loss = 0.0
-        val_support = {'0': 0, '1': 1}
+        val_support = {'0': 0, '1': 0}
         
         with torch.no_grad():
             for v_idx, batch in enumerate(val_loader):

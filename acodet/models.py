@@ -373,7 +373,8 @@ class BacpipeModel(nn.Module):
                 if conf.MODEL_NAME in TF_MODELS:
                     if hasattr(self.embedder.model, "preprocess"):
                         x = self.embedder.model.preprocess(x.cpu())
-                    embeds = self.embedder.model(x.cpu()).squeeze()
+                    embeds = self.embedder.model(x.cpu())
+                    embeds = embeds.numpy().squeeze()
                 else:
                     if hasattr(self.embedder.model, "preprocess"):
                         x = self.embedder.model.preprocess(x)
