@@ -1,3 +1,5 @@
+from pathlib import Path
+
 def main(sc=True, **kwargs):
     """
     Main function to run the whole pipeline. The function is called from the
@@ -79,28 +81,46 @@ def main(sc=True, **kwargs):
             save_model("FlatHBNA", init_model(), **kwargs)
 
 
+def existing_path(str_path):
+    """
+    This function can be used as an argument type to fully resolve a user-supplied path and ensure it exists:
+        parser.add_argument(..., type=argutils.existing_path, ...)
+    An exception will be raised if the path does not exist.
+
+    Args:
+        str_path: The user-supplied path.
+
+    Returns:
+        pathlib.Path: The fully-resolved path object, if it exists.
+    """
+    path = Path(str_path).expanduser().resolve()
+    if path.exists():
+        return path
+    else:
+        raise argparse.ArgumentTypeError(f"{str_path} ({path}) is not a valid path")
+
+
 if __name__ == "__main__":
     import argparse
     from acodet.create_session_file import create_session_file
 
-    parser = argparse.ArgumentParser(
-    description="run.py"
-)
-
+    parser = argparse.ArgumentParser(description="Acodet pipeline runner.")
     parser.add_argument(
-        "--advanced_config_file",
-        type=str,
-        default=None,
-        help="Path to an optional advanced configuration file"
-)
-
-    parser.add_argument(
+        "--simple-config-file",
         "--simple_config_file",
-        type=str,
-        default=None,
-        help="Path to an optional simple configuration file"
-)
-
+        "--sc",
+        type=existing_path,
+        default=Path("simple_config.yml"),
+        help="Path to an optional simple configuration file."
+    )
+    parser.add_argument(
+        "--advanced-config-file",
+        "--advanced_config_file",
+        "--ac",
+        type=existing_path,
+        default=Path("advanced_config.yml"),
+        help="Path to an optional advanced configuration file."
+    )
     args = parser.parse_args()
 
     create_session_file(simple_config_file=args.simple_config_file, advanced_config_file=args.advanced_config_file)
