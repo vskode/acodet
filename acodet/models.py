@@ -290,15 +290,15 @@ class BacpipeModel(nn.Module):
         import bacpipe
         from bacpipe import ensure_models_exist
         config.models = [conf.MODEL_NAME]
-        ensure_models_exist(Path(conf.BACPIPE_CHCKPT_DIR), config.models)
+        if conf.BOOL_BACPIPE_CHCKPTS:
+            settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
+        # check (and download if missing) where the Embedder will load from
+        ensure_models_exist(Path(settings.model_base_path), config.models)
         settings.global_batch_size = conf.BATCH_SIZE / 2
         if conf.DEVICE == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         else:
             device = conf.DEVICE
-        if conf.BOOL_BACPIPE_CHCKPTS:
-            settings.model_base_path = conf.BACPIPE_CHCKPT_DIR
-            
         settings.device = device 
         
         self.embedder = Embedder(
