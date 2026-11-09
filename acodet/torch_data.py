@@ -44,7 +44,12 @@ class AudioDataset(Dataset):
             if clip_duration < 0.5:  # adjust threshold to your needs
                 continue
             
-            num_frames = max(1, int(np.ceil(clip_duration / frame_duration)))
+            # Subtract a small tolerance before taking the ceiling. This prevents accidentally
+            # duplicating clips due to rounding error. E.g., if we are using 3.8775 s windows,
+            # then an annotation of length 3.8775000001 s would result in two windows that almost
+            # completely overlap with each other. In general, we allow overlapping windows, but
+            # we don't want these unintended cases that are only due to rounding.
+            num_frames = max(1, int(np.ceil(clip_duration / frame_duration - 1e-6)))
             
             for i in range(num_frames):
                 frame_start = row['start'] + i * frame_duration
