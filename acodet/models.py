@@ -8,7 +8,11 @@ from .torchmodels import TorchModel
 
 import numpy as np
 
-from acodet.funcs import get_val_labels
+from acodet.funcs import (
+    get_val_labels,
+    get_bacpipe_model_constants,
+    VARIABLE_LENGTH_BACPIPE_MODELS,
+)
 from . import global_config as conf
 
 
@@ -301,8 +305,12 @@ class BacpipeModel(nn.Module):
             device = conf.DEVICE
         settings.device = device 
         
+        model_kwargs = {}
+        if conf.MODEL_NAME in VARIABLE_LENGTH_BACPIPE_MODELS:
+            _, model_kwargs["segment_length"] = get_bacpipe_model_constants(conf.MODEL_NAME)
         self.embedder = Embedder(
-            model_name=conf.MODEL_NAME, 
+            model_name=conf.MODEL_NAME,
+            **model_kwargs,
             **vars(settings)
             )
         
