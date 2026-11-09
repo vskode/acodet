@@ -17,7 +17,8 @@ dependencies = [
     "librosa",
     "ml-collections",
     "numba",
-    "onnxruntime-gpu",
+    "onnxruntime>=1.27.0, <2.0.0; sys_platform != 'linux'",
+    "onnxruntime-gpu; sys_platform == 'linux'",
     "panel",
     "plotly",
     "pysocks",
@@ -51,4 +52,6 @@ onnxruntime-gpu = { index = "ort-cuda-12" }
 [[tool.uv.index]]
 name = "ort-cuda-12"
 url = "https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"
+# Only use this index for packages pinned to it above. Otherwise uv also takes onnxruntime from it (old, Linux-only).
+explicit = true
 
