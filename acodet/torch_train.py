@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from itertools import cycle
 
 from acodet.progress import progress
+from acodet import embedding_cache
 
 from acodet import global_config as conf
 
@@ -26,8 +27,23 @@ def train(model, data_loaders, output_dir, device=None):
             print(f"\n\n==================\nWARNING: Falling back to CPU. GPU not available.")
             device = 'cpu'
     
-    train_loader = data_loaders.train_loader()
-    val_loader = data_loaders.val_loader()
+    # When only the linear classifier on a frozen bacpipe model is trained,
+    # train it on cached embeddings instead of running the bacpipe model on
+    # the audio in every epoch.
+    use_cache = (
+        conf.MODELCLASSNAME == 'BacpipeModel'
+        and conf.BOOL_LIN_CLFIER
+        and conf.CACHE_EMBEDDINGS
+    )
+    if use_cache:
+        train_loader, val_loader = embedding_cache.embedding_loaders(model, data_loaders, device)
+        net = model.lin_classifier
+        # train where the linear classifier lives (CPU for TensorFlow models)
+        device = model.probe_device
+    else:
+        train_loader = data_loaders.train_loader()
+        val_loader = data_loaders.val_loader()
+        net = model
 
     # Set up training stats file
     with open(output_dir.joinpath('training_stats.csv'), 'w') as file:
@@ -47,9 +63,11 @@ def train(model, data_loaders, output_dir, device=None):
             'val_support_1\n'
                 )
     
-    # Setup explicit noise iterator
-    noise_loader = data_loaders.noise_loader()
-    noise_iter = cycle(noise_loader)
+    # Setup explicit noise iterator (only TorchModel augments with noise)
+    use_noise = conf.MODELCLASSNAME == 'TorchModel'
+    if use_noise:
+        noise_loader = data_loaders.noise_loader()
+        noise_iter = cycle(noise_loader)
 
     model = model.to(device)
 
@@ -93,26 +111,26 @@ def train(model, data_loaders, output_dir, device=None):
             # Unpack Batch
             inputs = batch[0].to(device)
             labels = batch[1].float().to(device)
-            path = batch[2]   # List of strings, keeps on CPU
-            start = batch[3] # List of floats
-            
-            # Load Noise 
-            noise_batch = next(noise_iter)
-            
-            noise = noise_batch[0].to(device)
 
             optimizer.zero_grad()
 
             # D. Forward Pass (Ensure model accepts these args)
-            outputs = model(
-                inputs, 
-                labels, 
-                noise=noise, 
-                path=path, 
-                start=start, 
-                training=True,
-                plot=False
-                )
+            if use_cache:
+                # inputs are cached embeddings
+                outputs = net(inputs)
+            else:
+                path = batch[2]   # List of strings, keeps on CPU
+                start = batch[3] # List of floats
+                noise = next(noise_iter)[0].to(device) if use_noise else None
+                outputs = model(
+                    inputs,
+                    labels,
+                    noise=noise,
+                    path=path,
+                    start=start,
+                    training=True,
+                    plot=False
+                    )
             
             # If outputs is a dictionary (some models), extract logits
             if isinstance(outputs, dict):
@@ -184,7 +202,7 @@ def train(model, data_loaders, output_dir, device=None):
                     labels = torch.tensor(labels.clone().detach(), dtype=torch.float32)
                     labels = labels.to(model.probe_device)
 
-                outputs = model(inputs)
+                outputs = net(inputs)
                 val_loss = criterion(outputs.squeeze(), labels)
                 val_running_loss += val_loss.item() * inputs.size(0)
                 

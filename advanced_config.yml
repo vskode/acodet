@@ -145,5 +145,10 @@ bacpipe_chckpt_dir: ../model_checkpoints
 bool_lin_clfier: False
 # Specify path to the linear classifier folder
 lin_clfier_dir: ../linear_classifier
+# Whether to compute the embeddings of the frozen feature extractor only once
+# and cache them, when training a linear classifier (bool_lin_clfier: True)
+cache_embeddings: True
+# Specify path to the folder for cached embeddings
+embedding_cache_dir: ../trainings/embedding_cache
 # Specify what device to run the computations on
 device: cuda

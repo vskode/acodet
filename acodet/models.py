@@ -361,6 +361,38 @@ class BacpipeModel(nn.Module):
             self.lin_classifier.load_state_dict(checkpoint())
         print(f'\nSuccessfully loaded {checkpoint_path}\n')
     
+    def embed(self, x):
+        """
+        Compute embeddings of a batch of audio with the frozen bacpipe model.
+
+        Parameters
+        ----------
+        x : torch.Tensor or np.ndarray
+            batch of audio windows, shape (batch, samples)
+
+        Returns
+        -------
+        torch.Tensor
+            float32 embeddings, shape (batch, embedding_dim)
+        """
+        if isinstance(x, torch.Tensor):
+            from bacpipe import TF_MODELS
+            if conf.MODEL_NAME in TF_MODELS:
+                if hasattr(self.embedder.model, "preprocess"):
+                    x = self.embedder.model.preprocess(x.cpu())
+                embeds = self.embedder.model(x.cpu())
+                embeds = embeds.numpy()
+            else:
+                if hasattr(self.embedder.model, "preprocess"):
+                    x = self.embedder.model.preprocess(x)
+                embeds = self.embedder.model(x)
+        else:
+            with torch.no_grad():
+                embeds = self.embedder.get_embeddings_from_model(x)
+        embeds = torch.as_tensor(embeds, dtype=torch.float32)
+        # reshape rather than squeeze, so a batch of one clip stays 2D
+        return embeds.reshape(embeds.shape[0], -1)
+
     def forward(self, x, y=None, noise=None, path=None, start=None, training=False, **kwargs):
         if not conf.BOOL_LIN_CLFIER:
             embeds = self.embedder.get_embeddings_from_model(x)
@@ -376,24 +408,8 @@ class BacpipeModel(nn.Module):
                 predictions = predictions[:, humpback_label_idx]
             return predictions
         else:
-            if isinstance(x, torch.Tensor):
-                from bacpipe import TF_MODELS
-                if conf.MODEL_NAME in TF_MODELS:
-                    if hasattr(self.embedder.model, "preprocess"):
-                        x = self.embedder.model.preprocess(x.cpu())
-                    embeds = self.embedder.model(x.cpu())
-                    embeds = embeds.numpy().squeeze()
-                else:
-                    if hasattr(self.embedder.model, "preprocess"):
-                        x = self.embedder.model.preprocess(x)
-                    embeds = self.embedder.model(x).squeeze()
-            else:
-                with torch.no_grad():
-                    embeds = self.embedder.get_embeddings_from_model(x)
-            
             self.lin_classifier.to(self.probe_device)
-            embeds = torch.tensor(embeds).to(self.probe_device)
-            logits = self.lin_classifier(embeds)
+            logits = self.lin_classifier(self.embed(x).to(self.probe_device))
             return logits
         
             # NOTE: this is if i want all class results, but right now

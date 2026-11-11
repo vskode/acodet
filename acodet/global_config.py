@@ -154,4 +154,7 @@ BACPIPE_CHCKPT_DIR = session['bacpipe_chckpt_dir']
 LIN_CLFIER_DIR = session['lin_clfier_dir']
 DEVICE = session['device']
 BOOL_LIN_CLFIER = session['bool_lin_clfier']
+# older config files don't have these settings, hence the defaults
+CACHE_EMBEDDINGS = session.get('cache_embeddings', True)
+EMBEDDING_CACHE_DIR = session.get('embedding_cache_dir', '../trainings/embedding_cache')
 BOOL_BACPIPE_CHCKPTS = session['bool_bacpipe_chckpts']
