@@ -36,10 +36,11 @@ def train(model, data_loaders, output_dir, device=None):
         and conf.CACHE_EMBEDDINGS
     )
     if use_cache:
-        train_loader, val_loader = embedding_cache.embedding_loaders(model, data_loaders, device)
+        train_loader, val_loader = embedding_cache.embedding_loaders(model, data_loaders)
         net = model.lin_classifier
-        # train where the linear classifier lives (CPU for TensorFlow models)
-        device = model.probe_device
+        # A linear classifier on cached embeddings trains ~2.5x faster on the
+        # CPU than on a GPU.
+        device = 'cpu'
     else:
         train_loader = data_loaders.train_loader()
         val_loader = data_loaders.val_loader()
@@ -63,7 +64,7 @@ def train(model, data_loaders, output_dir, device=None):
             'val_support_1\n'
                 )
     
-    # Setup explicit noise iterator (only TorchModel augments with noise)
+    # Setup explicit noise iterator (as of now, only TorchModel augments with noise)
     use_noise = conf.MODELCLASSNAME == 'TorchModel'
     if use_noise:
         noise_loader = data_loaders.noise_loader()
@@ -108,9 +109,11 @@ def train(model, data_loaders, output_dir, device=None):
             if conf.STEPS_PER_EPOCH is not None and i >= conf.STEPS_PER_EPOCH:
                 break
                 
-            # Unpack Batch
-            inputs = batch[0].to(device)
-            labels = batch[1].float().to(device)
+            # Unpack batch. NOTE that we do not move the batch to the device. All models will
+            # move the audio to the appropriate device, and the labels will later be moved to a 
+            # device which matches the output.
+            inputs = batch[0]
+            labels = batch[1].float()
 
             optimizer.zero_grad()
 
@@ -119,9 +122,11 @@ def train(model, data_loaders, output_dir, device=None):
                 # inputs are cached embeddings
                 outputs = net(inputs)
             else:
-                path = batch[2]   # List of strings, keeps on CPU
+                # If we are not using the cache data loader, then each batch will also contain
+                # paths and start times.
+                path = batch[2]  # List of strings
                 start = batch[3] # List of floats
-                noise = next(noise_iter)[0].to(device) if use_noise else None
+                noise = next(noise_iter)[0] if use_noise else None
                 outputs = model(
                     inputs,
                     labels,
@@ -136,9 +141,8 @@ def train(model, data_loaders, output_dir, device=None):
             if isinstance(outputs, dict):
                 outputs = outputs['logits']
                 
-            if hasattr(model, 'probe_device'):
-                labels = labels.to(model.probe_device)
-                
+            # the loss needs the labels where the outputs are
+            labels = labels.to(outputs.device)
             if not outputs.shape[0] == labels.shape[0]:
                 nr_of_repeats = outputs.shape[0] / labels.shape[0]
                 labels = labels.repeat(int(nr_of_repeats))
@@ -195,14 +199,11 @@ def train(model, data_loaders, output_dir, device=None):
         with torch.no_grad():
             val_pbar = progress(val_loader, desc=f"Validation {epoch+1}/{conf.EPOCHS}")
             for v_idx, batch in enumerate(val_pbar):
-                inputs = batch[0].to(device)
-                labels = batch[1].to(device)
-                
-                if hasattr(model, 'probe_device'):
-                    labels = torch.tensor(labels.clone().detach(), dtype=torch.float32)
-                    labels = labels.to(model.probe_device)
+                inputs = batch[0]
+                labels = batch[1].float()
 
                 outputs = net(inputs)
+                labels = labels.to(outputs.device)
                 val_loss = criterion(outputs.squeeze(), labels)
                 val_running_loss += val_loss.item() * inputs.size(0)
                 
@@ -279,11 +280,8 @@ def test(model, test_loader, device='cuda'):
     test_total = 0
     with torch.no_grad():
         for inputs, labels, _, _ in test_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            
-            if hasattr(model, 'probe_device'):
-                labels = labels.to(model.probe_device)
             outputs = model(inputs)
+            labels = labels.to(outputs.device)
             # _, preds = torch.max(outputs, 1)
             probs = torch.sigmoid(outputs)
             preds = (probs > 0.5).float()

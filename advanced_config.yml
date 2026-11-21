@@ -147,6 +147,8 @@ bool_lin_clfier: False
 lin_clfier_dir: ../linear_classifier
 # Whether to compute the embeddings of the frozen feature extractor only once
 # and cache them, when training a linear classifier (bool_lin_clfier: True)
+# NOTE: This currently only applies when using BacpipeModel, since those models
+# are always frozen.
 cache_embeddings: True
 # Specify path to the folder for cached embeddings
 embedding_cache_dir: ../trainings/embedding_cache

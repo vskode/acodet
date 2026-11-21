@@ -70,6 +70,13 @@ class TorchModel(nn.Module):
         path=None, start=None, training=False,
         plot=False
         ):
+        # It is each model's responsibility to move the input to the correct device.
+        # This is because some models need to perform preprocessing on CPU first.
+        device = next(self.parameters()).device
+        x = x.to(device)
+        if noise is not None:
+            noise = noise.to(device)
+
         # (bs, channel, time)        
         x = x[:, None, :]
 

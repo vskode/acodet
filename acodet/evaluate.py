@@ -58,7 +58,6 @@ def evaluate(train_date=False, **kwargs):
         if conf.MODELCLASSNAME == 'BacpipeModel':
             if conf.MODEL_NAME == 'perch_v2' and not conf.BOOL_LIN_CLFIER:
                 # perch_v2 out-of-the-box
-                audio = torch.tensor(audio)
                 embeddings = model.embedder.model(audio).squeeze()
                 new_predictions = model.embedder.model.classifier_predictions(embeddings)
             elif conf.MODEL_NAME == 'google_whale' and not conf.BOOL_LIN_CLFIER:
@@ -75,10 +74,9 @@ def evaluate(train_date=False, **kwargs):
                 new_predictions = model.embedder.model.classifier_predictions(embeddings)
                 new_predictions = tf.sigmoid(new_predictions)
             else:
-                # other Bacpipe models
-                audio = torch.tensor(audio)
+                # other Bacpipe models, which move the audio to their own device
                 with torch.inference_mode():
-                    new_predictions = torch.sigmoid(model(audio.to(conf.DEVICE))).squeeze()
+                    new_predictions = torch.sigmoid(model(audio)).squeeze()
 
         ################ TorchModel ###############################################
         elif conf.MODELCLASSNAME == 'TorchModel':

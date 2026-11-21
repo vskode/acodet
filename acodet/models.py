@@ -365,29 +365,33 @@ class BacpipeModel(nn.Module):
         """
         Compute embeddings of a batch of audio with the frozen bacpipe model.
 
+        Note that autograd is disabled for this call, because the bacpipe
+        model is frozen and thus tracking computations would be wasteful.
+
         Parameters
         ----------
-        x : torch.Tensor or np.ndarray
-            batch of audio windows, shape (batch, samples)
+        x : torch.Tensor or path-like
+            batch of audio windows, shape (batch, samples), on any device;
+            or the path of an audio file, which bacpipe loads, windows, and
+            embeds whole.
 
         Returns
         -------
         torch.Tensor
             float32 embeddings, shape (batch, embedding_dim)
         """
-        if isinstance(x, torch.Tensor):
-            from bacpipe import TF_MODELS
-            if conf.MODEL_NAME in TF_MODELS:
-                if hasattr(self.embedder.model, "preprocess"):
-                    x = self.embedder.model.preprocess(x.cpu())
-                embeds = self.embedder.model(x.cpu())
-                embeds = embeds.numpy()
-            else:
+        # the bacpipe model is frozen and only the linear classifier trains,
+        # so autograd must not record it (for example, backpropagating through
+        # BEATs made each uncached training step 2.3x slower)
+        with torch.no_grad():
+            if isinstance(x, torch.Tensor):
                 if hasattr(self.embedder.model, "preprocess"):
                     x = self.embedder.model.preprocess(x)
                 embeds = self.embedder.model(x)
-        else:
-            with torch.no_grad():
+                from bacpipe import TF_MODELS
+                if conf.MODEL_NAME in TF_MODELS:
+                    embeds = embeds.numpy()
+            else:
                 embeds = self.embedder.get_embeddings_from_model(x)
         embeds = torch.as_tensor(embeds, dtype=torch.float32)
         # reshape rather than squeeze, so a batch of one clip stays 2D
