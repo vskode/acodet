@@ -8,11 +8,7 @@ from .torchmodels import TorchModel
 
 import numpy as np
 
-from acodet.funcs import (
-    get_val_labels,
-    get_bacpipe_model_constants,
-    VARIABLE_LENGTH_BACPIPE_MODELS,
-)
+from acodet.funcs import get_val_labels
 from . import global_config as conf
 
 
@@ -284,6 +280,11 @@ class KerasAppModel(ModelHelper):
 
 
 
+# bacpipe models that accept any input length. These are given acodet's
+# context window instead of their default input length.
+VARIABLE_LENGTH_BACPIPE_MODELS = ["birdnet_v3"]
+
+
 class BacpipeModel(nn.Module):
     def __init__(self, num_classes=1, **kwargs):
         super(BacpipeModel, self).__init__()
@@ -307,15 +308,24 @@ class BacpipeModel(nn.Module):
         
         model_kwargs = {}
         if conf.MODEL_NAME in VARIABLE_LENGTH_BACPIPE_MODELS:
-            _, model_kwargs["segment_length"] = get_bacpipe_model_constants(conf.MODEL_NAME)
+            # the configured context window, in samples at the model's rate
+            import importlib
+            model_module = importlib.import_module(
+                f"bacpipe.model_pipelines.feature_extractors.{conf.MODEL_NAME}"
+            )
+            model_kwargs["segment_length"] = int(round(
+                conf.CONTEXT_WIN_S_CORRECTED * model_module.SAMPLE_RATE
+            ))
         self.embedder = Embedder(
             model_name=conf.MODEL_NAME,
             **model_kwargs,
             **vars(settings)
             )
         
+        # from here on, acodet uses the model's own sample rate and window
         conf.SR = self.embedder.model.sr
         conf.CONTEXT_WIN = self.embedder.model.segment_length
+        conf.CONTEXT_WIN_S_CORRECTED = conf.CONTEXT_WIN / conf.SR
         try:
             from bacpipe.embedding_evaluation.probing.train_probe import LinearClassifier as head
         except:

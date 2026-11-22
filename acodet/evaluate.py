@@ -37,9 +37,6 @@ def evaluate(train_date=False, **kwargs):
     logger.info(f"Initializing model {conf.MODELCLASSNAME}")
     model = models.init_model()
 
-    if conf.MODELCLASSNAME == 'BacpipeModel':
-        conf.SR = model.embedder.model.sr
-
     # load test data from advanced config ANNOTATION_DESTINATION
     logger.info(f"Loading test data from {conf.ANNOT_DEST}")
     data_loader = Loader(conf.ANNOT_DEST)

@@ -120,45 +120,9 @@ def get_channel(dir):
     return channel
 
 
-# bacpipe models that accept any input length. These are given acodet's
-# context window instead of their default input length.
-VARIABLE_LENGTH_BACPIPE_MODELS = ["birdnet_v3"]
-
-
-def get_bacpipe_model_constants(model_name):
-    """
-    Return the sample rate and input length that acodet uses for a bacpipe
-    model. Most bacpipe models require their own fixed input length, but the
-    ones in VARIABLE_LENGTH_BACPIPE_MODELS use acodet's context window
-    (context_window_in_seconds, after correction), so that each annotation
-    fits in exactly one window.
-
-    Parameters
-    ----------
-    model_name : str
-        name of the bacpipe model
-
-    Returns
-    -------
-    sr : int
-        sample rate of the model
-    segment_length : int
-        input length in samples
-    """
-    import importlib
-    model_module = importlib.import_module(
-        f"bacpipe.model_pipelines.feature_extractors.{model_name}"
-    )
-    sr = model_module.SAMPLE_RATE
-    if model_name in VARIABLE_LENGTH_BACPIPE_MODELS:
-        segment_length = int(round(conf.CONTEXT_WIN_S_CORRECTED * sr))
-    else:
-        segment_length = model_module.LENGTH_IN_SAMPLES
-    return sr, segment_length
-
-
 def load_audio(file, 
                channel=0, 
+               mono=False,
                save_downsampled_files=conf.SAVE_DOWNSAMPLED_FILES, 
                **kwargs) -> np.ndarray:
     """
@@ -170,6 +134,10 @@ def load_audio(file,
     ----------
     file : str or pathlib.Path
         file path
+    channel : int
+        channel to return from a multichannel file, unless mono is True
+    mono : bool
+        if True, average all channels of a multichannel file instead
 
     Returns
     -------
@@ -177,19 +145,11 @@ def load_audio(file,
         audio array
     """
     try:
-        if conf.MODELCLASSNAME == 'BacpipeModel':
-            sr, conf.CONTEXT_WIN = get_bacpipe_model_constants(conf.MODEL_NAME)
-            conf.SR = sr
-            with open(file, 'rb') as f:
-                audio_flat, _ = lb.load(
-                    f, sr=sr, mono=True, **kwargs
-                )
-                
-        elif conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
+        if conf.DOWNSAMPLE_SR and conf.SR != conf.DOWNSAMPLE_SR:
             with open(file, "rb") as f:
                 audio_flat, _ = lb.load(
-                    f, sr=conf.DOWNSAMPLE_SR, mono=False, **kwargs
-                )[channel]
+                    f, sr=conf.DOWNSAMPLE_SR, mono=mono, **kwargs
+                )
             if len(audio_flat.shape) > 1:
                 audio_flat = audio_flat[channel]
 
@@ -198,7 +158,7 @@ def load_audio(file,
             )
         else:
             with open(file, "rb") as f:
-                audio_flat, _ = lb.load(f, sr=conf.SR, mono=False, **kwargs)
+                audio_flat, _ = lb.load(f, sr=conf.SR, mono=mono, **kwargs)
             if len(audio_flat.shape) > 1:
                 audio_flat = audio_flat[channel]
         if save_downsampled_files:
