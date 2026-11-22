@@ -102,7 +102,14 @@ def existing_path(str_path):
 
 if __name__ == "__main__":
     import argparse
+    import sys
     from acodet.create_session_file import create_session_file
+
+    # Write each printed line out right away, also when stdout is a file (e.g.
+    # a Slurm log). Otherwise Python buffers it in blocks of the file system's
+    # block size (4 MiB on VACC scratch), so prints only show up at exit, long
+    # after the progress bars, which go to stderr and are written per line.
+    sys.stdout.reconfigure(line_buffering=True)
 
     parser = argparse.ArgumentParser(description="Acodet pipeline runner.")
     parser.add_argument(
@@ -125,3 +132,4 @@ if __name__ == "__main__":
 
     create_session_file(simple_config_file=args.simple_config_file, advanced_config_file=args.advanced_config_file)
     main()
+

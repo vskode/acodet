@@ -88,7 +88,7 @@ def load_or_compute(model, dataset, split):
     """
     path = get_cache_path(model, dataset, split)
     if path.exists():
-        print(f"Loading cached {split} embeddings from {path}", flush=True)
+        print(f"Loading cached {split} embeddings from {path}")
         cached = torch.load(path)
         return cached["embeddings"], cached["labels"]
 
@@ -120,7 +120,7 @@ def load_or_compute(model, dataset, split):
     tmp_path = path.with_name(f"{path.name}.tmp{os.getpid()}")
     torch.save({"embeddings": embeddings, "labels": labels}, tmp_path)
     os.replace(tmp_path, path)
-    print(f"Saved {split} embeddings to {path}", flush=True)
+    print(f"Saved {split} embeddings to {path}")
     return embeddings, labels
 
 
