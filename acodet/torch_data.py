@@ -35,9 +35,17 @@ class AudioDataset(Dataset):
         assert len(df) > 0
         self.mode = mode
 
+        file_durations = {
+            path: lb.get_duration(path=path) for path in df['filename'].unique()
+        }
+
         rows = []
         for _, row in df.iterrows():
-            clip_duration = row['end'] - row['start']
+            # Some annotations end after their audio file does. Clip them to the
+            # length of the file, so that every frame lies inside the file:
+            # Otherwise this can lead to errors.
+            end = min(row['end'], file_durations[row['filename']])
+            clip_duration = end - row['start']
             frame_duration = conf.CONTEXT_WIN / conf.SR
             
             # skip clips that are too short to be meaningful
@@ -54,7 +62,7 @@ class AudioDataset(Dataset):
             for i in range(num_frames):
                 frame_start = row['start'] + i * frame_duration
                 # clamp so we don't seek past the actual annotation end
-                frame_start = min(frame_start, row['end'] - frame_duration)
+                frame_start = min(frame_start, end - frame_duration)
                 rows.append({
                     'filename': row['filename'],
                     'label': row['label'],
