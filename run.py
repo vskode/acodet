@@ -105,10 +105,9 @@ if __name__ == "__main__":
     import sys
     from acodet.create_session_file import create_session_file
 
-    # Write each printed line out right away, also when stdout is a file (e.g.
-    # a Slurm log). Otherwise Python buffers it in blocks of the file system's
-    # block size (4 MiB on VACC scratch), so prints only show up at exit, long
-    # after the progress bars, which go to stderr and are written per line.
+    # Write each printed line out right away. If we don't do this, Python buffers it when writing
+    # to a file, so that when we run on cluster stderr and stdout are not synchronized, or stdout
+    # prints may not even show up until being flushed at the very end of the program.
     sys.stdout.reconfigure(line_buffering=True)
 
     parser = argparse.ArgumentParser(description="Acodet pipeline runner.")
