@@ -400,7 +400,9 @@ class BacpipeModel(nn.Module):
                 embeds = self.embedder.model(x)
                 from bacpipe import TF_MODELS
                 if conf.MODEL_NAME in TF_MODELS:
-                    embeds = embeds.numpy()
+                    # most TF models return a tf.Tensor, but some (e.g. google_whale)
+                    # already return an np.ndarray; np.asarray handles both
+                    embeds = np.asarray(embeds)
             else:
                 embeds = self.embedder.get_embeddings_from_model(x)
         embeds = torch.as_tensor(embeds, dtype=torch.float32)
